@@ -38,9 +38,17 @@ def test_canonicalize_url_rejects_non_http_and_relative_urls():
 
 def test_candidate_deduplication_is_platform_scoped_and_stable():
     candidates = [
-        ResourceCandidate(platform="bili", url="https://bilibili.com/video/BV1?a=1", title="first"),
-        ResourceCandidate(platform="bili", url="https://bilibili.com/video/BV1?a=1&fbclid=x", title="duplicate"),
-        ResourceCandidate(platform="xhs", url="https://bilibili.com/video/BV1?a=1", title="other platform"),
+        ResourceCandidate(
+            platform="bili", url="https://bilibili.com/video/BV1?a=1", title="first"
+        ),
+        ResourceCandidate(
+            platform="bili",
+            url="https://bilibili.com/video/BV1?a=1&fbclid=x",
+            title="duplicate",
+        ),
+        ResourceCandidate(
+            platform="xhs", url="https://bilibili.com/video/BV1?a=1", title="other platform"
+        ),
     ]
 
     unique = deduplicate_candidates(candidates)
