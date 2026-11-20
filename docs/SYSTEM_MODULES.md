@@ -175,7 +175,15 @@ AI Learning & Work System 要培养能够持续学习、独立承担专业任务
 9. **Evaluation Platform**：数据集、基准任务、评分器、回归测试、门禁和报告。
 10. **Admin Console**：专业 AI、采集任务、工作任务、技能版本、资源和运行状态管理。
 
-## 3.1 教程发现接口基线\n\n平台搜索采用统一的 SearchRequest / SearchPage / ResourceCandidate 契约；每个平台通过 SourceSearchAdapter 独立接入，由 AdapterRegistry 显式注册。搜索仅返回候选元数据，不自动下载。候选按平台与规范化 URL 去重，平台特有的资源定位参数必须保留。详细接口、平台能力矩阵和验收标准见 [ACQUISITION_DISCOVERY_DESIGN.md](ACQUISITION_DISCOVERY_DESIGN.md)。\n\n## 4. 核心对象与数据边界
+## 3.1 教程发现接口基线
+
+平台搜索采用统一的 SearchRequest / SearchPage / ResourceCandidate 契约；每个平台通过 SourceSearchAdapter 独立接入，由 AdapterRegistry 显式注册。搜索仅返回候选元数据，不自动下载。候选按平台与规范化 URL 去重，平台特有的资源定位参数必须保留。
+
+已落地 SearchService、PlatformCatalog、BilibiliSearchAdapter 和 SQLite CandidateRepository。Bilibili 适配器实现 WBI 签名的视频关键词搜索和分页字段映射；当前单元测试使用注入的假 transport，尚未证明真实网络环境可用。候选仓储支持跨搜索批次去重关联及人工筛选状态迁移。
+
+详细接口、平台能力矩阵和验收标准见 [ACQUISITION_DISCOVERY_DESIGN.md](ACQUISITION_DISCOVERY_DESIGN.md)。
+
+## 4. 核心对象与数据边界
 
 系统至少区分以下对象，不把它们混成一张“知识表”：
 
