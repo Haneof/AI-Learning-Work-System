@@ -103,3 +103,17 @@ This suite validates one real narrated English screen-recording sample. It does 
 - Peak RAM/VRAM, throughput under concurrent ingestion, or behavior on hundreds of GB of material.
 
 Issue #3 must remain open until representative narrated recordings, text-dense recordings, and table PDFs are tested; source-linked outputs and failure cases are checked; and Windows reproduction plus resource measurements are recorded. A passing Ubuntu smoke test must not be represented as full media-ingestion acceptance.
+
+
+## Manual Mandarin OCR reference set
+
+A first reference set was manually transcribed by visually inspecting 10 corresponding extracted keyframes from the CC BY 3.0 Mandarin sample. It labels only the principal Simplified Chinese phrase shown on screen; pinyin, English translations, category headings, and incidental/background text are outside this benchmark's scope.
+
+- Labels: `tests/fixtures/mandarin_ocr_ground_truth.json`
+- Scorer: `scripts/score_ocr_reference.py`
+- Metric: Chinese-character CER = Levenshtein edit distance / number of reference Chinese characters.
+- Normalization: whitespace and non-CJK characters are removed before scoring.
+- Observed result on the saved Tesseract 5.5.0 `chi_sim` report: 13 edit operations / 56 reference characters = **23.21% CER** (76.79% simple character-accuracy proxy).
+- Largest error clusters occur at the 240-second and 270-second frames, where extra or misread Chinese characters appear around the main phrase.
+
+This is a diagnostic score on 10 selected keyframes, not a representative general OCR accuracy claim. The scorer is wired into the Chinese OCR CI job and emits `ocr-score.json`. Future coverage should add more layouts, small fonts, dense screens, tables, Traditional Chinese, and background-only frames. This score is not yet a release gate.
