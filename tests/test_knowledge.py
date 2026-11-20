@@ -47,7 +47,7 @@ def make_item(
         state=state,
         confidence=ConfidenceLabel.HIGH,
         conflict_key=conflict_key,
-        evidence=evidence or [
+        evidence=evidence if evidence is not None else [
             EvidenceLink(
                 source_id="source-1",
                 segment_id="seg-1",
