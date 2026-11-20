@@ -29,7 +29,10 @@ def write_valid_package(root):
     }
     (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     (root / "scripts" / "run.py").write_text("print('ok')\n", encoding="utf-8")
-    (root / "tests" / "test_demo.py").write_text("def test_demo():\n    assert True\n", encoding="utf-8")
+    (root / "tests" / "test_demo.py").write_text(
+        "def test_demo():\n    assert True\n",
+        encoding="utf-8",
+    )
 
 
 def test_valid_skill_package_has_stable_hash(tmp_path):
