@@ -62,9 +62,14 @@ class TaskJournal:
         if max_attempts < 1:
             raise ValueError("max_attempts must be at least 1")
         previous = self.records.get(task_id)
+        if previous and previous.operation != operation:
+            raise ValueError(f"Task ID {task_id} is already registered for {previous.operation}")
         if previous and previous.state == "SUCCEEDED":
             return None
+
         attempts = previous.attempts if previous else 0
+        if previous and previous.state == "RUNNING":
+            attempts -= 1
         if attempts >= max_attempts:
             raise MediaTaskError(f"Task {task_id} exhausted {max_attempts} attempts")
 
