@@ -100,6 +100,7 @@ def replay_normal_path(app: MockTranslationApp) -> dict[str, Any]:
     app.perform("select_article", "article_picker", "Example article")
     app.perform("open", "editor")
     app.perform("save", "draft_button")
+    app.perform("open", "dashboard")
     app.perform("resume", "draft_button")
     app.perform("publish_mock", "mock_publish_button")
     return {
