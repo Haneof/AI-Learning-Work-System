@@ -126,6 +126,6 @@ def run_agent(
         "limitations": [
             "No real model provider is bundled; model_call must be supplied by the caller.",
             "The simulator is deterministic and local; no browser or external UI is controlled.",
-            (\n                "Recovery metrics are not measured because this runner injects no recovery event."\n            ),
+            "Recovery metrics are not measured because no fault is injected.",
         ],
     }
