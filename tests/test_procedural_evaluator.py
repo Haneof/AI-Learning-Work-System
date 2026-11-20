@@ -1,7 +1,7 @@
 import json
 from pathlib import Path
 
-from scripts.evaluate_procedural_steps import evaluate
+from scripts.evaluate_procedural_steps import evaluate  # noqa: I001
 
 
 FIXTURE = Path(__file__).parent / "fixtures" / "procedural_steps_ground_truth.json"
