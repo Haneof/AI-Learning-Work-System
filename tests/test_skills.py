@@ -1,6 +1,7 @@
 """Tests for skill package static validation and sandbox command policy."""
 
 import json
+import subprocess
 from types import SimpleNamespace
 
 import pytest
@@ -174,3 +175,30 @@ def test_sandbox_run_records_result_after_validation(tmp_path, monkeypatch):
     assert result.exit_code == 0
     assert not result.timed_out
     assert result.package_hash == report.package_hash
+
+
+def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
+    package = tmp_path / "valid"
+    package.mkdir()
+    write_valid_package(package)
+    report = validate_skill_package(package)
+    runner = DockerSandboxRunner()
+    commands = []
+
+    def fake_run(command, **_kwargs):
+        commands.append(command)
+        if len(commands) == 1:
+            raise subprocess.TimeoutExpired(command, timeout=1, stdout="partial")
+        return SimpleNamespace(returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr("aios_work_system.skills.sandbox.subprocess.run", fake_run)
+    result = runner.run(
+        package,
+        "scripts/run.py",
+        "python@sha256:" + "a" * 64,
+        package_hash=report.package_hash,
+        timeout_seconds=1,
+    )
+
+    assert result.timed_out
+    assert commands[1][1:3] == ["rm", "--force"]
