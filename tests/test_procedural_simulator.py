@@ -39,3 +39,28 @@ def test_interrupted_draft_can_be_resumed():
     app.perform("resume", "draft")
     assert app.state == "editor"
     assert app.draft_saved is True
+
+
+def test_cannot_select_translation_job_before_dashboard():
+    app = MockTranslationApp()
+    try:
+        app.perform("select_article", "article_picker", "Example article")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Article selection outside dashboard must be rejected")
+
+
+def test_cannot_open_editor_without_dashboard_state():
+    app = MockTranslationApp(
+        state="settings",
+        source_language="en",
+        target_language="zh",
+        article="Example article",
+    )
+    try:
+        app.perform("open", "editor")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Editor must only open from the dashboard")
