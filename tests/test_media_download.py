@@ -1,8 +1,6 @@
 """Tests for yt-dlp and aria2 delegation and output verification."""
 
 import hashlib
-import subprocess
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
