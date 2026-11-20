@@ -100,7 +100,9 @@ def evaluate(payload: dict[str, Any]) -> dict[str, Any]:
         "denominators": {
             "step_success_rate": "all attempted actions",
             "task_completion_rate": "all episodes",
-            "recovery_success_rate": (\n                "episodes with an attempted recovery after an explicit opportunity"\n            ),
+            "recovery_success_rate": (
+                "episodes with an attempted recovery after an explicit opportunity"
+            ),
         },
         "limitations": [
             "A simulator-accepted action is not evidence of real-world UI competence.",
@@ -119,7 +121,10 @@ def main() -> int:
     payload = json.loads(args.input.read_text(encoding="utf-8"))
     report = evaluate(payload)
     args.output.parent.mkdir(parents=True, exist_ok=True)
-    args.output.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\\n", encoding="utf-8")
+    args.output.write_text(
+        json.dumps(report, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     print(json.dumps(report, ensure_ascii=False, indent=2))
     return 0
 
