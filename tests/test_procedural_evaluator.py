@@ -15,6 +15,7 @@ def test_exact_match_scores_perfectly():
     assert report["extraction"]["f1"] == 1.0
     assert report["order_accuracy"] == 1.0
     assert report["evidence_completeness"] == 1.0
+    assert report["ui_evidence_completeness"] == 1.0
     assert report["expected_state_accuracy_on_matched_steps"] == 1.0
 
 
@@ -34,3 +35,14 @@ def test_wrong_action_and_target_are_not_matched():
     report = evaluate(reference, prediction)
     assert report["counts"]["matched_steps"] == 2
     assert report["extraction"]["recall"] == round(2 / 3, 4)
+
+
+def test_subtitle_only_evidence_does_not_count_as_ui_evidence():
+    reference = json.loads(FIXTURE.read_text(encoding="utf-8"))
+    prediction = json.loads(json.dumps(reference))
+    for step in prediction["steps"]:
+        for evidence in step["evidence_refs"]:
+            evidence["kind"] = "subtitle"
+    report = evaluate(reference, prediction)
+    assert report["evidence_completeness"] == 1.0
+    assert report["ui_evidence_completeness"] == 0.0
