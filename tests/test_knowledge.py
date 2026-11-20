@@ -155,6 +155,32 @@ def test_conflicting_items_coexist_but_require_review():
     assert registry.get("knowledge-2", "expert-a").state == KnowledgeState.REVIEW_REQUIRED
 
 
+def test_duplicate_id_does_not_mutate_existing_conflict_state():
+    registry = KnowledgeRegistry()
+    registry.add_segment(make_segment())
+    registry.add_segment(
+        make_segment(segment_id="seg-2", text="The return window is 60 days.")
+    )
+    registry.add_knowledge(make_item())
+    duplicate_id = registry.add_knowledge(
+        make_item(
+            knowledge_id="knowledge-1",
+            statement="The return window is 60 days.",
+            evidence=[
+                EvidenceLink(
+                    source_id="source-1",
+                    segment_id="seg-2",
+                    relation=EvidenceRelation.SUPPORTS,
+                    excerpt="60 days",
+                )
+            ],
+        )
+    )
+
+    assert not duplicate_id.accepted
+    assert registry.get("knowledge-1", "expert-a").state == KnowledgeState.APPROVED
+
+
 def test_expert_cannot_read_another_experts_knowledge():
     registry = KnowledgeRegistry()
     registry.add_segment(make_segment())
