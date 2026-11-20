@@ -16,7 +16,12 @@ class HealthHandler(BaseHTTPRequestHandler):
         if self.path != "/health":
             self._write_json(404, {"status": "not_found"})
             return
-        self._write_json(200, {"status": "ok", "service": "aios-work-system", "version": __version__})
+        payload = {
+            "status": "ok",
+            "service": "aios-work-system",
+            "version": __version__,
+        }
+        self._write_json(200, payload)
 
     def _write_json(self, status: int, payload: dict[str, Any]) -> None:
         body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
