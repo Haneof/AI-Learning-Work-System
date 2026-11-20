@@ -47,7 +47,12 @@ class MockTranslationApp:
             self.state = "editor"
         elif action == "save" and resolved == "draft" and self.state == "editor":
             self.draft_saved = True
-        elif action == "resume" and resolved == "draft" and self.draft_saved:
+        elif (
+            action == "resume"
+            and resolved == "draft"
+            and self.draft_saved
+            and self.state == "dashboard"
+        ):
             self.state = "editor"
         elif action == "publish_mock" and resolved == "publish" and self.state == "editor":
             self.published = True
