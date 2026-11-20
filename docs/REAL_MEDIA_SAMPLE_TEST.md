@@ -1,6 +1,6 @@
-# Real Video Integration Test
+# Real Media, ASR, and OCR Integration Test
 
-This test downloads and processes an actual, openly licensed tutorial recording on a GitHub-hosted Ubuntu runner. It exercises the current FFmpeg wrapper rather than mocked subprocesses.
+This test suite downloads and processes an actual, openly licensed tutorial recording on GitHub-hosted Ubuntu runners. It exercises real FFmpeg, faster-whisper, and Tesseract execution; it does not mock the media tools.
 
 ## Sample and attribution
 
@@ -10,17 +10,47 @@ This test downloads and processes an actual, openly licensed tutorial recording 
 - Attribution: Free I.T. Athens
 - License: Creative Commons Attribution 3.0 (CC BY 3.0); retain attribution and license when redistributing the sample.
 
-## What the automated test really runs
+## Automated test jobs
 
-1. Downloads the real WebM file.
-2. Runs `ffprobe` through `FFmpegProcessor.probe` and checks that video and audio streams exist.
-3. Extracts the full audio track to mono 16 kHz WAV.
-4. Transcodes a proxy MP4.
-5. Extracts one frame every 60 seconds.
-6. Registers the original file with SHA-256 and creates timestamp-located audio/frame segments in a source manifest.
-7. Uploads the JSON report and derived artifacts as a workflow artifact.
+The `Real Media Sample Integration` workflow runs three real integration jobs:
 
-The workflow is triggered for pull requests that change the media implementation and can also be started manually from GitHub Actions.
+1. **Real video / FFmpeg**
+   - Downloads the original WebM and checks it with `ffprobe`.
+   - Extracts the full audio track to mono 16 kHz WAV.
+   - Transcodes a 1280-wide H.264 proxy MP4.
+   - Extracts one frame every 60 seconds.
+   - Registers the original file with SHA-256 and creates timestamp-located audio/frame segments in a source manifest.
+   - Uploads the source, derived media, manifest, and JSON report.
+
+2. **Real ASR / faster-whisper**
+   - Downloads the same recording and extracts mono 16 kHz audio.
+   - Runs the open-source `tiny.en` model on CPU with INT8 compute.
+   - Writes segment text with start/end timestamps and a JSON report.
+   - Checks that a non-empty transcript and valid timestamp intervals were returned.
+
+3. **Real keyframe OCR / Tesseract**
+   - Downloads the same recording and extracts one frame per 60 seconds through the project FFmpeg wrapper.
+   - Runs Tesseract English OCR on each frame after resizing to a maximum of 640×360.
+   - Writes recognized text, frame timestamps, per-frame character counts, and elapsed time to JSON.
+
+Each job uploads its report and generated artifacts. The workflow runs for relevant pull requests and can also be started manually from GitHub Actions.
+
+## Recorded test evidence
+
+The following results were observed on the 21-minute, 1280×720 sample in GitHub-hosted Ubuntu runners:
+
+| Test | Observed result |
+|---|---|
+| FFmpeg probe | VP9 video + Opus audio detected |
+| Audio extraction | Mono, 16 kHz WAV produced |
+| Proxy transcode | H.264, 1280×720 MP4 produced |
+| Keyframe extraction | 21 frames |
+| Source manifest | 1 audio segment + 21 timestamped frame segments |
+| Source integrity | Original SHA-256 matched the manifest and report |
+| faster-whisper `tiny.en` | 341 timestamped segments; 16,794 transcript characters; CPU INT8 |
+| Tesseract 5.5.0 | 21/21 sampled frames returned text; 11,365 characters |
+
+These are integration smoke-test results, not accuracy benchmarks. The ASR transcript has not been scored against a human-verified reference transcript. OCR character count does not measure character-level accuracy or semantic correctness.
 
 ## Run locally on Windows
 
@@ -33,6 +63,31 @@ Invoke-WebRequest -Uri "https://upload.wikimedia.org/wikipedia/commons/1/18/Libr
 python scripts/validate_real_media_sample.py --input artifacts/real-media/LibreOffice_Writer_Basics.webm --output-dir artifacts/real-media/output
 ```
 
-## Limits
+For the optional ASR smoke test:
 
-This test validates real media probing, audio extraction, proxy transcoding, frame extraction, and source/segment manifest creation. It does not validate ASR, OCR, semantic step extraction, scanned PDFs, table PDFs, Windows-specific FFmpeg behavior, or RAM/VRAM peak telemetry. A passing Ubuntu workflow must not be represented as Windows acceptance.
+```powershell
+python -m pip install "faster-whisper>=1.1,<2"
+ffmpeg -y -i artifacts/real-media/LibreOffice_Writer_Basics.webm -vn -ac 1 -ar 16000 artifacts/real-media/audio.wav
+python scripts/validate_asr_sample.py --input artifacts/real-media/audio.wav --output artifacts/real-media/asr-report.json --model tiny.en
+```
+
+For the optional OCR smoke test, install Tesseract OCR and its English language data, then:
+
+```powershell
+python -m pip install -e .
+python -m pip install pillow pytesseract
+python scripts/validate_ocr_sample.py --input artifacts/real-media/LibreOffice_Writer_Basics.webm --output-dir artifacts/real-media/ocr --interval-seconds 60
+```
+
+## Limits and remaining acceptance work
+
+This suite validates one real narrated English screen-recording sample. It does **not** establish:
+
+- ASR word error rate or correctness against a human-verified transcript.
+- Chinese speech recognition or Chinese UI OCR.
+- Dense-screen OCR recall/precision, table extraction, or PDF parsing.
+- Semantic step extraction, knowledge approval, skill generation, or task success.
+- Windows-specific FFmpeg/ASR/OCR acceptance.
+- Peak RAM/VRAM, throughput under concurrent ingestion, or behavior on hundreds of GB of material.
+
+Issue #3 must remain open until representative narrated recordings, text-dense recordings, and table PDFs are tested; source-linked outputs and failure cases are checked; and Windows reproduction plus resource measurements are recorded. A passing Ubuntu smoke test must not be represented as full media-ingestion acceptance.
