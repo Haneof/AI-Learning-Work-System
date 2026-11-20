@@ -90,6 +90,8 @@
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 | [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
 | [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |
+| [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
+| [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 
 ## 本地开发（工程底座）
 
