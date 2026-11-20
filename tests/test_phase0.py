@@ -22,7 +22,7 @@ def test_phase0_demo_connects_source_knowledge_skill_and_safety_gates(tmp_path):
     markdown_report = (tmp_path / "phase0" / "phase0-report.md").read_text(encoding="utf-8")
     assert json_report["source"]["sha256"] == report["source"]["sha256"]
     assert "NOT EXECUTED" in markdown_report
-    assert "no source evidence is rejected" in markdown_report
+    assert "approved knowledge without evidence is rejected" in markdown_report
 
 
 def test_phase0_demo_refuses_to_overwrite_nonempty_output(tmp_path):
