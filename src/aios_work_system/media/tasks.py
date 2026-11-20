@@ -1,0 +1,102 @@
+"""Small JSON task journal for bounded retry and crash-safe resume."""
+
+from __future__ import annotations
+
+import json
+import time
+from dataclasses import asdict, dataclass
+from datetime import UTC, datetime
+from pathlib import Path
+from typing import Callable, TypeVar
+
+T = TypeVar("T")
+
+
+class MediaTaskError(RuntimeError):
+    """Raised when a journaled media task exhausts its retry budget."""
+
+
+@dataclass
+class TaskRecord:
+    task_id: str
+    operation: str
+    state: str
+    attempts: int
+    max_attempts: int
+    elapsed_ms: float | None = None
+    error: str | None = None
+    updated_at: str = ""
+
+
+class TaskJournal:
+    def __init__(self, path: str | Path) -> None:
+        self.path = Path(path)
+        self.records: dict[str, TaskRecord] = {}
+        if self.path.exists():
+            payload = json.loads(self.path.read_text(encoding="utf-8"))
+            self.records = {
+                task_id: TaskRecord(**record) for task_id, record in payload.items()
+            }
+
+    def _save(self) -> None:
+        self.path.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text(
+            json.dumps(
+                {key: asdict(value) for key, value in self.records.items()},
+                ensure_ascii=False,
+                indent=2,
+            ),
+            encoding="utf-8",
+        )
+        temporary.replace(self.path)
+
+    def run(
+        self,
+        task_id: str,
+        operation: str,
+        action: Callable[[], T],
+        max_attempts: int = 2,
+    ) -> T | None:
+        if max_attempts < 1:
+            raise ValueError("max_attempts must be at least 1")
+        previous = self.records.get(task_id)
+        if previous and previous.state == "SUCCEEDED":
+            return None
+        attempts = previous.attempts if previous else 0
+        if attempts >= max_attempts:
+            raise MediaTaskError(f"Task {task_id} exhausted {max_attempts} attempts")
+
+        while attempts < max_attempts:
+            attempts += 1
+            record = TaskRecord(
+                task_id=task_id,
+                operation=operation,
+                state="RUNNING",
+                attempts=attempts,
+                max_attempts=max_attempts,
+                updated_at=datetime.now(UTC).isoformat(),
+            )
+            self.records[task_id] = record
+            self._save()
+            started = time.perf_counter()
+            try:
+                result = action()
+            except Exception as exc:
+                record.state = "FAILED"
+                record.error = f"{type(exc).__name__}: {exc}"
+                record.elapsed_ms = (time.perf_counter() - started) * 1000
+                record.updated_at = datetime.now(UTC).isoformat()
+                self._save()
+                if attempts >= max_attempts:
+                    raise MediaTaskError(
+                        f"Task {task_id} failed after {attempts} attempts: {record.error}"
+                    ) from exc
+            else:
+                record.state = "SUCCEEDED"
+                record.error = None
+                record.elapsed_ms = (time.perf_counter() - started) * 1000
+                record.updated_at = datetime.now(UTC).isoformat()
+                self._save()
+                return result
+        return None
