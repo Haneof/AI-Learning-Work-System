@@ -107,8 +107,8 @@ def test_bilibili_adapter_signs_search_and_maps_video_candidates():
             return {
                 "data": {
                     "wbi_img": {
-                        "img_url": "https://i0.hdslb.com/bfs/wbi/abc123.png",
-                        "sub_url": "https://i0.hdslb.com/bfs/wbi/def456.png",
+                        "img_url": "https://i0.hdslb.com/bfs/wbi/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+                        "sub_url": "https://i0.hdslb.com/bfs/wbi/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
                     }
                 }
             }
@@ -170,8 +170,8 @@ def test_bilibili_adapter_surfaces_anti_bot_response_without_fake_results():
             return {
                 "data": {
                     "wbi_img": {
-                        "img_url": "https://i0.hdslb.com/bfs/wbi/abc123.png",
-                        "sub_url": "https://i0.hdslb.com/bfs/wbi/def456.png",
+                        "img_url": "https://i0.hdslb.com/bfs/wbi/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.png",
+                        "sub_url": "https://i0.hdslb.com/bfs/wbi/bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb.png",
                     }
                 }
             }
