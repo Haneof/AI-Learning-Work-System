@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable, TypeVar
+from typing import TypeVar
 
 T = TypeVar("T")
 
