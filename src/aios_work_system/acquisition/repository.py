@@ -7,7 +7,7 @@ import sqlite3
 from dataclasses import asdict
 from enum import StrEnum
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 
 from aios_work_system.acquisition.models import ResourceCandidate
 
