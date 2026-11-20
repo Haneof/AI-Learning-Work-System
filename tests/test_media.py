@@ -113,6 +113,29 @@ def test_task_journal_retries_and_skips_completed_work(tmp_path):
     assert calls == 2
 
 
+def test_task_journal_resumes_an_interrupted_final_attempt(tmp_path):
+    journal_path = tmp_path / "interrupted-task.json"
+    journal_path.write_text(
+        json.dumps(
+            {
+                "interrupted": {
+                    "task_id": "interrupted",
+                    "operation": "extract_frames",
+                    "state": "RUNNING",
+                    "attempts": 2,
+                    "max_attempts": 2,
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    journal = TaskJournal(journal_path)
+
+    assert journal.run("interrupted", "extract_frames", lambda: "done", max_attempts=2) == "done"
+    assert journal.records["interrupted"].attempts == 2
+    assert journal.records["interrupted"].state == "SUCCEEDED"
+
+
 def test_task_journal_persists_exhausted_failure(tmp_path):
     journal = TaskJournal(tmp_path / "failed-task.json")
 
