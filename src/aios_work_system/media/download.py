@@ -126,7 +126,7 @@ class YtDlpAdapter:
         if completed.returncode != 0:
             detail = (completed.stderr or "").strip() or f"exit code {completed.returncode}"
             raise DownloadError(f"yt-dlp failed: {detail}")
-        output_lines = [line.strip() for line in (completed.stdout or "").splitlines() if line.strip()]
+        output_lines = [\n            line.strip()\n            for line in (completed.stdout or "").splitlines()\n            if line.strip()\n        ]
         if not output_lines:
             raise DownloadError("yt-dlp completed without reporting the final file path")
         path = Path(output_lines[-1]).expanduser()
@@ -154,7 +154,7 @@ class Aria2Adapter:
     def download(self, request: DownloadRequest) -> Path:
         destination = request.destination_dir.expanduser().resolve()
         destination.mkdir(parents=True, exist_ok=True)
-        filename = request.filename or Path(unquote(urlparse(request.url).path)).name or "download.bin"
+        filename = (\n            request.filename\n            or Path(unquote(urlparse(request.url).path)).name\n            or "download.bin"\n        )
         output = destination / filename
         command = [
             self.executable,
