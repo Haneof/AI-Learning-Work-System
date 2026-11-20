@@ -1,0 +1,126 @@
+name: Real Media Sample Integration
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/aios_work_system/media/**"
+      - "scripts/validate_real_media_sample.py"
+      - ".github/workflows/real-media-sample.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  real-video:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Download openly licensed real tutorial sample
+        run: |
+          mkdir -p artifacts/real-media
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://upload.wikimedia.org/wikipedia/commons/1/18/LibreOffice_Writer_%E2%80%93_The_Basics.webm" \
+            --output artifacts/real-media/LibreOffice_Writer_Basics.webm
+          test -s artifacts/real-media/LibreOffice_Writer_Basics.webm
+      - name: Run actual FFmpeg integration
+        run: |
+          python scripts/validate_real_media_sample.py \
+            --input artifacts/real-media/LibreOffice_Writer_Basics.webm \
+            --output-dir artifacts/real-media/output
+      - name: Upload real-media test report and derived artifacts
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: real-media-sample-report
+          path: artifacts/real-media/
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-asr:
+    needs: real-video
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and faster-whisper
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "faster-whisper>=1.1,<2"
+      - name: Download real tutorial sample
+        run: |
+          mkdir -p artifacts/real-asr
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://upload.wikimedia.org/wikipedia/commons/1/18/LibreOffice_Writer_%E2%80%93_The_Basics.webm" \
+            --output artifacts/real-asr/tutorial.webm
+      - name: Extract audio and transcribe with CPU int8
+        run: |
+          ffmpeg -y -i artifacts/real-asr/tutorial.webm -vn -ac 1 -ar 16000 artifacts/real-asr/tutorial.wav
+          python scripts/validate_asr_sample.py \
+            --input artifacts/real-asr/tutorial.wav \
+            --output artifacts/real-asr/asr-report.json \
+            --model tiny.en
+      - name: Upload ASR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: real-asr-sample-report
+          path: artifacts/real-asr/
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-ocr:
+    needs: real-video
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Tesseract and media package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pillow pytesseract
+      - name: Download real tutorial sample
+        run: |
+          mkdir -p artifacts/real-ocr
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://upload.wikimedia.org/wikipedia/commons/1/18/LibreOffice_Writer_%E2%80%93_The_Basics.webm" \
+            --output artifacts/real-ocr/tutorial.webm
+      - name: OCR actual keyframes with Tesseract
+        run: |
+          python scripts/validate_ocr_sample.py \
+            --input artifacts/real-ocr/tutorial.webm \
+            --output-dir artifacts/real-ocr/output \
+            --interval-seconds 60
+      - name: Upload OCR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: real-ocr-sample-report
+          path: artifacts/real-ocr/
+          if-no-files-found: warn
+          retention-days: 14
