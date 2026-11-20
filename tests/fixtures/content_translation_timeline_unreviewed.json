@@ -136,8 +136,8 @@
       "evidence_refs": [
         {
           "kind": "subtitle",
-          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-49",
-          "timestamp_seconds": 123
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-51",
+          "timestamp_seconds": 126
         }
       ],
       "ui_verification_status": "pending_frame_review"
