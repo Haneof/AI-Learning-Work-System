@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
+import uuid
 from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
