@@ -86,3 +86,41 @@ jobs:
           path: artifacts/real-asr/
           if-no-files-found: warn
           retention-days: 14
+
+  real-ocr:
+    needs: real-video
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Tesseract and media package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pillow pytesseract
+      - name: Download real tutorial sample
+        run: |
+          mkdir -p artifacts/real-ocr
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://upload.wikimedia.org/wikipedia/commons/1/18/LibreOffice_Writer_%E2%80%93_The_Basics.webm" \
+            --output artifacts/real-ocr/tutorial.webm
+      - name: OCR actual keyframes with Tesseract
+        run: |
+          python scripts/validate_ocr_sample.py \
+            --input artifacts/real-ocr/tutorial.webm \
+            --output-dir artifacts/real-ocr/output \
+            --interval-seconds 60
+      - name: Upload OCR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: real-ocr-sample-report
+          path: artifacts/real-ocr/
+          if-no-files-found: warn
+          retention-days: 14
