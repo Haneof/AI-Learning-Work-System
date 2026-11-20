@@ -33,6 +33,12 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--gpu", default="unknown")
     benchmark_parser.add_argument("--vram-gb", default="unknown")
     benchmark_parser.add_argument("--ram-gb", default="unknown")
+
+    demo_parser = subparsers.add_parser(
+        "phase0-demo",
+        help="run the deterministic Phase 0 source-to-skill integration fixture",
+    )
+    demo_parser.add_argument("--output-dir", default="artifacts/phase0-demo")
     return parser
 
 
@@ -70,6 +76,14 @@ def main() -> None:
         serve(host=args.host, port=args.port)
     elif args.command == "benchmark":
         _run_benchmark(args)
+    elif args.command == "phase0-demo":
+        from aios_work_system.phase0 import run_phase0_demo
+
+        report = run_phase0_demo(args.output_dir)
+        print(f"Phase 0 demo: {report['overall_status']}")
+        print(f"Report: {args.output_dir}/phase0-report.md")
+        if report["overall_status"] != "PASS":
+            raise SystemExit(1)
 
 
 if __name__ == "__main__":
