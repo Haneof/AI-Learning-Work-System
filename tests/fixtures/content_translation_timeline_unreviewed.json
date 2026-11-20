@@ -1,0 +1,200 @@
+{
+  "schema_version": "1.0",
+  "source_id": "wikimedia-commons:Content_Translation_Screencast_(English).webm",
+  "annotation_status": "unreviewed",
+  "annotation_scope": "Narration-aligned draft only. UI actions, targets, preconditions and expected states require frame-by-frame human verification; subtitle evidence is not proof of UI state.",
+  "source": {
+    "media_url": "https://commons.wikimedia.org/wiki/File:Content_Translation_Screencast_(English).webm",
+    "subtitle_url": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt",
+    "author": "Pau Giner",
+    "date": "2015-01-13",
+    "license": "CC BY-SA 4.0",
+    "duration_seconds": 255.983,
+    "resolution": "1280x720",
+    "commons_file_size_bytes": 16599498,
+    "commons_sha1": "8eb92107393e1896ddb2c03f0c6cfd96bd2cb41a",
+    "sha256_status": "not_computed_media_not_downloaded"
+  },
+  "steps": [
+    {
+      "step_id": "ct-01",
+      "goal": "Enable the Content Translation beta feature",
+      "preconditions": [
+        "User is signed in and on the Beta settings page"
+      ],
+      "action": "enable_feature",
+      "target": "Content Translation beta feature",
+      "expected_state": "The feature is enabled and settings are saved",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-11",
+          "timestamp_seconds": 27.5
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-02",
+      "goal": "Open the translation dashboard from Contributions",
+      "preconditions": [
+        "Content Translation is enabled"
+      ],
+      "action": "navigate",
+      "target": "Contributions > New contributions > Translate",
+      "expected_state": "The translation dashboard is visible",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-19",
+          "timestamp_seconds": 52
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-03",
+      "goal": "Choose the source language, target language, and article",
+      "preconditions": [
+        "Translation dashboard is open"
+      ],
+      "action": "select_translation_job",
+      "target": "Language selectors and article picker",
+      "expected_state": "The selected job is Garam masala from Spanish to Catalan",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-24",
+          "timestamp_seconds": 63
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-04",
+      "goal": "Open the selected translation in the editor",
+      "preconditions": [
+        "A translation job has been selected"
+      ],
+      "action": "open_editor",
+      "target": "Translation job launch control",
+      "expected_state": "The three-pane translation editor is open",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-29",
+          "timestamp_seconds": 73
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-05",
+      "goal": "Add a paragraph to the translation",
+      "preconditions": [
+        "The three-pane editor is open"
+      ],
+      "action": "add_paragraph",
+      "target": "Central translation pane",
+      "expected_state": "A paragraph is added to the translation",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-35",
+          "timestamp_seconds": 88.1
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-06",
+      "goal": "Review source-to-translation sentence alignment",
+      "preconditions": [
+        "A translated paragraph is present"
+      ],
+      "action": "inspect_alignment",
+      "target": "Source and translation sentence highlights",
+      "expected_state": "The corresponding source sentence is highlighted for contextual review",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-46",
+          "timestamp_seconds": 114.1
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-07",
+      "goal": "Check that copied formatting and links resolve correctly",
+      "preconditions": [
+        "A paragraph has been added"
+      ],
+      "action": "verify_links_and_formatting",
+      "target": "Paragraph formatting and embedded links",
+      "expected_state": "Text formatting is retained and links point to intended destinations",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-49",
+          "timestamp_seconds": 123
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-08",
+      "goal": "Allow the current translation to be saved as a draft",
+      "preconditions": [
+        "The editor contains unsaved or recently changed work"
+      ],
+      "action": "wait_for_autosave",
+      "target": "Draft autosave status",
+      "expected_state": "The current work is stored as a draft",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-71",
+          "timestamp_seconds": 189
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-09",
+      "goal": "Resume an in-progress translation from the dashboard",
+      "preconditions": [
+        "A draft has been saved"
+      ],
+      "action": "resume_draft",
+      "target": "In-progress translations list",
+      "expected_state": "The saved translation can be reopened in the editor",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-73",
+          "timestamp_seconds": 194
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    },
+    {
+      "step_id": "ct-10",
+      "goal": "Publish the completed translation",
+      "preconditions": [
+        "The user has reviewed the translation and is satisfied with it"
+      ],
+      "action": "publish",
+      "target": "Publish translation control",
+      "expected_state": "The translation is submitted as a new article",
+      "evidence_refs": [
+        {
+          "kind": "subtitle",
+          "ref": "https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt#cue-75",
+          "timestamp_seconds": 204
+        }
+      ],
+      "ui_verification_status": "pending_frame_review"
+    }
+  ]
+}
