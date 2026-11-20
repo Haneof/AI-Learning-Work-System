@@ -6,6 +6,7 @@ import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import unquote, urlparse
 
 from aios_work_system.media.ffmpeg import FFmpegProcessor
 from aios_work_system.media.source import sha256_file
@@ -153,7 +154,7 @@ class Aria2Adapter:
     def download(self, request: DownloadRequest) -> Path:
         destination = request.destination_dir.expanduser().resolve()
         destination.mkdir(parents=True, exist_ok=True)
-        filename = request.filename or "download"
+        filename = request.filename or Path(unquote(urlparse(request.url).path)).name or "download.bin"
         output = destination / filename
         command = [
             self.executable,
