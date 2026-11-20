@@ -31,7 +31,7 @@ DockerSandboxRunner builds a Docker command with:
 - temporary no-exec /tmp filesystem
 - immutable image digest and no image pull during execution
 
-The caller must validate the package before execution and use a trusted, locally preloaded image pinned by digest. Never mount the Docker socket, user home, cloud credentials, or other host secrets.
+The runner revalidates the package immediately before execution and verifies that the supplied package hash still matches. It also uses a trusted, locally preloaded image pinned by digest. Never mount the Docker socket, user home, cloud credentials, or other host secrets.
 
 This is not production-grade isolation. Docker daemon configuration, kernel vulnerabilities, host filesystem exposure, Windows Docker Desktop behavior, and image provenance remain part of the threat model. The PoC tests command construction; they do not execute hostile code.
 
