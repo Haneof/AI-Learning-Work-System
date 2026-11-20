@@ -13,6 +13,7 @@ class ModelDescriptor:
     backend: str = "unknown"
     quantization: str = "unknown"
     context_length: int | None = None
+    generation_parameters: dict[str, Any] = field(default_factory=dict)
     hardware: dict[str, str] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
@@ -48,6 +49,8 @@ class GenerationOutput:
     text: str
     input_tokens: int | None = None
     output_tokens: int | None = None
+    time_to_first_token_ms: float | None = None
+    resource_metrics: dict[str, Any] = field(default_factory=dict)
     metadata: dict[str, Any] = field(default_factory=dict)
 
 
