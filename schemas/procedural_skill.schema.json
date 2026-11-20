@@ -98,6 +98,13 @@
           "recovery_strategy": {
             "type": "string",
             "minLength": 1
+          },
+          "ui_verification_status": {
+            "type": "string",
+            "enum": [
+              "pending_frame_review",
+              "frame_verified"
+            ]
           }
         },
         "additionalProperties": false
