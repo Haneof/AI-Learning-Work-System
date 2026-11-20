@@ -54,3 +54,25 @@ def test_fewer_than_eight_visual_steps_are_rejected():
         ]
     errors = validate_annotation(payload)
     assert any("at least 8 steps" in error for error in errors)
+
+
+def test_annotator_is_required():
+    payload = _reviewed_payload()
+    del payload["annotator"]
+    assert any("annotator is required" in error for error in validate_annotation(payload))
+
+
+def test_duplicate_step_ids_are_rejected():
+    payload = _reviewed_payload()
+    payload["steps"][1]["step_id"] = payload["steps"][0]["step_id"]
+    assert any("duplicate step_id" in error for error in validate_annotation(payload))
+
+
+def test_boolean_timestamp_is_not_valid_visual_evidence():
+    payload = _reviewed_payload()
+    for step in payload["steps"]:
+        for evidence in step["evidence_refs"]:
+            if evidence["kind"] == "video_frame":
+                evidence["timestamp_seconds"] = True
+    errors = validate_annotation(payload)
+    assert any("visual evidence is required" in error for error in errors)
