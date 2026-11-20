@@ -1,0 +1,32 @@
+{
+  "benchmark_id": "synthetic-metrics-fixture",
+  "episodes": [
+    {
+      "episode_id": "episode-001",
+      "attempted_actions": 4,
+      "successful_actions": 3,
+      "task_completed": true,
+      "recovery_opportunity": true,
+      "recovery_attempted": true,
+      "recovery_succeeded": true
+    },
+    {
+      "episode_id": "episode-002",
+      "attempted_actions": 2,
+      "successful_actions": 1,
+      "task_completed": false,
+      "recovery_opportunity": true,
+      "recovery_attempted": true,
+      "recovery_succeeded": false
+    },
+    {
+      "episode_id": "episode-003",
+      "attempted_actions": 3,
+      "successful_actions": 3,
+      "task_completed": true,
+      "recovery_opportunity": false,
+      "recovery_attempted": false,
+      "recovery_succeeded": null
+    }
+  ]
+}
