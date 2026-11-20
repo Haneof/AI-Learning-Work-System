@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -68,12 +67,18 @@ class SearchRequest:
             raise ValueError("page_size must be between 1 and 100")
 
 
+def _new_candidate_id() -> str:
+    import uuid
+
+    return str(uuid.uuid4())
+
+
 @dataclass(frozen=True)
 class ResourceCandidate:
     platform: str
     url: str
     title: str
-    candidate_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    candidate_id: str = field(default_factory=_new_candidate_id)
     canonical_url: str = ""
     author_name: str | None = None
     author_url: str | None = None
