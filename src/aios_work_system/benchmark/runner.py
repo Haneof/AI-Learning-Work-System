@@ -31,23 +31,24 @@ class BenchmarkRunner:
             tokens_per_second = (
                 output_tokens / elapsed if output_tokens is not None and elapsed > 0 else None
             )
+            resource_metrics = {
+                "ram_peak_bytes": None,
+                "vram_peak_bytes": None,
+                **generated.resource_metrics,
+            }
             return BenchmarkResult(
                 case_id=case.case_id,
                 category=case.category,
                 model=self.model,
                 output=generated.text,
                 latency_ms=elapsed * 1000,
-                time_to_first_token_ms=None,
+                time_to_first_token_ms=generated.time_to_first_token_ms,
                 input_tokens=generated.input_tokens,
                 output_tokens=output_tokens,
                 tokens_per_second=tokens_per_second,
                 passed=all(checks.values()) if checks else False,
                 checks=checks,
-                resource_metrics={
-                    "ram_peak_bytes": None,
-                    "vram_peak_bytes": None,
-                    "note": "Not measured by the generic backend; adapter may provide these later.",
-                },
+                resource_metrics=resource_metrics,
             )
         except Exception as exc:
             elapsed = time.perf_counter() - started
