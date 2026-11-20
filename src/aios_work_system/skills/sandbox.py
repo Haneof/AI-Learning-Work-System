@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import subprocess
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
@@ -39,6 +40,7 @@ class DockerSandboxRunner:
         memory_limit: str = "256m",
         cpu_limit: str = "1",
         timeout_seconds: int = 60,
+        container_name: str | None = None,
     ) -> list[str]:
         root = Path(package_path).expanduser().resolve(strict=True)
         if not root.is_dir():
@@ -68,9 +70,11 @@ class DockerSandboxRunner:
             raise ValueError("Sandbox entrypoint must be an existing Python script")
         if timeout_seconds < 1 or timeout_seconds > 600:
             raise ValueError("timeout_seconds must be between 1 and 600")
+        if container_name and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}", container_name):
+            raise ValueError("container_name contains unsupported characters")
 
         mount = f"type=bind,src={root},dst=/workspace,readonly"
-        return [
+        command = [
             self.docker_binary,
             "run",
             "--pull=never",
@@ -86,10 +90,11 @@ class DockerSandboxRunner:
             f"--mount={mount}",
             "--tmpfs=/tmp:rw,noexec,nosuid,size=64m",
             "--workdir=/workspace",
-            image_digest,
-            "python",
-            str(relative_script.as_posix()),
         ]
+        if container_name:
+            command.append(f"--name={container_name}")
+        command.extend([image_digest, "python", str(relative_script.as_posix())])
+        return command
 
     def run(
         self,
@@ -104,11 +109,14 @@ class DockerSandboxRunner:
             raise ValueError("Skill package failed static validation: " + "; ".join(report.errors))
         if report.package_hash != package_hash:
             raise ValueError("Skill package changed after validation; package hash mismatch")
+
+        container_name = f"aios-skill-{uuid.uuid4().hex[:12]}"
         command = self.build_command(
             package_path=package_path,
             script_path=script_path,
             image_digest=image_digest,
             timeout_seconds=timeout_seconds,
+            container_name=container_name,
         )
         try:
             completed = subprocess.run(
@@ -123,13 +131,29 @@ class DockerSandboxRunner:
                 "Docker is not available. Install Docker Desktop or configure a sandbox runtime."
             ) from exc
         except subprocess.TimeoutExpired as exc:
+            cleanup_error = ""
+            try:
+                cleanup = subprocess.run(
+                    [self.docker_binary, "rm", "--force", container_name],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=10,
+                )
+                if cleanup.returncode != 0:
+                    cleanup_error = cleanup.stderr.strip()
+            except (FileNotFoundError, subprocess.TimeoutExpired) as cleanup_exc:
+                cleanup_error = str(cleanup_exc)
+            stderr = str(exc.stderr or "")[-4000:]
+            if cleanup_error:
+                stderr = f"{stderr}\nContainer cleanup warning: {cleanup_error}"[-4000:]
             return SandboxResult(
                 package_hash=package_hash,
                 image_digest=image_digest,
                 exit_code=None,
                 timed_out=True,
                 stdout=str(exc.stdout or "")[-4000:],
-                stderr=str(exc.stderr or "")[-4000:],
+                stderr=stderr,
             )
         return SandboxResult(
             package_hash=package_hash,
