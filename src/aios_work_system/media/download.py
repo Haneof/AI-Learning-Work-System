@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import hashlib
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -120,7 +119,7 @@ class YtDlpAdapter:
                 timeout=self.timeout_seconds,
             )
         except FileNotFoundError as exc:
-            raise DownloadError("yt-dlp executable not found; install yt-dlp and add it to PATH") from exc
+            raise DownloadError(\n                "yt-dlp executable not found; install yt-dlp and add it to PATH"\n            ) from exc
         except subprocess.TimeoutExpired as exc:
             raise DownloadError("yt-dlp download timed out") from exc
         if completed.returncode != 0:
@@ -177,7 +176,7 @@ class Aria2Adapter:
                 timeout=self.timeout_seconds,
             )
         except FileNotFoundError as exc:
-            raise DownloadError("aria2c executable not found; install aria2 and add it to PATH") from exc
+            raise DownloadError(\n                "aria2c executable not found; install aria2 and add it to PATH"\n            ) from exc
         except subprocess.TimeoutExpired as exc:
             raise DownloadError("aria2 download timed out") from exc
         if completed.returncode != 0:
