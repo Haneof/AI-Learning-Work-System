@@ -88,6 +88,7 @@
 | [API 契约](docs/API_CONTRACTS.md) | MVP 核心接口、请求响应与访问控制约定 |
 | [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
+| [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
 
 ## 本地开发（工程底座）
 
