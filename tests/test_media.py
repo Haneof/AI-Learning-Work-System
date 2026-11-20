@@ -1,4 +1,4 @@
-"""Tests for source registration, PDF page mapping, and FFmpeg boundaries."""
+"""Tests for source registration, PDF page mapping, FFmpeg, and task resume."""
 
 import json
 
@@ -7,6 +7,7 @@ import pytest
 from aios_work_system.media.ffmpeg import FFmpegProcessor, NoAudioStreamError
 from aios_work_system.media.pdf import extract_pdf_pages
 from aios_work_system.media.source import SegmentRecord, register_source
+from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 
 
 class FakePage:
@@ -86,3 +87,40 @@ def test_audio_extraction_rejects_video_without_audio(tmp_path, monkeypatch):
 
     with pytest.raises(NoAudioStreamError):
         processor.extract_audio(media_path, tmp_path / "audio.wav")
+
+
+def test_task_journal_retries_and_skips_completed_work(tmp_path):
+    journal_path = tmp_path / "task-journal.json"
+    journal = TaskJournal(journal_path)
+    calls = 0
+
+    def flaky_action():
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise ValueError("temporary failure")
+        return "artifact-ready"
+
+    result = journal.run("stable-task-id", "extract_audio", flaky_action, max_attempts=2)
+
+    assert result == "artifact-ready"
+    assert calls == 2
+    assert journal.records["stable-task-id"].state == "SUCCEEDED"
+    assert journal.records["stable-task-id"].attempts == 2
+
+    resumed = TaskJournal(journal_path)
+    assert resumed.run("stable-task-id", "extract_audio", flaky_action, max_attempts=2) is None
+    assert calls == 2
+
+
+def test_task_journal_persists_exhausted_failure(tmp_path):
+    journal = TaskJournal(tmp_path / "failed-task.json")
+
+    def fail():
+        raise RuntimeError("broken media")
+
+    with pytest.raises(MediaTaskError):
+        journal.run("broken-source", "probe", fail, max_attempts=1)
+
+    assert journal.records["broken-source"].state == "FAILED"
+    assert journal.records["broken-source"].error == "RuntimeError: broken media"
