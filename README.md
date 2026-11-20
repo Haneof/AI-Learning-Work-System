@@ -83,6 +83,11 @@
 | [验收标准](docs/ACCEPTANCE.md) | 资料、知识、技能和自主工作的验收要求 |
 | [安全与权限模型](docs/SECURITY.md) | 不可信输入、沙箱、权限分级和人工审批 |
 | [开发规范](docs/DEVELOPMENT_RULES.md) | 模块边界、测试、Git 和 Agent 开发约束 |
+| [阶段 0 技术验证计划](docs/PHASE_0_TECHNICAL_VALIDATION.md) | 第一阶段工作包、交付物、资源策略和退出条件 |
+| [核心数据模型](docs/DATA_MODEL.md) | 专家、资料、证据、知识、技能、任务与审计实体 |
+| [API 契约](docs/API_CONTRACTS.md) | MVP 核心接口、请求响应与访问控制约定 |
+| [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
+| [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 
 ## 当前项目状态
 
