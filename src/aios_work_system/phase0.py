@@ -57,7 +57,10 @@ def _write_skill_package(root: Path, *, unsafe: bool = False) -> None:
         json.dumps(manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    script = "def extract(text, segment_id):\n    return {'statement': text, 'evidence_segment_id': segment_id}\n"
+    script = (
+        "def extract(text, segment_id):\n"
+        "    return {'statement': text, 'evidence_segment_id': segment_id}\n"
+    )
     if unsafe:
         script = "import socket\n" + script
     (root / "scripts" / "run.py").write_text(script, encoding="utf-8")
@@ -74,6 +77,7 @@ def _write_report(output: Path, report: dict[str, Any]) -> None:
         encoding="utf-8",
     )
     checks = report["checks"]
+    static_status = "PASS" if report["skill"]["static_validation_passed"] else "FAIL"
     lines = [
         "# Phase 0 End-to-End Demo Report",
         "",
@@ -91,7 +95,7 @@ def _write_report(output: Path, report: dict[str, Any]) -> None:
         f"- Knowledge state: `{report['knowledge']['state']}`",
         f"- Skill: `{report['skill']['id']}@{report['skill']['version']}`",
         f"- Skill package hash: `{report['skill']['package_hash']}`",
-        f"- Static validation: **{'PASS' if report['skill']['static_validation_passed'] else 'FAIL'}**",
+        f"- Static validation: **{static_status}**",
         "",
         "## Fail-closed checks",
         "",
@@ -106,7 +110,8 @@ def _write_report(output: Path, report: dict[str, Any]) -> None:
             "- Docker execution: **NOT EXECUTED**; only the constrained command plan was built.",
             "- LLM extraction: **NOT EXECUTED**; the fixture knowledge statement is deterministic.",
             "- Real PDF/video, ASR, OCR, Windows FFmpeg, RAM/VRAM peak: **NOT VALIDATED**.",
-            "- This report is a contract-integration demo, not a production acceptance certificate.",
+            "- This report is a contract-integration demo, not a production "
+            "acceptance certificate.",
             "",
         ]
     )
