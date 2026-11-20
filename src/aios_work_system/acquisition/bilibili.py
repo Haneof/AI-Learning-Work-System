@@ -16,7 +16,72 @@ from urllib.request import Request, urlopen
 
 from aios_work_system.acquisition.models import ResourceCandidate, SearchPage, SearchRequest
 
-_WBI_MIXIN_KEY_ENC_TAB = (46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13, 37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 60, 51, 30, 4, 22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52, 1)
+_WBI_MIXIN_KEY_ENC_TAB = (
+    46,
+    47,
+    18,
+    2,
+    53,
+    8,
+    23,
+    32,
+    15,
+    50,
+    10,
+    31,
+    58,
+    3,
+    45,
+    35,
+    27,
+    43,
+    5,
+    49,
+    33,
+    9,
+    42,
+    19,
+    29,
+    28,
+    14,
+    39,
+    12,
+    38,
+    41,
+    13,
+    37,
+    48,
+    7,
+    16,
+    24,
+    55,
+    40,
+    61,
+    26,
+    17,
+    0,
+    60,
+    51,
+    30,
+    4,
+    22,
+    25,
+    54,
+    21,
+    56,
+    59,
+    6,
+    63,
+    57,
+    62,
+    11,
+    36,
+    20,
+    34,
+    44,
+    52,
+    1
+)
 _API = "https://api.bilibili.com"
 
 
@@ -132,7 +197,9 @@ class BilibiliSearchAdapter:
         if code != 0:
             message = str(payload.get("message") or "unknown API error")
             if code == -412:
-                raise RuntimeError("Bilibili search blocked (-412); check session/cookie or retry later")
+                raise RuntimeError(
+                    "Bilibili search blocked (-412); check session/cookie or retry later"
+                )
             raise RuntimeError(f"Bilibili search API error {code}: {message}")
         data = payload.get("data") or {}
         raw_results = (data.get("result") or [])
@@ -181,7 +248,11 @@ class BilibiliSearchAdapter:
             keyword=request.keyword,
             page=request.page,
             candidates=tuple(candidates),
-            has_more=request.page < page_count if page_count else len(candidates) == request.page_size,
+            has_more=(
+                request.page < page_count
+                if page_count
+                else len(candidates) == request.page_size
+            ),
             next_page=request.page + 1 if page_count and request.page < page_count else None,
             warnings=(),
             provider_name=self.name,
