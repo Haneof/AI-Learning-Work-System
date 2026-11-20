@@ -64,3 +64,13 @@ def test_cannot_open_editor_without_dashboard_state():
         pass
     else:
         raise AssertionError("Editor must only open from the dashboard")
+
+
+def test_cannot_resume_draft_outside_dashboard():
+    app = MockTranslationApp(draft_saved=True, state="settings")
+    try:
+        app.perform("resume", "draft_button")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("Draft resume must require the dashboard state")
