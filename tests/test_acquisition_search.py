@@ -56,8 +56,7 @@ def test_platform_catalog_lists_capabilities_and_rejects_duplicates():
         catalog.register(descriptor)
 
 
-@pytest.mark.asyncio
-async def test_search_service_preserves_success_when_another_platform_fails():
+def test_search_service_preserves_success_when_another_platform_fails():
     registry = AdapterRegistry()
     candidate = ResourceCandidate(
         platform="bilibili",
@@ -67,9 +66,9 @@ async def test_search_service_preserves_success_when_another_platform_fails():
     registry.register(FakeAdapter("bilibili", candidates=(candidate,)))
     registry.register(FakeAdapter("youtube", error=RuntimeError("provider unavailable")))
 
-    result = await SearchService(registry).search_many(
+    result = asyncio.run(SearchService(registry).search_many(
         "python tutorial", ["bilibili", "youtube"]
-    )
+    ))
 
     assert result.succeeded_platforms == ("bilibili",)
     assert len(result.candidates) == 1
@@ -77,32 +76,29 @@ async def test_search_service_preserves_success_when_another_platform_fails():
     assert result.failures[0].message == "provider unavailable"
 
 
-@pytest.mark.asyncio
-async def test_search_service_deduplicates_platforms_and_rejects_unknown_before_work():
+def test_search_service_deduplicates_platforms_and_rejects_unknown_before_work():
     registry = AdapterRegistry()
     registry.register(FakeAdapter("bilibili"))
 
-    result = await SearchService(registry).search_many("python", ["BILIBILI", "bilibili"])
+    result = asyncio.run(SearchService(registry).search_many("python", ["BILIBILI", "bilibili"]))
     assert result.succeeded_platforms == ("bilibili",)
 
     with pytest.raises(KeyError, match="not registered"):
-        await SearchService(registry).search_many("python", ["bilibili", "unknown"])
+        asyncio.run(SearchService(registry).search_many("python", ["bilibili", "unknown"]))
 
 
-@pytest.mark.asyncio
-async def test_search_service_times_out_slow_adapter():
+def test_search_service_times_out_slow_adapter():
     registry = AdapterRegistry()
     registry.register(FakeAdapter("bilibili", delay=0.05))
-    result = await SearchService(registry, timeout_seconds=0.001).search_many(
+    result = asyncio.run(SearchService(registry, timeout_seconds=0.001).search_many(
         "python", ["bilibili"]
-    )
+    ))
 
     assert result.succeeded_platforms == ()
     assert result.failures[0].error_type == "TimeoutError"
 
 
-@pytest.mark.asyncio
-async def test_bilibili_adapter_signs_search_and_maps_video_candidates():
+def test_bilibili_adapter_signs_search_and_maps_video_candidates():
     calls = []
 
     async def fake_transport(url, headers):
@@ -146,9 +142,9 @@ async def test_bilibili_adapter_signs_search_and_maps_video_candidates():
         transport=fake_transport,
         clock=lambda: 1710000000,
     )
-    page = await adapter.search(
+    page = asyncio.run(adapter.search(
         SearchRequest(platform="bilibili", keyword="Python", page=2)
-    )
+    ))
 
     assert len(calls) == 2
     assert calls[0][1]["Cookie"] == "SESSDATA=test-cookie"
@@ -168,8 +164,7 @@ async def test_bilibili_adapter_signs_search_and_maps_video_candidates():
     assert page.provider_name == "bilibili-wbi-search"
 
 
-@pytest.mark.asyncio
-async def test_bilibili_adapter_surfaces_anti_bot_response_without_fake_results():
+def test_bilibili_adapter_surfaces_anti_bot_response_without_fake_results():
     async def fake_transport(url, headers):
         if url.endswith("/x/web-interface/nav"):
             return {
@@ -184,4 +179,4 @@ async def test_bilibili_adapter_surfaces_anti_bot_response_without_fake_results(
 
     adapter = BilibiliSearchAdapter(transport=fake_transport, clock=lambda: 1710000000)
     with pytest.raises(RuntimeError, match="-412"):
-        await adapter.search(SearchRequest(platform="bilibili", keyword="Python"))
+        asyncio.run(adapter.search(SearchRequest(platform="bilibili", keyword="Python")))
