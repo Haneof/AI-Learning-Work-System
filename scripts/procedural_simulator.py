@@ -28,7 +28,12 @@ class MockTranslationApp:
         resolved = self._resolve_target(target)
         if action == "enable" and resolved == "beta_feature" and self.state == "settings":
             self.beta_enabled = True
-        elif action == "open" and resolved == "dashboard" and self.state == "settings" and self.beta_enabled:
+        elif (
+            action == "open"
+            and resolved == "dashboard"
+            and self.state == "settings"
+            and self.beta_enabled
+        ):
             self.state = "dashboard"
         elif (
             action == "select_source"
@@ -58,7 +63,11 @@ class MockTranslationApp:
             and all([self.source_language, self.target_language, self.article])
         ):
             self.state = "editor"
-        elif action == "add_paragraph" and resolved == "translation_pane" and self.state == "editor":
+        elif (
+            action == "add_paragraph"
+            and resolved == "translation_pane"
+            and self.state == "editor"
+        ):
             self.paragraph_added = True
         elif (
             action == "inspect_alignment"
