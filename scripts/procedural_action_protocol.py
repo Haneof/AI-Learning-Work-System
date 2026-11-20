@@ -5,9 +5,8 @@ shape and vocabulary before delegating to the deterministic simulator state mach
 """
 from __future__ import annotations
 
-from typing import Any
-
 from scripts.procedural_simulator import MockTranslationApp
+from typing import Any
 
 
 ALLOWED_ACTIONS = {
