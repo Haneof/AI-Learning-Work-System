@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
-
+ 
 from aios_work_system.benchmark.backends import GenerationBackend
 from aios_work_system.benchmark.scoring import score_output
 from aios_work_system.benchmark.types import (
@@ -92,7 +92,7 @@ def write_jsonl(results: Iterable[BenchmarkResult], path: str | Path) -> None:
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("w", encoding="utf-8") as stream:
         for result in results:
-            stream.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\n")
+            stream.write(json.dumps(result.to_dict(), ensure_ascii=False) + "\\n")
 
 
 def write_markdown_report(results: list[BenchmarkResult], path: str | Path) -> None:
@@ -132,4 +132,4 @@ def write_markdown_report(results: list[BenchmarkResult], path: str | Path) -> N
             "",
         ]
     )
-    destination.write_text("\n".join(lines), encoding="utf-8")
+    destination.write_text("\\n".join(lines), encoding="utf-8")
