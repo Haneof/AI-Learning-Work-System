@@ -63,3 +63,11 @@ Source selected: [Content Translation Screencast (English).webm](https://commons
 A ten-step narration-aligned draft is stored at `tests/fixtures/content_translation_timeline_unreviewed.json`. It records subtitle cue references and timestamps only. Every step is marked `pending_frame_review`; this is not accepted UI ground truth. The Commons page exposes a poster image of the editor, but timestamp-specific frame captures and SHA-256 of the media have not yet been acquired. Do not use this draft to claim UI evidence completeness or model accuracy.
 
 Next gate: obtain the media locally, extract timestamp-specific frames, verify each target/action/state against the frames, replace or supplement subtitle references with `video_frame` evidence, and have a second reviewer verify the labels (or keep the status unreviewed).
+
+Media acquisition and frame extraction helper:
+
+```bash
+python scripts/prepare_tutorial_media.py --output-dir artifacts/tutorial-media
+```
+
+The helper downloads only the pinned Wikimedia Commons file, checks its published byte size and SHA-1 before accepting it, computes SHA-256, extracts one frame at each draft step timestamp with FFmpeg, and writes a manifest. The resulting frames remain `pending_human_visual_review`; extraction does not automatically validate the UI action or target.
