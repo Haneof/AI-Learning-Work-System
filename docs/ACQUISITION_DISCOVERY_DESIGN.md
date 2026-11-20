@@ -38,7 +38,7 @@
 - `SourceSearchAdapter`：异步平台搜索协议。
 - `AdapterRegistry`：显式注册和按平台查找适配器。
 - `canonicalize_url`：去除 URL fragment 和常见跟踪参数；保留平台可能需要的查询参数，例如 xsec_token。
-- `deduplicate_candidates`：按平台 + 规范化 URL 去重，保留首次发现记录。\n- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。\n- `PlatformCatalog`：平台能力和实现/验证状态目录。\n- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页、元数据映射；支持可注入 HTTP transport 和可选 Cookie。
+- `deduplicate_candidates`：按平台 + 规范化 URL 去重，保留首次发现记录。\n- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。\n- `PlatformCatalog`：平台能力与实现/验证状态目录。\n- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页、标题/作者/时长/互动指标映射；支持可注入 HTTP transport 和可选 Cookie。\n- `CandidateRepository`：SQLite 持久化、跨搜索批次去重关联、人工筛选状态和受控状态迁移。\n- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。\n- `PlatformCatalog`：平台能力和实现/验证状态目录。\n- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页、元数据映射；支持可注入 HTTP transport 和可选 Cookie。
 
 接口层不内置伪造搜索结果。Bilibili 适配器使用站点 WBI 搜索接口，默认通过 Python 标准库发起 HTTP 请求；测试通过注入 transport 验证签名请求与字段映射。当前 CI 的 mock transport 测试不等于外网实测，真实运行可能遇到 -412 风控响应，届时会明确报错而不会返回假结果。
 
