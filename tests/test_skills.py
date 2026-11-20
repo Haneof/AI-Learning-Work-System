@@ -11,6 +11,7 @@ from aios_work_system.skills.validator import validate_skill_package
 
 def write_valid_package(root):
     (root / "scripts").mkdir(parents=True)
+    (root / "tests").mkdir()
     (root / "SKILL.md").write_text("# Demo skill", encoding="utf-8")
     manifest = {
         "id": "demo.skill",
@@ -28,6 +29,7 @@ def write_valid_package(root):
     }
     (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
     (root / "scripts" / "run.py").write_text("print('ok')\n", encoding="utf-8")
+    (root / "tests" / "test_demo.py").write_text("def test_demo():\n    assert True\n", encoding="utf-8")
 
 
 def test_valid_skill_package_has_stable_hash(tmp_path):
@@ -74,6 +76,21 @@ def test_validator_rejects_dynamic_execution_and_network_imports(tmp_path):
     assert any("blocked call 'eval'" in error for error in report.errors)
 
 
+def test_validator_rejects_test_path_traversal(tmp_path):
+    package = tmp_path / "traversal"
+    package.mkdir()
+    write_valid_package(package)
+    manifest_path = package / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["tests"] = ["../outside.py"]
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert not report.passed
+    assert any("path traversal is not allowed" in error for error in report.errors)
+
+
 def test_version_registry_rejects_mutating_an_existing_version():
     registry = SkillVersionRegistry()
     registry.register(SkillVersionRecord("demo.skill", "1.0.0", "hash-a"))
@@ -104,3 +121,5 @@ def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
         runner.build_command(package, "scripts/run.py", "python:latest")
     with pytest.raises(ValueError):
         runner.build_command(package, "../outside.py", image)
+    with pytest.raises(ValueError):
+        runner.build_command(package, "scripts/run.py", image, memory_limit="8g")
