@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "dataset": "mandarin_tutorial_keyframe_chinese_text_v1",
+  "source": {
+    "title": "25 Essential Chinese Phrases You NEED to Know Before Visiting China!",
+    "creator": "My Mandarin Journey",
+    "license": "CC BY 3.0",
+    "source_url": "https://commons.wikimedia.org/wiki/File:25_Essential_Chinese_Phrases_You_NEED_to_Know_Before_Visiting_China!.webm"
+  },
+  "annotation_method": "Manual visual transcription from the corresponding extracted video frames. Labels cover the main Simplified Chinese phrase displayed on screen, not the speaker, pinyin, English translation, category heading, or incidental background text.",
+  "normalization": "Scoring removes whitespace and all non-CJK characters. Chinese punctuation and Latin text are excluded from this first-pass phrase OCR benchmark.",
+  "frames": [
+    {"frame": "frame_000003.jpg", "timestamp_seconds": 60.0, "reference": "对不起"},
+    {"frame": "frame_000005.jpg", "timestamp_seconds": 120.0, "reference": "能加你的微信吗"},
+    {"frame": "frame_000006.jpg", "timestamp_seconds": 150.0, "reference": "这个多少钱"},
+    {"frame": "frame_000007.jpg", "timestamp_seconds": 180.0, "reference": "有什么好吃的"},
+    {"frame": "frame_000008.jpg", "timestamp_seconds": 210.0, "reference": "你们几点关"},
+    {"frame": "frame_000009.jpg", "timestamp_seconds": 240.0, "reference": "洗手间在哪里"},
+    {"frame": "frame_000010.jpg", "timestamp_seconds": 270.0, "reference": "机场怎么去"},
+    {"frame": "frame_000011.jpg", "timestamp_seconds": 300.0, "reference": "你能再说一次吗"},
+    {"frame": "frame_000012.jpg", "timestamp_seconds": 330.0, "reference": "我要看医生"},
+    {"frame": "frame_000013.jpg", "timestamp_seconds": 360.0, "reference": "我的护照不见了"}
+  ]
+}
