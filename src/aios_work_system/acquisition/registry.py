@@ -38,7 +38,7 @@ class AdapterRegistry:
         try:
             return self._adapters[key]
         except KeyError as exc:
-            raise KeyError(f"no search adapter registered for platform: {key}") from exc
+            raise KeyError(f"search adapter is not registered for platform: {key}") from exc
 
     def platforms(self) -> tuple[str, ...]:
         return tuple(sorted(self._adapters))
