@@ -100,7 +100,7 @@ def evaluate(payload: dict[str, Any]) -> dict[str, Any]:
         "denominators": {
             "step_success_rate": "all attempted actions",
             "task_completion_rate": "all episodes",
-            "recovery_success_rate": "episodes where recovery was attempted after an explicit recovery opportunity",
+            "recovery_success_rate": (\n                "episodes with an attempted recovery after an explicit opportunity"\n            ),
         },
         "limitations": [
             "A simulator-accepted action is not evidence of real-world UI competence.",
