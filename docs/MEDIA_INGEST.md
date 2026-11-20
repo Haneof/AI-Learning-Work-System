@@ -23,16 +23,24 @@ The base package does not require FFmpeg or pypdf. PDF text extraction raises a 
 ```python
 from aios_work_system.media import FFmpegProcessor, register_source
 from aios_work_system.media.pdf import extract_pdf_pages
+from aios_work_system.media.source import SegmentRecord
 
+processor = FFmpegProcessor()
 source = register_source("samples/lesson.mp4", "VIDEO")
-metadata = FFmpegProcessor().probe("samples/lesson.mp4")
-audio = FFmpegProcessor().extract_audio("samples/lesson.mp4", "artifacts/lesson.wav")
-proxy = FFmpegProcessor().create_proxy("samples/lesson.mp4", "artifacts/lesson-proxy.mp4")
-frames = FFmpegProcessor().extract_frames("samples/lesson.mp4", "artifacts/frames", 5)
+metadata = processor.probe("samples/lesson.mp4")
+audio = processor.extract_audio("samples/lesson.mp4", "artifacts/lesson.wav")
+proxy = processor.create_proxy("samples/lesson.mp4", "artifacts/lesson-proxy.mp4")
+frames = processor.extract_frames("samples/lesson.mp4", "artifacts/frames", 5)
 
 source.add_segment(
-    # Every segment is tied to the original source and its hash-bearing manifest.
-    segment=...
+    SegmentRecord.create(
+        source_id=source.source_id,
+        segment_type="TIME_RANGE",
+        locator={"start_ms": 0, "end_ms": 5000},
+        parser_name="ffmpeg",
+        parser_version="system",
+        media_uri=audio.resolve().as_uri(),
+    )
 )
 source.save("artifacts/lesson.manifest.json")
 
@@ -59,7 +67,7 @@ journal.run(
 )
 ```
 
-A successful task ID is skipped on later runs. Failed or interrupted tasks resume from the recorded attempt count. Keep task IDs stable and include source hash plus operation parameters to avoid incorrectly reusing an old result.
+A successful task ID is skipped on later runs. Failed tasks retry within the remaining attempt budget. A task found in RUNNING state after a process interruption retries the interrupted attempt. Keep task IDs stable and include source hash plus operation parameters to avoid incorrectly reusing an old result.
 
 ## Evidence and known limits
 
