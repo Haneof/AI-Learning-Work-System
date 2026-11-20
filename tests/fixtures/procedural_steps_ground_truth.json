@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "source_id": "synthetic-evaluator-fixture",
+  "annotation_status": "synthetic",
+  "steps": [
+    {
+      "step_id": "s1",
+      "goal": "Open settings",
+      "preconditions": [
+        "Application is loaded"
+      ],
+      "action": "click",
+      "target": "settings_menu",
+      "expected_state": "settings_page_visible",
+      "evidence_refs": [
+        {
+          "kind": "ui_snapshot",
+          "ref": "synthetic://frame/001",
+          "timestamp_seconds": 1
+        }
+      ],
+      "recovery_strategy": "Use keyboard shortcut to reopen settings"
+    },
+    {
+      "step_id": "s2",
+      "goal": "Enable feature",
+      "preconditions": [
+        "Settings page visible"
+      ],
+      "action": "toggle",
+      "target": "beta_feature",
+      "expected_state": "beta_feature_enabled",
+      "evidence_refs": [
+        {
+          "kind": "ui_snapshot",
+          "ref": "synthetic://frame/002",
+          "timestamp_seconds": 2
+        }
+      ],
+      "recovery_strategy": "Reload settings and inspect toggle state"
+    },
+    {
+      "step_id": "s3",
+      "goal": "Save configuration",
+      "preconditions": [
+        "Feature enabled"
+      ],
+      "action": "click",
+      "target": "save_button",
+      "expected_state": "save_confirmation_visible",
+      "evidence_refs": [
+        {
+          "kind": "ui_snapshot",
+          "ref": "synthetic://frame/003",
+          "timestamp_seconds": 3
+        }
+      ],
+      "recovery_strategy": "Retry save after checking validation messages"
+    }
+  ]
+}
