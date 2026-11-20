@@ -6,7 +6,7 @@ def test_normal_path_completes_only_mock_publish():
     report = replay_normal_path(app)
     assert report["task_completed"] is True
     assert report["publish_is_mock"] is True
-    assert report["actions_recorded"] == 9
+    assert report["actions_recorded"] == 10
     assert app.published is True
 
 
