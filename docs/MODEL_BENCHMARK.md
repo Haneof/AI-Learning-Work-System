@@ -60,11 +60,11 @@ For each candidate, record:
 - Immutable revision / commit or model file checksum
 - Quantization format and exact artifact filename
 - Inference backend and version
-- Context length and generation parameters
+- Context length and generation parameters (temperature, top-p, max tokens, seed)
 - GPU model, VRAM, system RAM, operating system, and driver/runtime versions
 
 Both candidates must use the same dataset version, prompts, decoding settings, and hardware conditions. Report measured facts separately from subjective human review.
 
 ## Planned real-backend contract
 
-A real adapter must implement `GenerationBackend.generate(case)` and return the generated text plus backend-measured token counts where available. Streaming adapters should additionally expose time-to-first-token and token timing; the current generic protocol does not claim to measure those values.
+A real adapter must implement `GenerationBackend.generate(case)` and return the generated text, token counts, time-to-first-token, and any backend-measured resource metrics where available. The generic runner does not invent or estimate unavailable measurements.
