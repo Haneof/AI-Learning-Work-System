@@ -32,7 +32,12 @@ def validate_annotation(payload: dict[str, Any]) -> list[str]:
 
     annotator = payload.get("annotator")
     reviewer = review.get("reviewer")
-    if annotator and reviewer and str(annotator).strip().casefold() == str(reviewer).strip().casefold():
+    same_reviewer = (
+        annotator
+        and reviewer
+        and str(annotator).strip().casefold() == str(reviewer).strip().casefold()
+    )
+    if same_reviewer:
         errors.append("reviewer must be independent from the annotator")
 
     steps = payload.get("steps")
