@@ -71,3 +71,5 @@ python scripts/prepare_tutorial_media.py --output-dir artifacts/tutorial-media
 ```
 
 The helper downloads only the pinned Wikimedia Commons file, checks its published byte size and SHA-1 before accepting it, computes SHA-256, extracts one frame at each draft step timestamp with FFmpeg, and writes a manifest with creator/date/source attribution and the CC BY-SA 4.0 license URL. Extracted frames are adaptations of the source and must retain compatible attribution/share-alike terms when redistributed. The resulting frames remain `pending_human_visual_review`; extraction does not automatically validate the UI action or target.
+
+Human visual review instructions: see [TUTORIAL_FRAME_REVIEW_GUIDE.md](TUTORIAL_FRAME_REVIEW_GUIDE.md). Subtitle timestamps are navigation anchors only; reviewers must select the actual frame where the UI state/action is visible.
