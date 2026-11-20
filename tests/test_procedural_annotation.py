@@ -28,4 +28,5 @@ def test_unreviewed_tutorial_steps_have_recovery_and_traceable_timestamps():
             evidence["timestamp_seconds"] for evidence in step["evidence_refs"]
         )
     assert timestamps == sorted(timestamps)
-    assert all(0 <= timestamp < payload["source"]["duration_seconds"] for timestamp in timestamps)
+    duration = payload["source"]["duration_seconds"]
+    assert all(0 <= timestamp < duration for timestamp in timestamps)
