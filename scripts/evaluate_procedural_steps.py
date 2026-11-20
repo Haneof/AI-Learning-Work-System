@@ -60,7 +60,6 @@ def evaluate(reference: dict[str, Any], prediction: dict[str, Any]) -> dict[str,
     )
     evidence_rate = evidence_complete / len(preds) if preds else 0.0
 
-    matched_ref = {ri for ri, _ in pairs}
     state_correct = sum(
         str(preds[pi].get("expected_state", "")).strip().casefold()
         == str(refs[ri].get("expected_state", "")).strip().casefold()
@@ -82,8 +81,10 @@ def evaluate(reference: dict[str, Any], prediction: dict[str, Any]) -> dict[str,
         "evidence_completeness": round(evidence_rate, 4),
         "matched_pairs": [{"reference_index": ri, "prediction_index": pi} for ri, pi in pairs],
         "limitations": [
-            "Exact action/target matching is conservative and does not perform semantic equivalence.",
-            "This report measures step extraction only; it does not measure UI execution or task success.",
+            "Exact action/target matching is conservative and does not perform "
+            "semantic equivalence.",
+            "This report measures step extraction only; it does not measure UI "
+            "execution or task success.",
             "Synthetic or unreviewed reference annotations are not authoritative ground truth."
         ]
     }
