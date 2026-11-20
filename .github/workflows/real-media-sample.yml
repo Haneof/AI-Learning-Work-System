@@ -124,3 +124,78 @@ jobs:
           path: artifacts/real-ocr/
           if-no-files-found: warn
           retention-days: 14
+
+  real-chinese-asr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and multilingual ASR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "faster-whisper>=1.1,<2"
+      - name: Download openly licensed Mandarin sample
+        run: |
+          mkdir -p artifacts/chinese-asr
+          curl --fail --location --retry 3 \
+            "https://commons.wikimedia.org/wiki/Special:Redirect/file/25_Essential_Chinese_Phrases_You_NEED_to_Know_Before_Visiting_China%21.webm" \
+            --output artifacts/chinese-asr/mandarin.webm
+          test -s artifacts/chinese-asr/mandarin.webm
+      - name: Extract audio and transcribe Mandarin
+        run: |
+          ffmpeg -y -i artifacts/chinese-asr/mandarin.webm -vn -ac 1 -ar 16000 artifacts/chinese-asr/mandarin.wav
+          python scripts/validate_asr_sample.py \
+            --input artifacts/chinese-asr/mandarin.wav \
+            --output artifacts/chinese-asr/asr-report.json \
+            --model tiny --language zh
+      - name: Upload Mandarin ASR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: chinese-asr-sample-report
+          path: artifacts/chinese-asr/
+          if-no-files-found: warn
+          retention-days: 14
+
+  real-chinese-ocr:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install Chinese Tesseract language data
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr tesseract-ocr-chi-sim
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pillow pytesseract
+      - name: Download Mandarin learning video
+        run: |
+          mkdir -p artifacts/chinese-ocr
+          curl --fail --location --retry 3 \
+            "https://commons.wikimedia.org/wiki/Special:Redirect/file/25_Essential_Chinese_Phrases_You_NEED_to_Know_Before_Visiting_China%21.webm" \
+            --output artifacts/chinese-ocr/mandarin.webm
+      - name: OCR real keyframes in simplified Chinese
+        run: |
+          python scripts/validate_ocr_sample.py \
+            --input artifacts/chinese-ocr/mandarin.webm \
+            --output-dir artifacts/chinese-ocr/output \
+            --interval-seconds 30 --language chi_sim
+      - name: Upload Chinese OCR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: chinese-ocr-sample-report
+          path: artifacts/chinese-ocr/
+          if-no-files-found: warn
+          retention-days: 14

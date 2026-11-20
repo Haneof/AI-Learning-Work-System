@@ -79,6 +79,18 @@ python -m pip install pillow pytesseract
 python scripts/validate_ocr_sample.py --input artifacts/real-media/LibreOffice_Writer_Basics.webm --output-dir artifacts/real-media/ocr --interval-seconds 60
 ```
 
+## Mandarin Chinese test extension
+
+A second, openly licensed Mandarin learning video is used for multilingual coverage:
+
+- Work: 25 Essential Chinese Phrases You NEED to Know Before Visiting China!
+- Source: [Wikimedia Commons file page](https://commons.wikimedia.org/wiki/File:25_Essential_Chinese_Phrases_You_NEED_to_Know_Before_Visiting_China!.webm)
+- Author: My Mandarin Journey
+- License: CC BY 3.0 (attribution required)
+- Automated jobs: faster-whisper multilingual `tiny` with `zh` language hint; Tesseract Simplified Chinese `chi_sim` on 30-second keyframes.
+
+These jobs are designed to validate that the pipeline can execute on Chinese-language media. A PASS only proves non-empty outputs and valid execution; it does not prove transcription correctness, Simplified-vs-Traditional script fidelity, or OCR accuracy. The report artifacts must be manually reviewed and scored against reference text before acceptance.
+
 ## Limits and remaining acceptance work
 
 This suite validates one real narrated English screen-recording sample. It does **not** establish:
