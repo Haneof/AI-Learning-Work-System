@@ -22,22 +22,22 @@ def validate_annotation(payload: dict[str, Any]) -> list[str]:
     if not isinstance(review, dict):
         errors.append("review metadata is required")
         review = {}
-    if not str(review.get("reviewer", "")).strip():
+    reviewer = str(review.get("reviewer", "")).strip()
+    if not reviewer:
         errors.append("review.reviewer is required")
+
     reviewed_at = review.get("reviewed_at")
     try:
-        date.fromisoformat(str(reviewed_at))
+        parsed_date = date.fromisoformat(str(reviewed_at))
+        if parsed_date.isoformat() != reviewed_at:
+            raise ValueError
     except (TypeError, ValueError):
         errors.append("review.reviewed_at must be an ISO date (YYYY-MM-DD)")
 
-    annotator = payload.get("annotator")
-    reviewer = review.get("reviewer")
-    same_reviewer = (
-        annotator
-        and reviewer
-        and str(annotator).strip().casefold() == str(reviewer).strip().casefold()
-    )
-    if same_reviewer:
+    annotator = str(payload.get("annotator", "")).strip()
+    if not annotator:
+        errors.append("annotator is required for independent review")
+    elif reviewer and annotator.casefold() == reviewer.casefold():
         errors.append("reviewer must be independent from the annotator")
 
     steps = payload.get("steps")
@@ -45,20 +45,29 @@ def validate_annotation(payload: dict[str, Any]) -> list[str]:
         errors.append("steps must be a non-empty list")
         return errors
 
+    step_ids: set[str] = set()
     visually_verified = 0
     for index, step in enumerate(steps, start=1):
         if not isinstance(step, dict):
             errors.append(f"step {index} must be an object")
             continue
         step_id = str(step.get("step_id", f"step-{index}"))
+        if step_id in step_ids:
+            errors.append(f"{step_id}: duplicate step_id")
+        step_ids.add(step_id)
         if step.get("ui_verification_status") != "frame_verified":
             errors.append(f"{step_id}: ui_verification_status must be 'frame_verified'")
-        evidence_refs = step.get("evidence_refs", [])
+
+        evidence_refs = step.get("evidence_refs")
+        if not isinstance(evidence_refs, list):
+            errors.append(f"{step_id}: evidence_refs must be a list")
+            evidence_refs = []
         has_visual_evidence = any(
             isinstance(evidence, dict)
             and evidence.get("kind") in VISUAL_EVIDENCE_KINDS
             and str(evidence.get("ref", "")).strip()
             and isinstance(evidence.get("timestamp_seconds"), (int, float))
+            and not isinstance(evidence.get("timestamp_seconds"), bool)
             and evidence["timestamp_seconds"] >= 0
             for evidence in evidence_refs
         )
