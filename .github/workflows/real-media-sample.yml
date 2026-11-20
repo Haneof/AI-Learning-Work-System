@@ -125,6 +125,50 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
+
+  content-translation-tutorial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg, Tesseract, package and ASR
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+          python -m pip install pillow pytesseract "faster-whisper>=1.1,<2"
+      - name: Download openly licensed software screencast and Chinese captions
+        run: |
+          mkdir -p artifacts/content-translation
+          curl --fail --location --retry 3 "https://upload.wikimedia.org/wikipedia/commons/4/4c/Content_Translation_Screencast_%28English%29.webm" --output artifacts/content-translation/tutorial.webm
+          curl --fail --location --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm.zh-cn.srt" --output artifacts/content-translation/tutorial.zh-cn.srt
+          test -s artifacts/content-translation/tutorial.webm
+          test -s artifacts/content-translation/tutorial.zh-cn.srt
+      - name: Probe and process actual screencast
+        run: |
+          ffprobe -v error -show_streams -show_format -of json artifacts/content-translation/tutorial.webm > artifacts/content-translation/probe.json
+          ffmpeg -y -i artifacts/content-translation/tutorial.webm -vn -ac 1 -ar 16000 artifacts/content-translation/tutorial.wav
+          ffmpeg -y -i artifacts/content-translation/tutorial.webm -vf "fps=1/15,scale=640:-1" artifacts/content-translation/frame-%03d.jpg
+      - name: Run CPU ASR on spoken English
+        run: |
+          python scripts/validate_asr_sample.py --input artifacts/content-translation/tutorial.wav --output artifacts/content-translation/asr-report.json --model tiny.en --language en
+      - name: Run OCR on real UI frames
+        run: |
+          python scripts/validate_ocr_sample.py --input artifacts/content-translation/tutorial.webm --output-dir artifacts/content-translation/ocr --interval-seconds 15
+      - name: Upload screencast evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: content-translation-tutorial-evidence
+          path: artifacts/content-translation/
+          if-no-files-found: warn
+          retention-days: 14
+
   real-chinese-asr:
     runs-on: ubuntu-latest
     timeout-minutes: 25
