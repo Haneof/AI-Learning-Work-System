@@ -128,3 +128,4 @@ python -m aios_work_system serve --host 127.0.0.1 --port 8000
 4. [安全与权限模型](docs/SECURITY.md)
 
 所有功能以明确接口、状态迁移、权限要求和可重复验收测试为交付标准。未验证的能力必须明确标注，不得以模型口头声称代替实际执行结果。
+\n\n- [教程发现与采集中心接口设计](docs/ACQUISITION_DISCOVERY_DESIGN.md)\n
