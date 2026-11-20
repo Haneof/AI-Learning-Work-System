@@ -191,6 +191,12 @@ jobs:
             --input artifacts/chinese-ocr/mandarin.webm \
             --output-dir artifacts/chinese-ocr/output \
             --interval-seconds 30 --language chi_sim
+      - name: Score Chinese OCR against manually labeled keyframes
+        run: |
+          python scripts/score_ocr_reference.py \\
+            --ocr-report artifacts/chinese-ocr/output/ocr-report.json \\
+            --ground-truth tests/fixtures/mandarin_ocr_ground_truth.json \\
+            --output artifacts/chinese-ocr/output/ocr-score.json
       - name: Upload Chinese OCR report
         if: always()
         uses: actions/upload-artifact@v6
