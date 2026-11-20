@@ -29,6 +29,12 @@ class KnowledgeRegistry:
         self._segments[segment.segment_id] = segment
 
     def add_knowledge(self, item: KnowledgeItem) -> RegistryResult:
+        if item.knowledge_id in self._items:
+            return RegistryResult(
+                False,
+                None,
+                errors=("knowledge_id already exists; create a new version or ID",),
+            )
         errors = validate_knowledge(item, self._segments)
         if errors:
             return RegistryResult(False, None, errors=tuple(errors))
@@ -59,12 +65,6 @@ class KnowledgeRegistry:
             if conflicts:
                 item.state = KnowledgeState.REVIEW_REQUIRED
 
-        if item.knowledge_id in self._items:
-            return RegistryResult(
-                False,
-                None,
-                errors=("knowledge_id already exists; create a new version or ID",),
-            )
         self._items[item.knowledge_id] = item
         return RegistryResult(
             accepted=True,
