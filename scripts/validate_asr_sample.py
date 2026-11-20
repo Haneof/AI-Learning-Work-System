@@ -15,6 +15,7 @@ def main() -> None:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--model", default="tiny.en")
+    parser.add_argument("--language", default="en")
     args = parser.parse_args()
 
     audio_path = args.input.expanduser().resolve(strict=True)
@@ -25,7 +26,7 @@ def main() -> None:
     model = WhisperModel(args.model, device="cpu", compute_type="int8")
     segments, info = model.transcribe(
         str(audio_path),
-        language="en",
+        language=args.language,
         beam_size=1,
         vad_filter=True,
         word_timestamps=False,
@@ -49,6 +50,7 @@ def main() -> None:
         "status": "PASS",
         "test_kind": "REAL_AUDIO_FASTER_WHISPER_CPU_INT8",
         "model": args.model,
+        "requested_language": args.language,
         "device": "cpu",
         "compute_type": "int8",
         "detected_language": info.language,
