@@ -48,3 +48,41 @@ jobs:
           path: artifacts/real-media/
           if-no-files-found: warn
           retention-days: 14
+
+  real-asr:
+    needs: real-video
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and faster-whisper
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install "faster-whisper>=1.1,<2"
+      - name: Download real tutorial sample
+        run: |
+          mkdir -p artifacts/real-asr
+          curl --fail --location --retry 3 --retry-delay 2 \
+            "https://upload.wikimedia.org/wikipedia/commons/1/18/LibreOffice_Writer_%E2%80%93_The_Basics.webm" \
+            --output artifacts/real-asr/tutorial.webm
+      - name: Extract audio and transcribe with CPU int8
+        run: |
+          ffmpeg -y -i artifacts/real-asr/tutorial.webm -vn -ac 1 -ar 16000 artifacts/real-asr/tutorial.wav
+          python scripts/validate_asr_sample.py \
+            --input artifacts/real-asr/tutorial.wav \
+            --output artifacts/real-asr/asr-report.json \
+            --model tiny.en
+      - name: Upload ASR report
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: real-asr-sample-report
+          path: artifacts/real-asr/
+          if-no-files-found: warn
+          retention-days: 14
