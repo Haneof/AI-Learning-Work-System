@@ -125,7 +125,6 @@ jobs:
           if-no-files-found: warn
           retention-days: 14
 
-
   content-translation-tutorial:
     runs-on: ubuntu-latest
     timeout-minutes: 25
@@ -146,9 +145,15 @@ jobs:
         run: |
           mkdir -p artifacts/content-translation
           curl --fail --location --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm" --output artifacts/content-translation/tutorial.webm
-          curl --fail --location --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm.zh-cn.srt" --output artifacts/content-translation/tutorial.zh-cn.srt
+          curl --fail --location --retry 3 --get \
+            --data-urlencode "title=TimedText:Content Translation Screencast (English).webm.zh-cn.srt" \
+            --data "action=raw" \
+            "https://commons.wikimedia.org/w/index.php" \
+            --output artifacts/content-translation/tutorial.zh-cn.srt
           test -s artifacts/content-translation/tutorial.webm
           test -s artifacts/content-translation/tutorial.zh-cn.srt
+          grep -Eq '[一-龥]' artifacts/content-translation/tutorial.zh-cn.srt
+          grep -Eq '[0-9]{2}:[0-9]{2}:[0-9]{2},[0-9]{3}' artifacts/content-translation/tutorial.zh-cn.srt
       - name: Probe and process actual screencast
         run: |
           ffprobe -v error -show_streams -show_format -of json artifacts/content-translation/tutorial.webm > artifacts/content-translation/probe.json
