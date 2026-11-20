@@ -9,7 +9,7 @@ This benchmark separates four capabilities that must not be conflated:
 3. **Evidence grounding** — attach each claimed step to a timestamped UI observation.
 4. **Task execution** — carry out the procedure in a controlled application and recover from faults.
 
-The current implementation covers the data contract and a conservative step-extraction evaluator only. It does **not** implement a browser simulator, connect a real model, or demonstrate learning or execution.
+The current implementation includes the data contract, a conservative step-extraction evaluator, and a deterministic local state-machine simulator. It does **not** implement browser automation, connect a real model, or demonstrate model learning or autonomous execution.
 
 ## Step contract
 
@@ -48,11 +48,11 @@ Before using the screencast as ground truth:
 4. have a second reviewer verify labels, or explicitly mark them unreviewed;
 5. keep narration-only claims separate from observed UI facts.
 
-## Execution benchmark — next milestone
+## Local execution simulator
 
-Build a local mock application with states for feature enablement, dashboard, language/article selection, editor, draft save/resume and a mocked publish confirmation. The publish operation must remain local and must never submit to the real Wikimedia site.
+A deterministic local state-machine simulator now covers feature enablement, dashboard, language/article selection, editor, draft save/resume and mocked publish confirmation. The publish operation remains local and never submits to the real Wikimedia site. Tests cover the normal path, shifted control aliases, interruption recovery, and invalid transitions.
 
-The execution runner must log pre/post state, action, screenshot/evidence ID, failure, retry/recovery and final task outcome. Report normal-path success, disturbed-layout success, interruption recovery and end-to-end completion separately.
+This is still a hand-authored simulator, not an execution agent. A future runner must log pre/post state, action, screenshot/evidence ID, failure, retry/recovery and final task outcome. Report normal-path success, disturbed-layout success, interruption recovery and end-to-end completion separately.
 
 No model-learning or autonomous-work claim is permitted until a real model is evaluated against reviewed annotations and completes the isolated tasks.
 
