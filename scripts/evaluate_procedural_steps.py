@@ -50,15 +50,29 @@ def evaluate(reference: dict[str, Any], prediction: dict[str, Any]) -> dict[str,
     order_accuracy = (sum(a < b for a, b in zip(ref_positions, ref_positions[1:])) /
                       (len(ref_positions) - 1)) if len(ref_positions) > 1 else (1.0 if tp else 0.0)
 
+    def valid_evidence(ev: Any) -> bool:
+        return (
+            isinstance(ev, dict)
+            and bool(ev.get("ref"))
+            and isinstance(ev.get("timestamp_seconds"), (int, float))
+            and ev.get("timestamp_seconds") >= 0
+        )
+
     evidence_complete = sum(
-        bool(step.get("evidence_refs")) and all(
-            isinstance(ev, dict) and ev.get("ref") and
-            isinstance(ev.get("timestamp_seconds"), (int, float)) and
-            ev.get("timestamp_seconds") >= 0
-            for ev in step.get("evidence_refs", [])
-        ) for step in preds
+        bool(step.get("evidence_refs"))
+        and all(valid_evidence(ev) for ev in step.get("evidence_refs", []))
+        for step in preds
     )
     evidence_rate = evidence_complete / len(preds) if preds else 0.0
+
+    ui_evidence_complete = sum(
+        any(
+            valid_evidence(ev) and ev.get("kind") in {"video_frame", "ui_snapshot"}
+            for ev in step.get("evidence_refs", [])
+        )
+        for step in preds
+    )
+    ui_evidence_rate = ui_evidence_complete / len(preds) if preds else 0.0
 
     state_correct = sum(
         str(preds[pi].get("expected_state", "")).strip().casefold()
@@ -79,6 +93,7 @@ def evaluate(reference: dict[str, Any], prediction: dict[str, Any]) -> dict[str,
         "order_accuracy": round(order_accuracy, 4),
         "expected_state_accuracy_on_matched_steps": round(state_accuracy, 4),
         "evidence_completeness": round(evidence_rate, 4),
+        "ui_evidence_completeness": round(ui_evidence_rate, 4),
         "matched_pairs": [{"reference_index": ri, "prediction_index": pi} for ri, pi in pairs],
         "limitations": [
             "Exact action/target matching is conservative and does not perform "
