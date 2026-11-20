@@ -89,6 +89,24 @@
 | [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 
+## 本地开发（工程底座）
+
+要求 Python 3.11 或 3.12。首次运行请阅读 [本地开发指南](DEVELOPMENT.md)。
+
+```powershell
+py -3.11 -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+ruff check .
+pytest
+python -m aios_work_system serve --host 127.0.0.1 --port 8000
+```
+
+健康检查地址：`http://127.0.0.1:8000/health`。
+
+当前工程底座仅提供 Python 包、CLI、最小健康检查和 CI；尚未接入模型、数据库、向量库、媒体解析或 Agent 执行器。仓库许可证尚待所有者确认，不应自行假定授权方式。
+
 ## 当前项目状态
 
 **当前阶段：立项与技术验证。**
