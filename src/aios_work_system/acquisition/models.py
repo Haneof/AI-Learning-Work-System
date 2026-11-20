@@ -7,7 +7,6 @@ from datetime import UTC, datetime
 from typing import Any
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
-
 _TRACKING_QUERY_KEYS = {
     "fbclid",
     "gclid",
