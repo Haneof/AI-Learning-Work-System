@@ -78,6 +78,7 @@
 |---|---|
 | [产品立项与总体计划](docs/PROJECT_PLAN.md) | 产品定位、目标边界、培养阶段和成功标准 |
 | [系统架构](docs/ARCHITECTURE.md) | 分层架构、模块职责、数据流和状态机 |
+| [完整模块系统与端到端工作闭环](docs/SYSTEM_MODULES.md) | 教程采集、视频筛选、多模态理解、知识技能学习、专业 AI 工作运行时、验证交付、经验进化、多专家协作和共享治理底座 |
 | [技术选型与验证策略](docs/TECH_STACK.md) | 模型、开源组件、存储和 PoC 计划 |
 | [研发路线图](docs/ROADMAP.md) | 阶段目标、交付物和退出条件 |
 | [验收标准](docs/ACCEPTANCE.md) | 资料、知识、技能和自主工作的验收要求 |
@@ -89,7 +90,7 @@
 | [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 | [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
-| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |
+| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |\n| [教程发现与采集中心](docs/ACQUISITION_DISCOVERY_DESIGN.md) | 平台关键词搜索、候选筛选、B站适配器、SQLite 候选库和 yt-dlp/aria2 下载适配器 |
 | [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
 | [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 | [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |
@@ -112,6 +113,16 @@ python -m aios_work_system serve --host 127.0.0.1 --port 8000
 
 当前已集成 Python 工程底座、CLI、健康检查、模型 Benchmark 框架、离线媒体处理 PoC、知识证据契约、技能包静态校验与 Docker 沙箱命令构建，以及阶段 0 合成端到端验收样例。尚未完成真实媒体样本、真实模型推理、真实 Docker 隔离执行、数据库/向量库和生产级 Agent 执行器验收。仓库许可证尚待所有者确认，不应自行假定授权方式。
 
+## 教程搜索快速试用
+
+安装开发依赖后，可通过 CLI 搜索 B站视频并将候选结果保存到本地 SQLite：
+
+```powershell
+aios discover-search --platform bilibili --keyword "Python 教程"
+```
+
+如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载适配器目前通过 Python API 调用，依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。
+
 ## 当前项目状态
 
 **当前阶段：立项与技术验证。**
@@ -127,3 +138,4 @@ python -m aios_work_system serve --host 127.0.0.1 --port 8000
 4. [安全与权限模型](docs/SECURITY.md)
 
 所有功能以明确接口、状态迁移、权限要求和可重复验收测试为交付标准。未验证的能力必须明确标注，不得以模型口头声称代替实际执行结果。
+

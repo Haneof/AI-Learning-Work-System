@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/schemas/procedural_action_proposal.schema.json",
+  "title": "Procedural action proposal",
+  "description": "One proposed action for validation by the local execution adapter.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["action", "target"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": [
+        "enable",
+        "open",
+        "select_source",
+        "select_target",
+        "select_article",
+        "add_paragraph",
+        "inspect_alignment",
+        "verify_links_and_formatting",
+        "wait_for_autosave",
+        "navigate",
+        "resume",
+        "publish_mock"
+      ]
+    },
+    "target": {
+      "type": "string",
+      "enum": [
+        "beta_toggle",
+        "beta_feature_switch",
+        "translation_dashboard",
+        "dashboard",
+        "source_language_dropdown",
+        "source_language",
+        "target_language_dropdown",
+        "target_language",
+        "article_picker",
+        "article",
+        "editor",
+        "central_translation_pane",
+        "translation_pane",
+        "sentence_highlights",
+        "sentence_alignment",
+        "links_and_formatting",
+        "paragraph_content",
+        "autosave_indicator",
+        "draft_status",
+        "draft_button",
+        "draft",
+        "mock_publish_button",
+        "publish",
+        "settings_beta_control"
+      ]
+    },
+    "value": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

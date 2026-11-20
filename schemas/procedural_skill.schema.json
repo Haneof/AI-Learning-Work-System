@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Haneof/AI-Learning-Work-System/schemas/procedural_skill.schema.json",
+  "title": "Procedural Skill",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "source_id",
+    "steps"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "source_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "annotation_status": {
+      "enum": [
+        "synthetic",
+        "unreviewed",
+        "reviewed"
+      ]
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "step_id",
+          "goal",
+          "preconditions",
+          "action",
+          "target",
+          "expected_state",
+          "evidence_refs",
+          "recovery_strategy"
+        ],
+        "properties": {
+          "step_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "goal": {
+            "type": "string",
+            "minLength": 1
+          },
+          "preconditions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "action": {
+            "type": "string",
+            "minLength": 1
+          },
+          "target": {
+            "type": "string",
+            "minLength": 1
+          },
+          "expected_state": {
+            "type": "string",
+            "minLength": 1
+          },
+          "evidence_refs": {
+            "type": "array",
+            "minItems": 1,
+            "items": {
+              "type": "object",
+              "required": [
+                "kind",
+                "ref",
+                "timestamp_seconds"
+              ],
+              "properties": {
+                "kind": {
+                  "enum": [
+                    "video_frame",
+                    "subtitle",
+                    "asr_segment",
+                    "ui_snapshot"
+                  ]
+                },
+                "ref": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "timestamp_seconds": {
+                  "type": "number",
+                  "minimum": 0
+                }
+              }
+            }
+          },
+          "recovery_strategy": {
+            "type": "string",
+            "minLength": 1
+          },
+          "ui_verification_status": {
+            "type": "string",
+            "enum": [
+              "pending_frame_review",
+              "frame_verified"
+            ]
+          }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": false
+}
