@@ -18,6 +18,7 @@ def main() -> None:
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--interval-seconds", type=float, default=60.0)
+    parser.add_argument("--language", default="eng")
     args = parser.parse_args()
 
     source = args.input.expanduser().resolve(strict=True)
@@ -34,7 +35,7 @@ def main() -> None:
         image = Image.open(frame).convert("L")
         image.thumbnail((640, 360))
         extracted = pytesseract.image_to_string(
-            image, lang="eng", config="--psm 11"
+            image, lang=args.language, config="--psm 11"
         ).strip()
         rows.append(
             {
@@ -55,7 +56,7 @@ def main() -> None:
         "test_kind": "REAL_VIDEO_KEYFRAME_TESSERACT_OCR",
         "engine": "Tesseract",
         "engine_version": str(pytesseract.get_tesseract_version()),
-        "language": "eng",
+        "language": args.language,
         "resize_max": "640x360",
         "interval_seconds": args.interval_seconds,
         "frame_count": len(rows),
