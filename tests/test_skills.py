@@ -1,6 +1,7 @@
 """Tests for skill package static validation and sandbox command policy."""
 
 import json
+from types import SimpleNamespace
 
 import pytest
 
@@ -126,3 +127,50 @@ def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
         runner.build_command(package, "../outside.py", image)
     with pytest.raises(ValueError):
         runner.build_command(package, "scripts/run.py", image, memory_limit="8g")
+
+
+def test_sandbox_refuses_failed_static_validation(tmp_path, monkeypatch):
+    package = tmp_path / "unsafe"
+    package.mkdir()
+    write_valid_package(package)
+    (package / "scripts" / "run.py").write_text("import socket\n", encoding="utf-8")
+    runner = DockerSandboxRunner()
+    monkeypatch.setattr(
+        "aios_work_system.skills.sandbox.subprocess.run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("must not execute")),
+    )
+
+    with pytest.raises(ValueError, match="failed static validation"):
+        runner.run(
+            package,
+            "scripts/run.py",
+            "python@sha256:" + "a" * 64,
+            package_hash="not-a-real-hash",
+        )
+
+
+def test_sandbox_run_records_result_after_validation(tmp_path, monkeypatch):
+    package = tmp_path / "valid"
+    package.mkdir()
+    write_valid_package(package)
+    report = validate_skill_package(package)
+    runner = DockerSandboxRunner()
+    monkeypatch.setattr(
+        "aios_work_system.skills.sandbox.subprocess.run",
+        lambda *_args, **_kwargs: SimpleNamespace(
+            returncode=0,
+            stdout="test passed",
+            stderr="",
+        ),
+    )
+
+    result = runner.run(
+        package,
+        "scripts/run.py",
+        "python@sha256:" + "a" * 64,
+        package_hash=report.package_hash,
+    )
+
+    assert result.exit_code == 0
+    assert not result.timed_out
+    assert result.package_hash == report.package_hash
