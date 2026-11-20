@@ -1,5 +1,7 @@
 """Platform discovery and normalized resource candidate contracts."""
 
+from aios_work_system.acquisition.bilibili import BilibiliSearchAdapter
+from aios_work_system.acquisition.catalog import PlatformCatalog, PlatformDescriptor
 from aios_work_system.acquisition.models import (
     ResourceCandidate,
     SearchPage,
@@ -13,8 +15,6 @@ from aios_work_system.acquisition.service import (
     SearchBatchResult,
     SearchService,
 )
-from aios_work_system.acquisition.catalog import PlatformCatalog, PlatformDescriptor
-from aios_work_system.acquisition.bilibili import BilibiliSearchAdapter
 
 __all__ = [
     "AdapterRegistry",
@@ -25,8 +25,8 @@ __all__ = [
     "ResourceCandidate",
     "SearchBatchResult",
     "SearchPage",
-    "SearchService",
     "SearchRequest",
+    "SearchService",
     "SourceSearchAdapter",
     "canonicalize_url",
     "deduplicate_candidates",
