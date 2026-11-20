@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import argparse
+import asyncio
+import json
+import os
+import sys
+import uuid
 
 from aios_work_system.benchmark import BenchmarkRunner, MockBackend, ModelDescriptor
 from aios_work_system.benchmark.runner import load_jsonl, write_jsonl, write_markdown_report
@@ -33,6 +38,17 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--gpu", default="unknown")
     benchmark_parser.add_argument("--vram-gb", default="unknown")
     benchmark_parser.add_argument("--ram-gb", default="unknown")
+
+    discovery_parser = subparsers.add_parser(
+        "discover-search", help="search tutorial videos on a configured platform"
+    )
+    discovery_parser.add_argument("--platform", choices=("bilibili",), default="bilibili")
+    discovery_parser.add_argument("--keyword", required=True)
+    discovery_parser.add_argument("--page", type=int, default=1)
+    discovery_parser.add_argument("--page-size", type=int, default=20)
+    discovery_parser.add_argument(
+        "--database", default="artifacts/acquisition/candidates.sqlite3"
+    )
 
     demo_parser = subparsers.add_parser(
         "phase0-demo",
@@ -70,12 +86,65 @@ def _run_benchmark(args: argparse.Namespace) -> None:
     print(f"Report: {args.output_report}")
 
 
+def _run_discovery_search(args: argparse.Namespace) -> None:
+    from aios_work_system.acquisition import (
+        AdapterRegistry,
+        BilibiliSearchAdapter,
+        CandidateRepository,
+        SearchRequest,
+        SearchService,
+    )
+
+    registry = AdapterRegistry()
+    registry.register(BilibiliSearchAdapter(cookie=os.environ.get("BILIBILI_COOKIE")))
+    service = SearchService(registry)
+    page = asyncio.run(
+        service.search(
+            SearchRequest(
+                platform=args.platform,
+                keyword=args.keyword,
+                page=args.page,
+                page_size=args.page_size,
+            )
+        )
+    )
+    batch_id = uuid.uuid4().hex
+    repository = CandidateRepository(args.database)
+    inserted = repository.save_candidates(batch_id, page.candidates)
+    payload = {
+        "batch_id": batch_id,
+        "platform": page.platform,
+        "keyword": page.keyword,
+        "page": page.page,
+        "candidate_count": len(page.candidates),
+        "newly_saved_count": inserted,
+        "has_more": page.has_more,
+        "database": args.database,
+        "candidates": [
+            {
+                "candidate_id": item.candidate_id,
+                "title": item.title,
+                "url": item.url,
+                "author": item.author_name,
+                "duration_seconds": item.duration_seconds,
+                "metrics": item.metrics,
+            }
+            for item in page.candidates
+        ],
+    }
+    print(json.dumps(payload, ensure_ascii=False, indent=2))
+    if not page.candidates:
+        print("Search completed but returned no candidates.", file=sys.stderr)
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "serve":
         serve(host=args.host, port=args.port)
     elif args.command == "benchmark":
         _run_benchmark(args)
+    elif args.command == "discover-search":
+        _run_discovery_search(args)
     elif args.command == "phase0-demo":
         from aios_work_system.phase0 import run_phase0_demo
 
