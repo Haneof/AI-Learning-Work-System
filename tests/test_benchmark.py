@@ -16,6 +16,7 @@ def test_smoke_dataset_runs_and_writes_reports(tmp_path):
             revision="not-configured",
             backend="mock",
             quantization="unknown",
+            generation_parameters={"temperature": 0.0, "top_p": 1.0, "max_tokens": 512},
             hardware={"gpu": "unknown", "vram_gb": "unknown", "ram_gb": "unknown"},
         ),
     )
@@ -35,6 +36,7 @@ def test_smoke_dataset_runs_and_writes_reports(tmp_path):
     records = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()]
     assert len(records) == 5
     assert records[0]["model"]["model_id"] == "mock/qwen35-candidate"
+    assert records[0]["model"]["generation_parameters"]["max_tokens"] == 512
     assert "Interpretation limits" in report_path.read_text(encoding="utf-8")
 
 
