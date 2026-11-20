@@ -7,6 +7,8 @@ import subprocess
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from aios_work_system.skills.validator import validate_skill_package
+
 
 class SandboxUnavailableError(RuntimeError):
     """Raised when the configured sandbox runtime is unavailable."""
@@ -97,6 +99,11 @@ class DockerSandboxRunner:
         package_hash: str,
         timeout_seconds: int = 60,
     ) -> SandboxResult:
+        report = validate_skill_package(package_path)
+        if not report.passed:
+            raise ValueError("Skill package failed static validation: " + "; ".join(report.errors))
+        if report.package_hash != package_hash:
+            raise ValueError("Skill package changed after validation; package hash mismatch")
         command = self.build_command(
             package_path=package_path,
             script_path=script_path,
