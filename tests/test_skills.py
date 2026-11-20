@@ -188,7 +188,7 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
     def fake_run(command, **_kwargs):
         commands.append(command)
         if len(commands) == 1:
-            raise subprocess.TimeoutExpired(command, timeout=1, stdout="partial")
+            raise subprocess.TimeoutExpired(command, timeout=1, output="partial")
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
     monkeypatch.setattr("aios_work_system.skills.sandbox.subprocess.run", fake_run)
