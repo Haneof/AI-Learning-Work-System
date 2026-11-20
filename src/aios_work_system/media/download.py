@@ -120,13 +120,19 @@ class YtDlpAdapter:
                 timeout=self.timeout_seconds,
             )
         except FileNotFoundError as exc:
-            raise DownloadError(\n                "yt-dlp executable not found; install yt-dlp and add it to PATH"\n            ) from exc
+            raise DownloadError(
+                "yt-dlp executable not found; install yt-dlp and add it to PATH"
+            ) from exc
         except subprocess.TimeoutExpired as exc:
             raise DownloadError("yt-dlp download timed out") from exc
         if completed.returncode != 0:
             detail = (completed.stderr or "").strip() or f"exit code {completed.returncode}"
             raise DownloadError(f"yt-dlp failed: {detail}")
-        output_lines = [\n            line.strip()\n            for line in (completed.stdout or "").splitlines()\n            if line.strip()\n        ]
+        output_lines = [
+            line.strip()
+            for line in (completed.stdout or "").splitlines()
+            if line.strip()
+        ]
         if not output_lines:
             raise DownloadError("yt-dlp completed without reporting the final file path")
         path = Path(output_lines[-1]).expanduser()
@@ -154,7 +160,11 @@ class Aria2Adapter:
     def download(self, request: DownloadRequest) -> Path:
         destination = request.destination_dir.expanduser().resolve()
         destination.mkdir(parents=True, exist_ok=True)
-        filename = (\n            request.filename\n            or Path(unquote(urlparse(request.url).path)).name\n            or "download.bin"\n        )
+        filename = (
+            request.filename
+            or Path(unquote(urlparse(request.url).path)).name
+            or "download.bin"
+        )
         output = destination / filename
         command = [
             self.executable,
@@ -177,7 +187,9 @@ class Aria2Adapter:
                 timeout=self.timeout_seconds,
             )
         except FileNotFoundError as exc:
-            raise DownloadError(\n                "aria2c executable not found; install aria2 and add it to PATH"\n            ) from exc
+            raise DownloadError(
+                "aria2c executable not found; install aria2 and add it to PATH"
+            ) from exc
         except subprocess.TimeoutExpired as exc:
             raise DownloadError("aria2 download timed out") from exc
         if completed.returncode != 0:
