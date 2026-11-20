@@ -97,6 +97,22 @@ def _check_python_script(path: Path) -> list[str]:
     return errors
 
 
+def _validate_relative_file(root: Path, relative_value: object, label: str) -> list[str]:
+    if not isinstance(relative_value, str) or not relative_value.strip():
+        return [f"{label} must be a non-empty relative path"]
+    relative = Path(relative_value)
+    if relative.is_absolute() or ".." in relative.parts:
+        return [f"{label} path traversal is not allowed: {relative_value}"]
+    target = (root / relative).resolve(strict=False)
+    try:
+        target.relative_to(root)
+    except ValueError:
+        return [f"{label} path escapes package root: {relative_value}"]
+    if not target.is_file():
+        return [f"{label} file does not exist: {relative_value}"]
+    return []
+
+
 def validate_skill_package(
     package_path: str | Path,
     dependency_allowlist: frozenset[str] = frozenset(),
@@ -150,6 +166,7 @@ def validate_skill_package(
     for field_name in ("inputs", "outputs"):
         if field_name in manifest and not isinstance(manifest[field_name], dict):
             errors.append(f"manifest {field_name} must be an object")
+
     for field_name in ("tools", "permissions", "evidence", "tests"):
         if field_name in manifest and not isinstance(manifest[field_name], list):
             errors.append(f"manifest {field_name} must be an array")
@@ -157,17 +174,17 @@ def validate_skill_package(
     tools = manifest.get("tools", [])
     if isinstance(tools, list):
         for tool in tools:
-            if tool not in ALLOWED_TOOLS:
+            if not isinstance(tool, str) or tool not in ALLOWED_TOOLS:
                 errors.append(f"tool is not allowlisted: {tool}")
 
     permissions = manifest.get("permissions", [])
     if isinstance(permissions, list):
         for permission in permissions:
-            if permission not in ALLOWED_PERMISSIONS:
+            if not isinstance(permission, str) or permission not in ALLOWED_PERMISSIONS:
                 errors.append(f"permission is not allowlisted: {permission}")
 
     risk = manifest.get("risk")
-    if risk not in {"LOW", "MEDIUM", "HIGH", "L3"}:
+    if not isinstance(risk, str) or risk not in {"LOW", "MEDIUM", "HIGH", "L3"}:
         errors.append("manifest risk must be LOW, MEDIUM, HIGH, or L3")
     elif risk == "L3":
         errors.append("L3 external side effects are not executable in this PoC")
@@ -177,11 +194,18 @@ def validate_skill_package(
         errors.append("manifest dependencies must be an array when provided")
     else:
         for dependency in dependencies:
-            if dependency not in dependency_allowlist:
+            if not isinstance(dependency, str) or dependency not in dependency_allowlist:
                 errors.append(f"dependency is not allowlisted: {dependency}")
 
     if not (root / "SKILL.md").is_file():
         errors.append("SKILL.md is required")
+
+    tests = manifest.get("tests", [])
+    if isinstance(tests, list):
+        if not tests:
+            errors.append("manifest tests must include at least one test file")
+        for test_path in tests:
+            errors.extend(_validate_relative_file(root, test_path, "test"))
 
     scripts_dir = root / "scripts"
     if scripts_dir.exists():
