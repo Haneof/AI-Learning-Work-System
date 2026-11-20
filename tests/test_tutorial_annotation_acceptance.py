@@ -48,7 +48,7 @@ def test_same_person_cannot_annotate_and_independently_review():
 
 def test_fewer_than_eight_visual_steps_are_rejected():
     payload = _reviewed_payload()
-    for step in payload["steps"][8:]:
+    for step in payload["steps"][7:]:
         step["evidence_refs"] = [
             evidence for evidence in step["evidence_refs"] if evidence["kind"] != "video_frame"
         ]
