@@ -67,7 +67,9 @@ def download_pinned_media(destination: Path) -> dict[str, Any]:
     }
 
 
-def extract_frames(media: Path, annotation: dict[str, Any], output_dir: Path) -> list[dict[str, Any]]:
+def extract_frames(
+    media: Path, annotation: dict[str, Any], output_dir: Path
+) -> list[dict[str, Any]]:
     ffmpeg = shutil.which("ffmpeg")
     if ffmpeg is None:
         raise RuntimeError("ffmpeg is required to extract tutorial frames")
