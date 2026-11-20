@@ -27,6 +27,9 @@ def build_parser() -> argparse.ArgumentParser:
     benchmark_parser.add_argument("--revision", default="unknown")
     benchmark_parser.add_argument("--quantization", default="unknown")
     benchmark_parser.add_argument("--context-length", type=int)
+    benchmark_parser.add_argument("--temperature", type=float, default=0.0)
+    benchmark_parser.add_argument("--top-p", type=float, default=1.0)
+    benchmark_parser.add_argument("--max-tokens", type=int, default=512)
     benchmark_parser.add_argument("--gpu", default="unknown")
     benchmark_parser.add_argument("--vram-gb", default="unknown")
     benchmark_parser.add_argument("--ram-gb", default="unknown")
@@ -41,6 +44,11 @@ def _run_benchmark(args: argparse.Namespace) -> None:
         backend="mock",
         quantization=args.quantization,
         context_length=args.context_length,
+        generation_parameters={
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+            "max_tokens": args.max_tokens,
+        },
         hardware={
             "gpu": args.gpu,
             "vram_gb": args.vram_gb,
