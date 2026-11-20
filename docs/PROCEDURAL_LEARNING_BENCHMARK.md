@@ -35,7 +35,7 @@ python scripts/evaluate_procedural_steps.py \
 
 The evaluator uses exact normalized action+target matching with one-to-one matching. It reports precision, recall, F1, order accuracy, expected-state accuracy on matched steps and evidence completeness.
 
-This initial matching method is intentionally simple and conservative. It does not claim semantic equivalence. A prediction without evidence can still match an action/target for extraction scoring, but is separately penalized in evidence completeness.
+This initial matching method is intentionally simple and conservative. It does not claim semantic equivalence. A prediction without evidence can still match an action/target for extraction scoring, but is separately penalized in evidence completeness. The report also exposes `ui_evidence_completeness`, which only accepts `video_frame` or `ui_snapshot`; subtitle/ASR references cannot satisfy this visual-evidence metric.
 
 ## Fixture status
 
@@ -55,3 +55,11 @@ Build a local mock application with states for feature enablement, dashboard, la
 The execution runner must log pre/post state, action, screenshot/evidence ID, failure, retry/recovery and final task outcome. Report normal-path success, disturbed-layout success, interruption recovery and end-to-end completion separately.
 
 No model-learning or autonomous-work claim is permitted until a real model is evaluated against reviewed annotations and completes the isolated tasks.
+
+## Real tutorial annotation draft
+
+Source selected: [Content Translation Screencast (English).webm](https://commons.wikimedia.org/wiki/File:Content_Translation_Screencast_(English).webm), by Pau Giner, 13 January 2015, 255.983 seconds, 1280x720, CC BY-SA 4.0. Chinese timed text: [zh-cn subtitles](https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt).
+
+A ten-step narration-aligned draft is stored at `tests/fixtures/content_translation_timeline_unreviewed.json`. It records subtitle cue references and timestamps only. Every step is marked `pending_frame_review`; this is not accepted UI ground truth. The Commons page exposes a poster image of the editor, but timestamp-specific frame captures and SHA-256 of the media have not yet been acquired. Do not use this draft to claim UI evidence completeness or model accuracy.
+
+Next gate: obtain the media locally, extract timestamp-specific frames, verify each target/action/state against the frames, replace or supplement subtitle references with `video_frame` evidence, and have a second reviewer verify the labels (or keep the status unreviewed).
