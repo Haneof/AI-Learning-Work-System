@@ -125,6 +125,12 @@ def main() -> int:
     manifest = {
         "source_id": annotation["source_id"],
         "license": annotation["source"]["license"],
+        "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
+        "attribution": {
+            "creator": annotation["source"]["author"],
+            "date": annotation["source"]["date"],
+            "source_url": annotation["source"]["media_url"],
+        },
         "media": media,
         "frames": frames,
         "review_status": "pending_human_visual_review",
