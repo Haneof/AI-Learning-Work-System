@@ -9,7 +9,6 @@ from typing import Any
 
 from scripts.procedural_simulator import MockTranslationApp
 
-
 ALLOWED_ACTIONS = {
     "enable",
     "open",
