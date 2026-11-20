@@ -43,6 +43,13 @@ class DockerSandboxRunner:
             raise ValueError("Skill package path must be a directory")
         if not re.fullmatch(r".+@sha256:[0-9a-f]{64}", image_digest):
             raise ValueError("Sandbox image must be pinned by an immutable sha256 digest")
+        if not re.fullmatch(r"[1-9][0-9]{0,3}[mMgG]", memory_limit):
+            raise ValueError("memory_limit must be a positive Docker memory value such as 256m")
+        memory_number = int(memory_limit[:-1])
+        if memory_number > 2048:
+            raise ValueError("memory_limit must not exceed 2048m or 2g")
+        if not re.fullmatch(r"(?:0?\.[1-9][0-9]*|[1-2](?:\.0+)?)", cpu_limit):
+            raise ValueError("cpu_limit must be greater than 0 and no more than 2")
         relative_script = Path(script_path)
         if relative_script.is_absolute() or ".." in relative_script.parts:
             raise ValueError("Script path must stay inside the skill package")
