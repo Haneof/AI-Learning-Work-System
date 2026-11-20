@@ -10,6 +10,7 @@ from aios_work_system.acquisition.models import (
     deduplicate_candidates,
 )
 from aios_work_system.acquisition.registry import AdapterRegistry, SourceSearchAdapter
+from aios_work_system.acquisition.repository import CandidateRepository, CandidateStatus
 from aios_work_system.acquisition.service import (
     PlatformSearchFailure,
     SearchBatchResult,
@@ -19,6 +20,8 @@ from aios_work_system.acquisition.service import (
 __all__ = [
     "AdapterRegistry",
     "BilibiliSearchAdapter",
+    "CandidateRepository",
+    "CandidateStatus",
     "PlatformCatalog",
     "PlatformDescriptor",
     "PlatformSearchFailure",
