@@ -74,7 +74,10 @@ def validate_annotation(payload: dict[str, Any]) -> list[str]:
         if has_visual_evidence:
             visually_verified += 1
         else:
-            errors.append(f"{step_id}: timestamped video_frame or ui_snapshot evidence is required")
+            errors.append(
+                f"{step_id}: timestamped visual evidence is required "
+                "(video_frame or ui_snapshot)"
+            )
 
     if visually_verified < MINIMUM_VERIFIED_STEPS:
         errors.append(
