@@ -86,6 +86,7 @@ def run_agent(
         try:
             proposal = parse_proposal(raw)
             if proposal is None:
+                attempted -= 1
                 stop_reason = "model_requested_stop"
                 events.append({"step": step_index, "status": "stopped"})
                 break
