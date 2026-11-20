@@ -27,13 +27,13 @@ class MockTranslationApp:
             self.beta_enabled = True
         elif action == "open" and resolved == "dashboard" and self.beta_enabled:
             self.state = "dashboard"
-        elif action == "select_source" and resolved == "source_language":
+        elif action == "select_source" and resolved == "source_language" and self.state == "dashboard":
             self.source_language = value
-        elif action == "select_target" and resolved == "target_language":
+        elif action == "select_target" and resolved == "target_language" and self.state == "dashboard":
             self.target_language = value
-        elif action == "select_article" and resolved == "article":
+        elif action == "select_article" and resolved == "article" and self.state == "dashboard":
             self.article = value
-        elif action == "open" and resolved == "editor" and all(
+        elif action == "open" and resolved == "editor" and self.state == "dashboard" and all(
             [self.source_language, self.target_language, self.article]
         ):
             self.state = "editor"
