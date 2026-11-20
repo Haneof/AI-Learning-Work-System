@@ -1,0 +1,5 @@
+{"case_id":"json-shape-001","category":"structured_output","prompt":"Return a JSON object with key status.","checks":{"valid_json_object":true,"contains_all":["status"],"mock_response":"{\"status\":\"ok\"}"}}
+{"case_id":"extract-001","category":"knowledge_extraction","prompt":"Extract the key phrase from the supplied note.","checks":{"contains_all":["source_evidence"],"mock_response":"source_evidence"}}
+{"case_id":"citation-001","category":"evidence_citation","prompt":"Return the cited source marker.","checks":{"contains_all":["[source:doc-01]"],"mock_response":"[source:doc-01]"}}
+{"case_id":"reason-001","category":"multi_step_reasoning","prompt":"Explain the result using the given facts.","checks":{"non_empty":true,"mock_response":"Step one, then step two."}}
+{"case_id":"skill-001","category":"skill_draft","prompt":"Draft a minimal skill with a trigger and steps.","checks":{"contains_all":["trigger","steps"],"mock_response":"trigger: user request; steps: inspect, validate, report."}}
