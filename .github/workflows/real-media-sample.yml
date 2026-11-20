@@ -145,7 +145,7 @@ jobs:
       - name: Download openly licensed software screencast and Chinese captions
         run: |
           mkdir -p artifacts/content-translation
-          curl --fail --location --retry 3 "https://upload.wikimedia.org/wikipedia/commons/4/4c/Content_Translation_Screencast_%28English%29.webm" --output artifacts/content-translation/tutorial.webm
+          curl --fail --location --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm" --output artifacts/content-translation/tutorial.webm
           curl --fail --location --retry 3 "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm.zh-cn.srt" --output artifacts/content-translation/tutorial.zh-cn.srt
           test -s artifacts/content-translation/tutorial.webm
           test -s artifacts/content-translation/tutorial.zh-cn.srt
@@ -237,9 +237,9 @@ jobs:
             --interval-seconds 30 --language chi_sim
       - name: Score Chinese OCR against manually labeled keyframes
         run: |
-          python scripts/score_ocr_reference.py \\
-            --ocr-report artifacts/chinese-ocr/output/ocr-report.json \\
-            --ground-truth tests/fixtures/mandarin_ocr_ground_truth.json \\
+          python scripts/score_ocr_reference.py \
+            --ocr-report artifacts/chinese-ocr/output/ocr-report.json \
+            --ground-truth tests/fixtures/mandarin_ocr_ground_truth.json \
             --output artifacts/chinese-ocr/output/ocr-score.json
       - name: Upload Chinese OCR report
         if: always()
