@@ -439,7 +439,11 @@ class BilibiliPlatformAdapter:
                 if not isinstance(author, str) or not author.strip():
                     owner = item.get("owner")
                     author = owner.get("name") if isinstance(owner, dict) else None
-                uploader = author.strip() if isinstance(author, str) and author.strip() else "unknown"
+                uploader = (
+                    author.strip()
+                    if isinstance(author, str) and author.strip()
+                    else "unknown"
+                )
                 candidates.append(
                     VideoCandidate(
                         video_id=bvid.strip(),
