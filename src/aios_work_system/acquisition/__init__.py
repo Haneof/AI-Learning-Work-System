@@ -2,6 +2,7 @@
 
 from aios_work_system.acquisition.bilibili import BilibiliSearchAdapter
 from aios_work_system.acquisition.catalog import PlatformCatalog, PlatformDescriptor
+from aios_work_system.acquisition.pipeline import AcquisitionDownloadPipeline
 from aios_work_system.acquisition.models import (
     ResourceCandidate,
     SearchPage,
@@ -18,6 +19,7 @@ from aios_work_system.acquisition.service import (
 )
 
 __all__ = [
+    "AcquisitionDownloadPipeline",
     "AdapterRegistry",
     "BilibiliSearchAdapter",
     "CandidateRepository",
