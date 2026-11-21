@@ -7,7 +7,6 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-
 YTDLP_PROGRESS_PREFIX = "__AIOS_PROGRESS__"
 
 
