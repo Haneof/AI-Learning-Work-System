@@ -125,7 +125,20 @@ HLS/DASH 分片并发优先使用 yt-dlp 的原生能力；需要时配置 aria2
 5. yt-dlp / aria2 下载适配器和 FFmpeg 媒体校验。
 6. 端到端真实平台搜索 → 人工选中 → 下载 → Asset Registry 验收。
 
-## 9. 验收标准
+## 9. CLI 工作流
+
+搜索、审核、选择和下载是分开的命令：
+
+```powershell
+aios discover-search --platform bilibili --keyword "Python 教程"
+aios discover-review --batch-id <batch-id>
+aios discover-select --candidate-id <candidate-id>
+aios discover-download --candidate-id <candidate-id> --engine yt-dlp
+```
+
+`discover-select` 只允许将 DISCOVERED/REVIEW_PENDING 转为 SELECTED；已选中操作幂等。下载只接受 SELECTED 候选，失败保留原因并允许重新选入队列。下载完成必须经文件大小、SHA-256 校验和资产登记，输出 asset ID 与 manifest 路径。下载执行目前是同步 CLI 命令；持久任务状态可在任务数据库中恢复，但 CLI 尚未提供后台 worker daemon。
+
+## 10. 验收标准
 
 - 无效关键词、平台、分页参数在发起网络请求前被拒绝。
 - 一个平台失败不应抹掉其他平台已经成功返回的结果。
