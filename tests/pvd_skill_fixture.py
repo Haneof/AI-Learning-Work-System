@@ -259,4 +259,3 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
         return root
 
     return build
-

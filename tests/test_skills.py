@@ -157,7 +157,6 @@ def test_sandbox_run_records_result_after_validation(tmp_path, monkeypatch):
     report = validate_skill_package(package)
     runner = DockerSandboxRunner()
 
-
     def fake_run(command, **_kwargs):
         if command[1] == "info":
             return SimpleNamespace(returncode=0, stdout="Docker", stderr="")
