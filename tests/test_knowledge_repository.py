@@ -29,7 +29,11 @@ def _segment(
         segment_id=segment_id,
         source_id=source_id,
         expert_id=expert_id,
-        locator=locator or {"start_ms": 1000, "end_ms": 2500},
+        locator=(
+            {"start_ms": 1000, "end_ms": 2500}
+            if locator is None
+            else locator
+        ),
         text_content=text,
         shared_with_experts=shared_with_experts,
         modality=modality,
