@@ -134,7 +134,7 @@ aios media-analyze --asset-id <asset-id> --enable-ocr --ocr-model-tier tiny
 aios media-analyze --asset-id <asset-id> --asr-model-size small --enable-ocr --ocr-model-tier small
 ```
 
-Other ASR options are `--asr-device`, `--asr-compute-type`, `--asr-language`, and `--asr-download-root`. OCR options are `--ocr-language`, `--ocr-device`, and `--ocr-min-confidence`. The Python API also accepts explicit PaddleOCR detection/recognition model names and an inference engine.
+Other ASR options are `--asr-device`, `--asr-compute-type`, `--asr-language`, and `--asr-download-root`. OCR options are `--ocr-device` and `--ocr-min-confidence`. The CLI uses the multilingual PP-OCRv6 model names directly; when explicit model names are supplied, PaddleOCR's `lang` selector is intentionally omitted. The Python API can instead use `lang` with PaddleOCR's default models, or provide an explicit detection/recognition model pair and an inference engine.
 
 A run's identity includes adapter name, package version and adapter configuration, so changing Whisper model size, compute type, OCR model tier, language, device, or confidence threshold creates a distinct analysis configuration rather than silently reusing incompatible evidence.
 
