@@ -281,3 +281,27 @@ def test_package_output_is_not_overwritten(tmp_path):
 
     with pytest.raises(FileExistsError):
         compiler.compile(_spec(), output)
+
+
+
+def test_compiler_rejects_content_changed_after_spec_bound_review(tmp_path):
+    from dataclasses import replace
+
+    knowledge = _approved_knowledge(tmp_path, visual_frames=8)
+    compiler = ProceduralSkillCompiler(
+        knowledge, SkillVersionRepository(tmp_path / "skills.sqlite3")
+    )
+    steps = [_step(index, visual=True) for index in range(8)]
+    reviewed_spec = _record_review(
+        compiler,
+        _spec(annotation_status="reviewed", steps=steps),
+    )
+    changed_steps = list(reviewed_spec.steps)
+    changed_steps[0] = {
+        **changed_steps[0],
+        "target": "a different UI element",
+    }
+    tampered = replace(reviewed_spec, steps=tuple(changed_steps))
+
+    with pytest.raises(ValueError, match="differs from the reviewed spec hash"):
+        compiler.compile(tampered, tmp_path / "tampered-skill")
