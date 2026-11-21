@@ -1,6 +1,6 @@
 # Download Job Lifecycle
 
-Status: implemented persistent jobs, bounded execution, and normalized live engine progress; process pause/resume/cancel and real HTTP Range integration remain pending.
+Status: implemented persistent jobs, bounded execution, normalized live engine progress, candidate hand-off, and hash-deduplicated asset registration; process pause/resume/cancel and real HTTP Range integration remain pending.
 
 ## Scope
 
@@ -10,7 +10,7 @@ The acquisition stack uses existing engines rather than reimplementing media pro
 - `aria2c`: ordinary HTTP(S) files, multi-connection transfers and continuation when supported by the server.
 - `ffprobe`: optional media-stream validation after download.
 
-`DownloadJobRepository` persists job metadata and enforces the state machine. `DownloadJobExecutor` runs persisted jobs through the existing yt-dlp/aria2 adapters with a bounded worker pool, records lifecycle transitions, verifies output, and calls an explicit asset-registration callback. Both adapters can emit normalized `DownloadProgress` events: yt-dlp uses its structured JSON progress template; aria2 is queried through a per-job JSON-RPC endpoint bound to loopback and protected by a random token. The executor persists byte count, known/estimated total, speed and ETA in SQLite. Unknown totals remain unknown and do not erase an earlier known total. Running process pause/resume/cancel, per-host limits, and a local HTTP Range integration harness remain out of scope.
+`DownloadJobRepository` persists job metadata and enforces the state machine. `DownloadJobExecutor` runs persisted jobs through the existing yt-dlp/aria2 adapters with a bounded worker pool, records lifecycle transitions, verifies output, and calls an explicit asset-registration callback. `AcquisitionDownloadPipeline` bridges selected candidates to the job queue. `MediaAssetRepository` re-checks file size and SHA-256, persists the source manifest and provenance, and reuses the same asset ID for identical content. Both adapters can emit normalized `DownloadProgress` events: yt-dlp uses its structured JSON progress template; aria2 is queried through a per-job JSON-RPC endpoint bound to loopback and protected by a random token. The executor persists byte count, known/estimated total, speed and ETA in SQLite. Unknown totals remain unknown and do not erase an earlier known total. Running process pause/resume/cancel, per-host limits, and a local HTTP Range integration harness remain out of scope.
 
 ## State machine
 
@@ -60,7 +60,38 @@ jobs.update_progress(
 )
 ```
 
-After the engine exits successfully, the future scheduler must move the job to `VERIFYING`, run file and media checks, register the resulting asset, then transition to `COMPLETED` with the asset ID and SHA-256. A successful process exit alone is not completion evidence.
+After the engine exits successfully, the executor moves the job to `VERIFYING`, runs file checks, registers the resulting asset, then transitions to `COMPLETED` with the asset ID and SHA-256. The acquisition pipeline updates the candidate to `DOWNLOADED` only after this succeeds. A successful process exit alone is not completion evidence.
+
+## Candidate-to-asset integration
+
+The current Python integration path is:
+
+```python
+from aios_work_system.acquisition import (
+    AcquisitionDownloadPipeline,
+    CandidateRepository,
+)
+from aios_work_system.media import (
+    DownloadJobRepository,
+    MediaAssetRepository,
+)
+
+pipeline = AcquisitionDownloadPipeline(
+    candidate_repository=CandidateRepository("data/candidates.sqlite3"),
+    job_repository=DownloadJobRepository("data/download_jobs.sqlite3"),
+    asset_repository=MediaAssetRepository(
+        "data/assets.sqlite3", "data/asset_manifests"
+    ),
+    destination_root="data/downloads",
+)
+try:
+    # The candidate must already have status SELECTED.
+    job = pipeline.run_selected("candidate-id", engine="yt-dlp")
+finally:
+    pipeline.shutdown()
+```
+
+The pipeline is available as a Python API; the current CLI still exposes search only. Candidate and download metadata use separate SQLite repositories, so queue hand-off is idempotent and recovery-aware rather than relying on a cross-database transaction. Candidate IDs are hashed before use in filesystem paths.
 
 ## Verification boundaries
 
@@ -84,6 +115,6 @@ Progress reporting is best-effort telemetry and is not completion evidence. A su
 2. Reconcile partial files and engine resume metadata after restart.
 3. Add a local HTTP Range test server and real binary integration jobs.
 4. Add per-host concurrency/rate controls without weakening job-level limits.
-5. Connect candidate selection to queue creation, durable asset registration, and downstream ASR/OCR/keyframe analysis.
+5. Add downstream ASR/OCR/keyframe analysis and persist timestamp/page evidence segments against the registered asset.
 
 Do not claim a job is completed until integrity and media validation have passed.
