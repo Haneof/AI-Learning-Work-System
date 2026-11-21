@@ -9,6 +9,7 @@ from aios_work_system.media.download_jobs import (
     DownloadJobRepository,
     DownloadJobStatus,
 )
+from aios_work_system.media.download_progress import DownloadProgress
 from aios_work_system.media.download_runner import DownloadJobExecutor
 
 
@@ -19,10 +20,19 @@ class FakeAdapter:
         self.output = output
         self.calls = 0
 
-    def download(self, request):
+    def download(self, request, *, progress_callback=None):
         self.calls += 1
         request.destination_dir.mkdir(parents=True, exist_ok=True)
         self.output.write_bytes(b"valid media bytes")
+        if progress_callback is not None:
+            progress_callback(
+                DownloadProgress(
+                    bytes_downloaded=5,
+                    total_bytes=17,
+                    speed_bytes_per_second=2.0,
+                    eta_seconds=6.0,
+                )
+            )
         return self.output
 
 
@@ -73,6 +83,10 @@ def test_executor_runs_and_registers_verified_asset(tmp_path):
     assert result.status == DownloadJobStatus.COMPLETED
     assert result.asset_id == "asset-123"
     assert result.sha256 == "a" * 64
+    assert result.bytes_downloaded == 5
+    assert result.total_bytes == 17
+    assert result.speed_bytes_per_second == 2.0
+    assert result.eta_seconds == 6.0
 
 
 def test_executor_does_not_mark_job_complete_if_asset_registration_fails(tmp_path):
