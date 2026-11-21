@@ -27,10 +27,6 @@ class _QuietFixtureHandler(SimpleHTTPRequestHandler):
 
 async def _run_demo(model: OpenAICompatibleDecisionModel, trace_path: Path):
     from aios_work_system.gui.agent import BrowserAgent
-    from aios_work_system.gui.real_model import (
-        OpenAICompatibleDecisionModel,
-    )
-
     try:
         from playwright.async_api import async_playwright
     except ModuleNotFoundError as exc:
