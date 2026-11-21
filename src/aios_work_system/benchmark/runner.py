@@ -127,7 +127,9 @@ def write_markdown_report(results: list[BenchmarkResult], path: str | Path) -> N
             "## Interpretation limits",
             "",
             "- Mock backend results validate harness plumbing only, not model quality.",
-            "- Time-to-first-token and peak RAM/VRAM are unknown unless a backend measures them.",
+            "- Real-backend output is not a substitute for human review or task-level acceptance.",
+            "- Time-to-first-token is measured only when a backend streams content; peak RAM/VRAM "
+            "remain unknown unless a backend measures them.",
             "- Automated checks are explicit and deterministic; no subjective score is inferred.",
             "- Vision capability is unknown until a vision-capable adapter is tested.",
             "",
