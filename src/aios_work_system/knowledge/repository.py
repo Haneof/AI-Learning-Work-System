@@ -183,15 +183,28 @@ class KnowledgeRepository:
         )
 
     def add_segment(self, segment: SourceSegment) -> None:
-        if not segment.segment_id.strip() or not segment.source_id.strip():
+        if (
+            not isinstance(segment.segment_id, str)
+            or not segment.segment_id.strip()
+            or not isinstance(segment.source_id, str)
+            or not segment.source_id.strip()
+        ):
             raise ValueError("segment_id and source_id are required")
+        if segment.expert_id is not None and (
+            not isinstance(segment.expert_id, str) or not segment.expert_id.strip()
+        ):
+            raise ValueError("expert_id must be None or a non-empty string")
         if not isinstance(segment.text_content, str) or not segment.text_content.strip():
             raise ValueError("source segment text_content must not be empty")
-        if segment.modality not in {
+        if not isinstance(segment.modality, str) or segment.modality not in {
             "text", "asr", "ocr", "video_frame", "ui_snapshot", "subtitle"
         }:
             raise ValueError(f"unsupported source evidence modality: {segment.modality}")
-        if not isinstance(segment.locator, dict) or not segment.locator:
+        if (
+            not isinstance(segment.locator, dict)
+            or not segment.locator
+            or any(not isinstance(key, str) or not key for key in segment.locator)
+        ):
             raise ValueError("source segment locator must be a non-empty object")
         if any(
             not isinstance(value, int)
@@ -211,6 +224,11 @@ class KnowledgeRepository:
             for expert in segment.shared_with_experts
         ):
             raise ValueError("shared expert IDs must be non-empty strings")
+        if segment.artifact_ref is not None and (
+            not isinstance(segment.artifact_ref, str)
+            or not segment.artifact_ref.strip()
+        ):
+            raise ValueError("artifact_ref must be None or a non-empty string")
         payload = _segment_to_dict(segment)
         with self._connect() as connection:
             existing = connection.execute(
