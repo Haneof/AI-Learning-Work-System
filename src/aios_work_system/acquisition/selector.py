@@ -32,7 +32,12 @@ class RuleBasedVideoSelector:
         for candidate in candidates:
             if candidate.duration_seconds is None:
                 continue
-            if not criteria.min_duration_seconds <= candidate.duration_seconds <= criteria.max_duration_seconds:
+            duration_matches = (
+                criteria.min_duration_seconds
+                <= candidate.duration_seconds
+                <= criteria.max_duration_seconds
+            )
+            if not duration_matches:
                 continue
 
             title = candidate.title.casefold()

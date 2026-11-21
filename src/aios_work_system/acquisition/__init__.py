@@ -20,8 +20,8 @@ from aios_work_system.acquisition.pipeline import AcquisitionPipeline
 from aios_work_system.acquisition.platforms import (
     BilibiliPlatformAdapter,
     PlatformAdapter,
-    YtDlpDownloader,
     YouTubePlatformAdapter,
+    YtDlpDownloader,
 )
 from aios_work_system.acquisition.records import JsonlRecordStore
 from aios_work_system.acquisition.selector import (

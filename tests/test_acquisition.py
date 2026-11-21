@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from aios_work_system.acquisition.drive import (
+    DriveConfigurationError,
     DriveFileInfo,
     GoogleDriveStorage,
 )
@@ -164,6 +165,13 @@ def test_missing_ytdlp_dependency_has_actionable_error(monkeypatch):
 
     with pytest.raises(AcquisitionDependencyError, match="yt-dlp.*Install it"):
         adapter.search("Blender")
+
+
+def test_drive_auth_fails_clearly_without_oauth_client_file(monkeypatch):
+    monkeypatch.delenv("GOOGLE_DRIVE_CREDENTIALS", raising=False)
+
+    with pytest.raises(DriveConfigurationError, match="GOOGLE_DRIVE_CREDENTIALS"):
+        GoogleDriveStorage.from_environment()
 
 
 def test_rule_selector_filters_by_title_duration_and_series():
