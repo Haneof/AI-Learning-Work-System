@@ -6,11 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from aios_work_system.skills.registry import (
-    SkillVersionRecord,
-    SkillVersionRegistry,
-    get_clean_git_commit,
-)
+from aios_work_system.skills.registry import SkillVersionRecord, SkillVersionRegistry
 from aios_work_system.skills.sandbox import DockerSandboxRunner, SandboxUnavailableError
 from aios_work_system.skills.validator import validate_skill_package
 
@@ -126,6 +122,8 @@ def _init_git_package(tmp_path):
 
 
 def test_version_registry_records_commit_for_clean_skill_package(tmp_path):
+    from aios_work_system.skills.registry import get_clean_git_commit
+
     _repository, package = _init_git_package(tmp_path)
     expected_commit = get_clean_git_commit(package)
     registry = SkillVersionRegistry()
@@ -162,6 +160,8 @@ def test_version_registry_rejects_mutating_an_existing_version(tmp_path):
 
 
 def test_version_registry_rejects_dirty_skill_package_worktree(tmp_path):
+    from aios_work_system.skills.registry import get_clean_git_commit
+
     _repository, package = _init_git_package(tmp_path)
     (package / "SKILL.md").write_text("# Modified after commit", encoding="utf-8")
     registry = SkillVersionRegistry()
