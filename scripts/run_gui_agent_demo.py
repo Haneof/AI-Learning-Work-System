@@ -28,6 +28,7 @@ class _QuietFixtureHandler(SimpleHTTPRequestHandler):
 
 async def _run_demo(model: Any, trace_path: Path):
     from aios_work_system.gui.agent import BrowserAgent
+
     try:
         from playwright.async_api import async_playwright
     except ModuleNotFoundError as exc:
