@@ -44,6 +44,17 @@ class PaddleOCRAdapter:
             raise ValueError("device must not be empty")
         if model_version not in {"PP-OCRv6", "PP-OCRv5", "PP-OCRv4", "PP-OCRv3"}:
             raise ValueError("unsupported PaddleOCR model version")
+        if (text_detection_model_name is None) != (
+            text_recognition_model_name is None
+        ):
+            raise ValueError(
+                "text detection and recognition model names must be provided together"
+            )
+        if text_detection_model_name is not None and (
+            not text_detection_model_name.strip()
+            or not text_recognition_model_name.strip()
+        ):
+            raise ValueError("PaddleOCR model names must not be empty")
         if not isinstance(cpu_threads, int) or isinstance(cpu_threads, bool) or cpu_threads < 1:
             raise ValueError("cpu_threads must be a positive integer")
         if (
@@ -97,12 +108,6 @@ class PaddleOCRAdapter:
                 ) from exc
             factory = PaddleOCR
 
-        if (self.text_detection_model_name is None) != (
-            self.text_recognition_model_name is None
-        ):
-            raise ValueError(
-                "text detection and recognition model names must be provided together"
-            )
         kwargs: dict[str, Any] = {
             "device": self.device,
             "use_doc_orientation_classify": False,
