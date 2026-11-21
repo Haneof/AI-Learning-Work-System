@@ -17,8 +17,8 @@ from aios_work_system.media.download import (
     YtDlpAdapter,
 )
 from aios_work_system.media.download_progress import (
-    DownloadProgress,
     YTDLP_PROGRESS_PREFIX,
+    DownloadProgress,
 )
 
 
