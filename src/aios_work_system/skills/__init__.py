@@ -1,8 +1,8 @@
 """Versioned skill package validation and isolated execution interfaces."""
 
 from aios_work_system.skills.compiler import (
-    ProcedureSkillSpec,
     ProceduralSkillCompiler,
+    ProcedureSkillSpec,
     SkillCompilationResult,
 )
 from aios_work_system.skills.registry import SkillVersionRecord, SkillVersionRegistry
