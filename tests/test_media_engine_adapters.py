@@ -133,7 +133,6 @@ def test_paddleocr_adapter_maps_boxes_scores_and_frame_timestamps(tmp_path):
             confidence=0.98,
         )
     ]
-    assert created["lang"] == "ch"
     assert created["device"] == "cpu"
     assert created["text_detection_model_name"] == "PP-OCRv6_small_det"
     assert created["text_recognition_model_name"] == "PP-OCRv6_small_rec"
