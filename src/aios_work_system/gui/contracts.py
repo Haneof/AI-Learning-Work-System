@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass
-from typing import Any, Literal, Mapping
+from collections.abc import Mapping
+from typing import Any, Literal
 
 
 class ContractError(ValueError):

@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import asyncio
 from dataclasses import dataclass
-from typing import Any, Mapping, Protocol
+from collections.abc import Mapping
+from typing import Any, Protocol
 
 from aios_work_system.gui.browser import (
     ensure_same_origin,
@@ -147,7 +148,11 @@ class BrowserAgent:
                     message="model decision timed out",
                 )
                 return RunReport(
-                    "timed_out", executed_steps, corrections, self.trace_path, "model decision timed out"
+                    "timed_out",
+                    executed_steps,
+                    corrections,
+                    self.trace_path,
+                    "model decision timed out",
                 )
             except Exception as exc:
                 message = f"{type(exc).__name__}: {exc}"
@@ -184,18 +189,32 @@ class BrowserAgent:
                         timeout=self.config.action_timeout_s,
                     )
                 except TimeoutError:
-                    after = observation
-                    verification = {"passed": False, "error": "action or observation timed out"}
-                    timed_out = True
-                except Exception as exc:
-                    after = observation
+                    try:
+                        ensure_same_origin(self.page.url, origin)  # type: ignore[attr-defined]
+                        after = await self._observation()
+                    except Exception:
+                        after = observation
                     verification = {
                         "passed": False,
+                        "timed_out": True,
+                        "error": "action or observation timed out",
+                    }
+                    timed_out = True
+                except Exception as exc:
+                    try:
+                        ensure_same_origin(self.page.url, origin)  # type: ignore[attr-defined]
+                        after = await self._observation()
+                    except Exception:
+                        after = observation
+                    verification = {
+                        "passed": False,
+                        "timed_out": type(exc).__name__ == "TimeoutError",
                         "error": f"{type(exc).__name__}: {exc}",
                     }
-                    timed_out = False
+                    timed_out = verification["timed_out"] is True
                 else:
                     timed_out = False
+                timed_out = timed_out or verification.get("timed_out") is True
 
                 recorder.record_step(
                     before=observation,
@@ -221,7 +240,7 @@ class BrowserAgent:
                         self.trace_path,
                         str(verification.get("error")),
                     )
-                if correction_attempt or corrections >= self.config.max_corrections:
+                if correction_attempt:
                     return RunReport(
                         "failed",
                         executed_steps,
@@ -261,7 +280,9 @@ class BrowserAgent:
                         stage="correction_decision",
                         message=message,
                     )
-                    return RunReport("failed", executed_steps, corrections, self.trace_path, message)
+                    return RunReport(
+                        "failed", executed_steps, corrections, self.trace_path, message
+                    )
                 if action.action == "done":
                     return RunReport(
                         "failed",

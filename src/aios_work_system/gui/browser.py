@@ -154,5 +154,6 @@ async def verify_expectation(
             "selector": expected.selector,
             "expected": expected.value,
             "observed": observed,
+            "timed_out": type(exc).__name__ == "TimeoutError",
             "error": f"{type(exc).__name__}: {exc}",
         }

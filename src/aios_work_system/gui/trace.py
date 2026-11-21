@@ -5,7 +5,8 @@ from __future__ import annotations
 import json
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 from uuid import uuid4
 
 from aios_work_system.gui.browser import (
@@ -13,7 +14,6 @@ from aios_work_system.gui.browser import (
     execute_action,
     install_local_only_guard,
     local_origin,
-    observe_page,
     verify_expectation,
 )
 from aios_work_system.gui.contracts import BrowserObservation, GuiAction
@@ -30,7 +30,12 @@ class TraceFormatError(ValueError):
 class ReplayVerificationError(RuntimeError):
     """Raised at the first action whose replayed result does not match its assertion."""
 
-    def __init__(self, step_number: int, message: str, actual_result: Mapping[str, Any] | None = None):
+    def __init__(
+        self,
+        step_number: int,
+        message: str,
+        actual_result: Mapping[str, Any] | None = None,
+    ):
         super().__init__(f"trace replay stopped at step {step_number}: {message}")
         self.step_number = step_number
         self.actual_result = dict(actual_result or {})
@@ -242,7 +247,10 @@ class TraceReplayer:
         for row in rows:
             step_number = row.get("step", replayed + 1)
             if row.get("kind") == "error":
-                raise ReplayVerificationError(step_number, "trace contains an incomplete error record")
+                raise ReplayVerificationError(
+                    step_number,
+                    "trace contains an incomplete error record",
+                )
             action = GuiAction.from_mapping(row["action"])
             if action.action == "done":
                 replayed += 1

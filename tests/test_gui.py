@@ -3,12 +3,12 @@
 from __future__ import annotations
 
 import asyncio
-import json
 import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import pytest
 from playwright.async_api import async_playwright
@@ -19,7 +19,7 @@ from aios_work_system.gui.browser import (
     observe_page,
     verify_expectation,
 )
-from aios_work_system.gui.contracts import ExpectedResult, GuiAction
+from aios_work_system.gui.contracts import GuiAction
 from aios_work_system.gui.trace import (
     BrowserEventCapture,
     JsonlTraceRecorder,
