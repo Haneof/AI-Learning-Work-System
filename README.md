@@ -129,11 +129,14 @@ aios discover-search --platform bilibili --keyword "Python 教程"
 aios discover-review --batch-id <batch-id>
 aios discover-select --candidate-id <candidate-id>
 aios discover-download --candidate-id <candidate-id> --engine yt-dlp
+aios media-analyze --asset-id <asset-id>
 ```
+
+`media-analyze` 会校验已登记资产的 SHA-256，提取音轨和有限数量的关键帧，并生成可重试的分析记录。ASR/OCR 已有可选适配器：`pip install -e ".[asr]"` 安装 faster-whisper，`pip install -e ".[ocr]"` 安装 PaddleOCR（仍需单独安装匹配的 PaddlePaddle 推理引擎）。只有显式传入 `--asr-model-size` 或 `--enable-ocr` 才会加载模型；未启用时返回明确的 `PARTIAL`，不会伪造转录结果。详见[媒体处理文档](docs/MEDIA_INGEST.md)。
 
 下载成功后命令输出任务状态、资产 ID、SHA-256 和 manifest 路径。候选未选中时下载命令会拒绝执行。下载队列与资产库参数可用 `--candidate-database`、`--jobs-database`、`--assets-database`、`--manifest-dir` 和 `--destination` 单独配置。
 
-如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载命令依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。持久化下载任务、有界并发执行、yt-dlp/aria2 实时进度、下载文件校验、MediaAsset 哈希去重与来源追溯，以及“候选选中→入队→下载→资产登记”的 Python 管线已实现并由 CI 测试；当前仍未完成运行中暂停/恢复/取消、HTTP Range 真实集成测试、平台外网 smoke test 和 ASR/OCR/关键帧后处理。详见[下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md)。
+如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载命令依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。持久化下载任务、有界并发执行、yt-dlp/aria2 实时进度、下载文件校验、MediaAsset 哈希去重与来源追溯，以及“候选选中→入队→下载→资产登记”的 Python 管线已实现并由 CI 测试；当前仍未完成运行中暂停/恢复/取消、HTTP Range 真实集成测试、平台外网 smoke test、实际 ASR/OCR 模型适配和学习任务自动编排。详见[下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md)。
 
 ## 当前项目状态
 

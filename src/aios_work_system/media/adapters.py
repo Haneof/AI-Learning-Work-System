@@ -19,6 +19,7 @@ class OCRSegment:
     timestamp_ms: int
     text: str
     bounding_box: list[float] | None = None
+    confidence: float | None = None
 
 
 class ASRAdapter(Protocol):

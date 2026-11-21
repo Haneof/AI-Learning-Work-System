@@ -20,6 +20,8 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
 media = ["pypdf>=5,<7"]
+asr = ["faster-whisper>=1.2.1,<2"]
+ocr = ["paddleocr>=3.7,<4"]
 
 [project.scripts]
 aios = "aios_work_system.cli:main"

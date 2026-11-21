@@ -127,12 +127,22 @@ class FFmpegProcessor:
         source: str | Path,
         output_dir: str | Path,
         interval_seconds: float = 5.0,
+        max_frames: int | None = None,
     ) -> list[Path]:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
+        if max_frames is not None and (
+            isinstance(max_frames, bool)
+            or not isinstance(max_frames, int)
+            or max_frames < 1
+        ):
+            raise ValueError("max_frames must be a positive integer when provided")
         source_path = Path(source).resolve(strict=True)
         frame_dir = Path(output_dir).resolve()
         frame_dir.mkdir(parents=True, exist_ok=True)
+        for previous_frame in frame_dir.glob("frame_*.jpg"):
+            if previous_frame.is_file() or previous_frame.is_symlink():
+                previous_frame.unlink()
         pattern = frame_dir / "frame_%06d.jpg"
         self._run(
             [
@@ -144,6 +154,11 @@ class FFmpegProcessor:
                 f"fps=1/{interval_seconds:.6g}",
                 "-q:v",
                 "2",
+                *(
+                    ["-frames:v", str(max_frames)]
+                    if max_frames is not None
+                    else []
+                ),
                 str(pattern),
             ]
         )

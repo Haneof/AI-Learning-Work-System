@@ -36,6 +36,34 @@ def test_discover_search_cli_requires_keyword_and_accepts_platform_options():
 
 
 
+def test_media_analyze_cli_defaults_to_no_model_download_and_supports_opt_in():
+    parser = build_parser()
+    defaults = parser.parse_args(["media-analyze", "--asset-id", "asset-1"])
+    enabled = parser.parse_args(
+        [
+            "media-analyze",
+            "--asset-id",
+            "asset-2",
+            "--asr-model-size",
+            "small",
+            "--asr-device",
+            "cpu",
+            "--asr-compute-type",
+            "int8",
+            "--enable-ocr",
+            "--ocr-model-tier",
+            "tiny",
+        ]
+    )
+
+    assert defaults.asr_model_size is None
+    assert defaults.enable_ocr is False
+    assert enabled.asr_model_size == "small"
+    assert enabled.asr_compute_type == "int8"
+    assert enabled.enable_ocr is True
+    assert enabled.ocr_model_tier == "tiny"
+
+
 def test_discovery_review_and_select_commands_parse_expected_options():
     parser = build_parser()
     review = parser.parse_args(

@@ -92,6 +92,50 @@ def build_parser() -> argparse.ArgumentParser:
     download_parser.add_argument("--max-concurrent-jobs", type=int, default=2)
     download_parser.add_argument("--max-retries", type=int, default=2)
 
+    analysis_parser = subparsers.add_parser(
+        "media-analyze",
+        help="probe a registered media asset and create audio/frame evidence",
+    )
+    analysis_parser.add_argument("--asset-id", required=True)
+    analysis_parser.add_argument(
+        "--assets-database", default="artifacts/acquisition/assets.sqlite3"
+    )
+    analysis_parser.add_argument(
+        "--manifest-dir", default="artifacts/acquisition/asset_manifests"
+    )
+    analysis_parser.add_argument(
+        "--analysis-database", default="artifacts/acquisition/analysis.sqlite3"
+    )
+    analysis_parser.add_argument(
+        "--derived-dir", default="artifacts/media/derived"
+    )
+    analysis_parser.add_argument("--ffmpeg", default="ffmpeg")
+    analysis_parser.add_argument("--ffprobe", default="ffprobe")
+    analysis_parser.add_argument("--timeout-seconds", type=int, default=1800)
+    analysis_parser.add_argument("--frame-interval-seconds", type=float, default=5.0)
+    analysis_parser.add_argument("--max-frames", type=int, default=240)
+    analysis_parser.add_argument(
+        "--asr-model-size",
+        choices=("tiny", "base", "small", "medium", "large-v3"),
+        help="enable faster-whisper ASR with this model size; omitted means ASR disabled",
+    )
+    analysis_parser.add_argument("--asr-device", default="cpu")
+    analysis_parser.add_argument("--asr-compute-type", default="int8")
+    analysis_parser.add_argument("--asr-language", default="zh")
+    analysis_parser.add_argument(
+        "--asr-download-root", default="artifacts/models/faster-whisper"
+    )
+    analysis_parser.add_argument(
+        "--enable-ocr",
+        action="store_true",
+        help="enable PaddleOCR; requires the optional OCR and PaddlePaddle packages",
+    )
+    analysis_parser.add_argument(
+        "--ocr-model-tier", choices=("tiny", "small", "medium"), default="small"
+    )
+    analysis_parser.add_argument("--ocr-device", default="cpu")
+    analysis_parser.add_argument("--ocr-min-confidence", type=float, default=0.0)
+
     demo_parser = subparsers.add_parser(
         "phase0-demo",
         help="run the deterministic Phase 0 source-to-skill integration fixture",
@@ -290,6 +334,76 @@ def _run_discovery_download(args: argparse.Namespace) -> None:
         pipeline.shutdown()
 
 
+def _run_media_analyze(args: argparse.Namespace) -> None:
+    from aios_work_system.media import (
+        FFmpegProcessor,
+        MediaAnalysisPipeline,
+        MediaAnalysisRepository,
+        MediaAssetRepository,
+    )
+
+    processor = FFmpegProcessor(
+        ffmpeg_binary=args.ffmpeg,
+        ffprobe_binary=args.ffprobe,
+        timeout_seconds=args.timeout_seconds,
+    )
+    asr_adapter = None
+    ocr_adapter = None
+    if args.asr_model_size is not None:
+        from aios_work_system.media import FasterWhisperASRAdapter
+
+        asr_adapter = FasterWhisperASRAdapter(
+            model_size=args.asr_model_size,
+            device=args.asr_device,
+            compute_type=args.asr_compute_type,
+            language=args.asr_language or None,
+            download_root=args.asr_download_root,
+        )
+    if args.enable_ocr:
+        from aios_work_system.media import PaddleOCRAdapter
+
+        ocr_adapter = PaddleOCRAdapter(
+            lang=None,
+            device=args.ocr_device,
+            model_version="PP-OCRv6",
+            text_detection_model_name=f"PP-OCRv6_{args.ocr_model_tier}_det",
+            text_recognition_model_name=f"PP-OCRv6_{args.ocr_model_tier}_rec",
+            min_confidence=args.ocr_min_confidence,
+        )
+
+    pipeline = MediaAnalysisPipeline(
+        MediaAssetRepository(args.assets_database, args.manifest_dir),
+        MediaAnalysisRepository(args.analysis_database),
+        args.derived_dir,
+        ffmpeg=processor,
+        asr_adapter=asr_adapter,
+        ocr_adapter=ocr_adapter,
+        frame_interval_seconds=args.frame_interval_seconds,
+        max_frames=args.max_frames,
+    )
+    result = pipeline.analyze(args.asset_id)
+    print(
+        json.dumps(
+            {
+                "run_id": result.run_id,
+                "asset_id": result.asset_id,
+                "status": result.status.value,
+                "attempts": result.attempts,
+                "duration_seconds": result.duration_seconds,
+                "artifact_count": len(result.artifacts),
+                "audio_path": str(result.audio_path) if result.audio_path else None,
+                "frame_paths": [str(path) for path in result.frame_paths],
+                "transcript_count": len(result.transcripts),
+                "ocr_segment_count": len(result.ocr_segments),
+                "warnings": list(result.warnings),
+                "error": result.error,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "serve":
@@ -304,6 +418,8 @@ def main() -> None:
         _run_discovery_select(args)
     elif args.command == "discover-download":
         _run_discovery_download(args)
+    elif args.command == "media-analyze":
+        _run_media_analyze(args)
     elif args.command == "phase0-demo":
         from aios_work_system.phase0 import run_phase0_demo
 

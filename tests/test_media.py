@@ -1,6 +1,7 @@
 """Tests for source registration, PDF page mapping, FFmpeg, and task resume."""
 
 import json
+from pathlib import Path
 
 import pytest
 
@@ -147,3 +148,50 @@ def test_task_journal_persists_exhausted_failure(tmp_path):
 
     assert journal.records["broken-source"].state == "FAILED"
     assert journal.records["broken-source"].error == "RuntimeError: broken media"
+
+
+
+def test_frame_extraction_applies_hard_limit_and_clears_old_frames(tmp_path, monkeypatch):
+    source = tmp_path / "sample.mp4"
+    source.write_bytes(b"placeholder")
+    frame_dir = tmp_path / "frames"
+    frame_dir.mkdir()
+    stale = frame_dir / "frame_999999.jpg"
+    stale.write_bytes(b"stale")
+    commands = []
+    processor = FFmpegProcessor()
+
+    def fake_run(command):
+        commands.append(command)
+        output_pattern = command[-1]
+        generated = Path(output_pattern.replace("%06d", "000001"))
+        generated.parent.mkdir(parents=True, exist_ok=True)
+        generated.write_bytes(b"fresh frame")
+        return ""
+
+    monkeypatch.setattr(processor, "_run", fake_run)
+    frames = processor.extract_frames(
+        source,
+        frame_dir,
+        interval_seconds=8.0,
+        max_frames=7,
+    )
+
+    assert len(frames) == 1
+    assert frames[0].name == "frame_000001.jpg"
+    assert not stale.exists()
+    assert commands[0][commands[0].index("-frames:v") + 1] == "7"
+    assert commands[0][commands[0].index("-vf") + 1] == "fps=1/8"
+
+
+@pytest.mark.parametrize("max_frames", [0, -1, True, 1.5])
+def test_frame_extraction_rejects_invalid_hard_limits(tmp_path, max_frames):
+    source = tmp_path / "sample.mp4"
+    source.write_bytes(b"placeholder")
+
+    with pytest.raises(ValueError, match="max_frames"):
+        FFmpegProcessor().extract_frames(
+            source,
+            tmp_path / "frames",
+            max_frames=max_frames,
+        )
