@@ -119,6 +119,8 @@ def test_paddleocr_adapter_maps_boxes_scores_and_frame_timestamps(tmp_path):
         lang="ch",
         device="cpu",
         min_confidence=0.5,
+        text_detection_model_name="PP-OCRv6_small_det",
+        text_recognition_model_name="PP-OCRv6_small_rec",
         ocr_factory=factory,
         package_version="3.7.0",
     )
@@ -134,7 +136,10 @@ def test_paddleocr_adapter_maps_boxes_scores_and_frame_timestamps(tmp_path):
     ]
     assert created["lang"] == "ch"
     assert created["device"] == "cpu"
-    assert created["ocr_version"] == "PP-OCRv6"
+    assert created["text_detection_model_name"] == "PP-OCRv6_small_det"
+    assert created["text_recognition_model_name"] == "PP-OCRv6_small_rec"
+    assert "ocr_version" not in created
+    assert "lang" not in created
     assert created["use_doc_orientation_classify"] is False
     assert fake_pipeline.inputs == [str(image.resolve())]
     assert adapter.version == "3.7.0"
@@ -184,3 +189,9 @@ def test_optional_adapters_are_lazy_and_expose_config_hash_inputs():
     assert ocr._pipeline is None
     assert small.config != medium.config
     assert ocr.config["model_version"] == "PP-OCRv6"
+
+
+
+def test_paddleocr_requires_detection_and_recognition_names_as_a_pair():
+    with pytest.raises(ValueError, match="provided together"):
+        PaddleOCRAdapter(text_detection_model_name="PP-OCRv6_tiny_det")
