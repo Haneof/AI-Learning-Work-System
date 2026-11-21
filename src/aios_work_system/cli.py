@@ -173,6 +173,23 @@ def build_parser() -> argparse.ArgumentParser:
         "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
     )
 
+    skill_review_parser = subparsers.add_parser(
+        "skill-review",
+        help="record an independent human review bound to an exact procedure JSON hash",
+    )
+    skill_review_parser.add_argument("--input-file", required=True)
+    skill_review_parser.add_argument("--reviewer-id", required=True)
+    skill_review_parser.add_argument(
+        "--decision", choices=("APPROVED", "REJECTED"), required=True
+    )
+    skill_review_parser.add_argument("--note", required=True)
+    skill_review_parser.add_argument(
+        "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
+    )
+    skill_review_parser.add_argument(
+        "--versions-database", default="artifacts/skills/versions.sqlite3"
+    )
+
     skill_compile_parser = subparsers.add_parser(
         "skill-compile", help="compile a structured procedure JSON into a skill package"
     )
@@ -556,6 +573,62 @@ def _run_knowledge_review(args: argparse.Namespace) -> None:
     )
 
 
+def _run_skill_review(args: argparse.Namespace) -> None:
+    from aios_work_system.knowledge import KnowledgeRepository
+    from aios_work_system.skills import (
+        ProceduralSkillCompiler,
+        ProcedureSkillSpec,
+        SkillVersionRepository,
+    )
+
+    payload = json.loads(
+        Path(args.input_file).expanduser().resolve(strict=True).read_text(
+            encoding="utf-8"
+        )
+    )
+    if not isinstance(payload, dict):
+        raise ValueError("skill specification JSON must be an object")
+    spec = ProcedureSkillSpec(
+        expert_id=payload["expert_id"],
+        skill_id=payload["skill_id"],
+        version=payload["version"],
+        title=payload["title"],
+        goal=payload["goal"],
+        scope=payload["scope"],
+        source_id=payload["source_id"],
+        knowledge_ids=tuple(payload["knowledge_ids"]),
+        steps=tuple(payload["steps"]),
+        annotation_status="reviewed",
+        annotator_id=payload.get("annotator_id"),
+        risk=payload.get("risk", "LOW"),
+    )
+    review = ProceduralSkillCompiler(
+        KnowledgeRepository(args.knowledge_database),
+        SkillVersionRepository(args.versions_database),
+    ).review_spec(
+        spec,
+        reviewer_id=args.reviewer_id,
+        decision=args.decision,
+        note=args.note,
+    )
+    print(
+        json.dumps(
+            {
+                "review_id": review.review_id,
+                "spec_hash": review.spec_hash,
+                "expert_id": review.expert_id,
+                "skill_id": review.skill_id,
+                "version": review.version,
+                "reviewer_id": review.reviewer_id,
+                "decision": review.decision,
+                "reviewed_at": review.reviewed_at,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 def _run_skill_compile(args: argparse.Namespace) -> None:
     from aios_work_system.knowledge import KnowledgeRepository
     from aios_work_system.skills import (
@@ -583,8 +656,7 @@ def _run_skill_compile(args: argparse.Namespace) -> None:
         steps=tuple(payload["steps"]),
         annotation_status=payload.get("annotation_status", "unreviewed"),
         annotator_id=payload.get("annotator_id"),
-        reviewer_id=payload.get("reviewer_id"),
-        reviewed_at=payload.get("reviewed_at"),
+        review_id=payload.get("review_id"),
         risk=payload.get("risk", "LOW"),
     )
     result = ProceduralSkillCompiler(
@@ -633,6 +705,8 @@ def main() -> None:
         _run_knowledge_add(args)
     elif args.command == "knowledge-review":
         _run_knowledge_review(args)
+    elif args.command == "skill-review":
+        _run_skill_review(args)
     elif args.command == "skill-compile":
         _run_skill_compile(args)
     elif args.command == "phase0-demo":
