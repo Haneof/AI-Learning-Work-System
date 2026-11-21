@@ -133,6 +133,20 @@ def _spec(*, annotation_status="unreviewed", steps=None):
     )
 
 
+
+def _record_review(compiler, spec, *, reviewer_id="independent-reviewer"):
+    from dataclasses import replace
+
+    reviewable = replace(spec, reviewer_id=None, reviewed_at=None, review_id=None)
+    record = compiler.review_spec(
+        reviewable,
+        reviewer_id=reviewer_id,
+        decision="APPROVED",
+        note="Reviewed the exact procedure and its linked visual evidence.",
+    )
+    return replace(reviewable, review_id=record.review_id)
+
+
 def test_asr_only_compile_produces_unregistered_draft(tmp_path):
     knowledge = _approved_knowledge(tmp_path, visual_frames=0)
     versions = SkillVersionRepository(tmp_path / "skills.sqlite3")
@@ -178,10 +192,11 @@ def test_reviewed_skill_requires_eight_visually_verified_steps_and_registers(tmp
     compiler = ProceduralSkillCompiler(knowledge, versions)
     reviewed_steps = [_step(index, visual=True) for index in range(8)]
 
-    result = compiler.compile(
+    reviewed_spec = _record_review(
+        compiler,
         _spec(annotation_status="reviewed", steps=reviewed_steps),
-        tmp_path / "reviewed-skill",
     )
+    result = compiler.compile(reviewed_spec, tmp_path / "reviewed-skill")
     stored = SkillVersionRepository(tmp_path / "skills.sqlite3").get(
         "expert-office", "office.account-settings", "1.0.0"
     )
@@ -207,10 +222,16 @@ def test_reviewed_skill_rejects_asr_only_evidence(tmp_path):
     )
     steps = [_step(index, visual=False) for index in range(8)]
 
+    reviewable = _spec(annotation_status="reviewed", steps=steps)
+    from dataclasses import replace
+
+    reviewable = replace(reviewable, reviewer_id=None, reviewed_at=None)
     with pytest.raises(ValueError, match="requires visual frame/UI evidence"):
-        compiler.compile(
-            _spec(annotation_status="reviewed", steps=steps),
-            tmp_path / "bad-reviewed-skill",
+        compiler.review_spec(
+            reviewable,
+            reviewer_id="independent-reviewer",
+            decision="APPROVED",
+            note="Attempted review of narration-only steps.",
         )
 
 
@@ -223,15 +244,16 @@ def test_reviewed_skill_requires_independent_annotator_and_review_date(tmp_path)
         annotation_status="reviewed",
         steps=[_step(index, visual=True) for index in range(8)],
     )
-    spec = ProcedureSkillSpec(
-        **{
-            **spec.__dict__,
-            "reviewer_id": "annotator-1",
-        }
-    )
+    from dataclasses import replace
 
+    spec = replace(spec, reviewer_id=None, reviewed_at=None)
     with pytest.raises(ValueError, match="differ from annotator"):
-        compiler.compile(spec, tmp_path / "same-reviewer")
+        compiler.review_spec(
+            spec,
+            reviewer_id="annotator-1",
+            decision="APPROVED",
+            note="Self-review should be denied.",
+        )
 
 
 def test_evidence_reference_must_match_timestamp_and_approved_source(tmp_path):
