@@ -73,7 +73,7 @@ jobs:
             exit 1
           fi
           docker pull "$BASE_IMAGE"
-          printf 'FROM %s\nRUN python -c "print(\"pvd-sandbox-image\")"\n' "$BASE_IMAGE" > "$RUNNER_TEMP/Dockerfile"
+          printf 'FROM %s\nRUN python -c "print(\\"pvd-sandbox-image\\")"\n' "$BASE_IMAGE" > "$RUNNER_TEMP/Dockerfile"
           docker build --pull=false --network=none --tag aios-pvd-sandbox:ci --file "$RUNNER_TEMP/Dockerfile" "$RUNNER_TEMP"
           IMAGE_ID="$(docker image inspect --format='{{.Id}}' aios-pvd-sandbox:ci)"
           if [[ ! "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]; then
