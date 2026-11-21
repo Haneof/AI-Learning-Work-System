@@ -54,6 +54,7 @@ class ProcedureSkillSpec:
     steps: tuple[dict[str, Any], ...]
     annotation_status: str = "unreviewed"
     annotator_id: str | None = None
+    review_id: str | None = None
     reviewer_id: str | None = None
     reviewed_at: str | None = None
     risk: str = "LOW"
@@ -85,6 +86,64 @@ class ProceduralSkillCompiler:
         self.versions = version_repository
 
     @staticmethod
+    def spec_fingerprint(spec: ProcedureSkillSpec) -> str:
+        """Hash the exact reviewable procedure content, excluding review metadata."""
+        payload = {
+            "expert_id": spec.expert_id,
+            "skill_id": spec.skill_id,
+            "version": spec.version,
+            "title": spec.title,
+            "goal": spec.goal,
+            "scope": spec.scope,
+            "source_id": spec.source_id,
+            "knowledge_ids": list(spec.knowledge_ids),
+            "steps": list(spec.steps),
+            "risk": spec.risk,
+        }
+        canonical = json.dumps(
+            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        )
+        return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+    def review_spec(
+        self,
+        spec: ProcedureSkillSpec,
+        *,
+        reviewer_id: str,
+        decision: str,
+        note: str,
+    ):
+        """Record an explicit review against the exact reviewed procedure hash."""
+        if spec.annotation_status != "reviewed":
+            raise ValueError("skill review requires annotation_status='reviewed'")
+        if spec.review_id is not None:
+            raise ValueError("review_id is assigned by the review repository")
+        if spec.reviewer_id is not None or spec.reviewed_at is not None:
+            raise ValueError("review metadata is assigned by the review repository")
+        expert_id = self._non_empty_string(spec.expert_id, "expert_id")
+        skill_id = self._non_empty_string(spec.skill_id, "skill_id")
+        version = self._non_empty_string(spec.version, "version")
+        if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", skill_id):
+            raise ValueError("skill_id must be a 2-64 character lowercase slug")
+        if not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", version):
+            raise ValueError("version must use MAJOR.MINOR.PATCH")
+        self._approved_procedure_knowledge(spec)
+        self._normalize_steps(spec, {
+            knowledge_id: self.knowledge.get(knowledge_id, expert_id)
+            for knowledge_id in spec.knowledge_ids
+        })
+        return self.versions.record_review(
+            expert_id=expert_id,
+            skill_id=skill_id,
+            version=version,
+            spec_hash=self.spec_fingerprint(spec),
+            reviewer_id=reviewer_id,
+            annotator_id=spec.annotator_id,
+            decision=decision,
+            note=note,
+        )
+
+    @staticmethod
     def _non_empty_string(value: object, label: str) -> str:
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{label} must be a non-empty string")
@@ -100,20 +159,12 @@ class ProceduralSkillCompiler:
                     "review metadata cannot be supplied unless annotation_status is reviewed"
                 )
             return
-        reviewer = ProceduralSkillCompiler._non_empty_string(
-            spec.reviewer_id, "reviewer_id"
-        )
-        if spec.annotator_id and reviewer == spec.annotator_id:
-            raise ValueError("reviewer_id must differ from annotator_id")
-        reviewed_at = ProceduralSkillCompiler._non_empty_string(
-            spec.reviewed_at, "reviewed_at"
-        )
-        try:
-            parsed = datetime.fromisoformat(reviewed_at.replace("Z", "+00:00"))
-        except ValueError as exc:
-            raise ValueError("reviewed_at must be an ISO-8601 datetime") from exc
-        if parsed.tzinfo is None or parsed.utcoffset() is None:
-            raise ValueError("reviewed_at must include a timezone offset")
+        if spec.review_id is None or not spec.review_id.strip():
+            raise ValueError("reviewed skill requires a persisted review_id")
+        if spec.reviewer_id is not None or spec.reviewed_at is not None:
+            raise ValueError(
+                "reviewer_id and reviewed_at are loaded from the persisted review record"
+            )
 
     def _approved_procedure_knowledge(
         self, spec: ProcedureSkillSpec
@@ -323,6 +374,22 @@ class ProceduralSkillCompiler:
         steps = self._normalize_steps(spec, knowledge_items)
 
         reviewed = spec.annotation_status == "reviewed"
+        review_record = None
+        if reviewed:
+            assert spec.review_id is not None
+            review_record = self.versions.get_review(spec.review_id, expert_id)
+            if review_record.decision != "APPROVED":
+                raise ValueError("skill compilation requires an APPROVED review record")
+            if (
+                review_record.skill_id != skill_id
+                or review_record.version != version
+                or review_record.spec_hash != self.spec_fingerprint(spec)
+            ):
+                raise ValueError(
+                    "skill procedure content differs from the reviewed spec hash"
+                )
+            if review_record.annotator_id != spec.annotator_id:
+                raise ValueError("skill annotator differs from the reviewed record")
         lifecycle_status = "REVIEWED" if reviewed else "DRAFT"
         target = self._safe_output_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -339,10 +406,15 @@ class ProceduralSkillCompiler:
                 "steps": steps,
             }
             if reviewed:
+                assert review_record is not None
                 procedure["review"] = {
-                    "reviewer_id": spec.reviewer_id,
-                    "reviewed_at": spec.reviewed_at,
-                    "annotator_id": spec.annotator_id,
+                    "review_id": review_record.review_id,
+                    "reviewer_id": review_record.reviewer_id,
+                    "reviewed_at": review_record.reviewed_at,
+                    "annotator_id": review_record.annotator_id,
+                    "decision": review_record.decision,
+                    "note": review_record.note,
+                    "spec_hash": review_record.spec_hash,
                 }
 
             (stage / "tests").mkdir()
@@ -435,6 +507,8 @@ class ProceduralSkillCompiler:
                     SkillVersionRecord(skill_id, version, report.package_hash),
                     expert_id=expert_id,
                     package_path=target,
+                    review_id=review_record.review_id if review_record else "",
+                    spec_hash=self.spec_fingerprint(spec),
                     lifecycle_status="REVIEWED",
                 )
                 registered = True
@@ -453,4 +527,6 @@ class ProceduralSkillCompiler:
         except Exception:
             if stage.exists():
                 shutil.rmtree(stage, ignore_errors=True)
+            if target.exists() and reviewed:
+                shutil.rmtree(target, ignore_errors=True)
             raise
