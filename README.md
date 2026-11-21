@@ -90,6 +90,8 @@
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 | [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
 | [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |
+| [视频采集管线](docs/ACQUISITION_PIPELINE.md) | YouTube 搜索、选片、下载、Drive 归档与证据提取接口 |
+| [Google Drive 授权配置](docs/GOOGLE_DRIVE_SETUP.md) | 官方 Drive API 的一次性 OAuth 授权与凭证管理 |
 | [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
 | [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 | [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |

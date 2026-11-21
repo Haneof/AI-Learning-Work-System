@@ -18,6 +18,9 @@ ENV/
 !.env.example
 *.pem
 *.key
+.secrets/
+google-drive-token.json
+*google-drive-token*.json
 
 # Models and generated data (never commit model weights or user source files)
 models/
