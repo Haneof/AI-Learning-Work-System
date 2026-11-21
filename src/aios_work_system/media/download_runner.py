@@ -100,13 +100,26 @@ class DownloadJobExecutor:
                 url=job.source_url,
                 destination_dir=Path(job.destination),
             )
+            def report_progress(progress: DownloadProgress) -> None:
+                self.repository.update_progress(
+                    job_id,
+                    bytes_downloaded=progress.bytes_downloaded,
+                    total_bytes=progress.total_bytes,
+                    speed_bytes_per_second=progress.speed_bytes_per_second,
+                    eta_seconds=progress.eta_seconds,
+                )
+
             if job.engine == "yt-dlp":
                 self.repository.transition(job_id, DownloadJobStatus.DOWNLOADING)
-                output_path = self.yt_dlp.download(request)
+                output_path = self.yt_dlp.download(
+                    request, progress_callback=report_progress
+                )
                 engine_name = self.yt_dlp.name
             elif job.engine == "aria2":
                 self.repository.transition(job_id, DownloadJobStatus.DOWNLOADING)
-                output_path = self.aria2.download(request)
+                output_path = self.aria2.download(
+                    request, progress_callback=report_progress
+                )
                 engine_name = self.aria2.name
             else:
                 raise ValueError(f"unsupported download engine: {job.engine}")
