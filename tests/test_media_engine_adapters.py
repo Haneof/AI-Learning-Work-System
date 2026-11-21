@@ -10,7 +10,6 @@ from aios_work_system.media.adapters import OCRSegment, TranscriptSegment
 from aios_work_system.media.adapters_faster_whisper import FasterWhisperASRAdapter
 from aios_work_system.media.adapters_paddleocr import PaddleOCRAdapter
 
-
 class FakeWhisperModel:
     def __init__(self):
         self.calls = []
