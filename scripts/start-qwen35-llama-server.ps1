@@ -42,9 +42,20 @@ $downloadUrl = "https://huggingface.co/$($model.Repo)/resolve/main/$($model.File
 
 New-Item -ItemType Directory -Path $modelDirectoryFull -Force | Out-Null
 
-if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf)) {
+$needsDownload = $true
+if (Test-Path -LiteralPath $modelPath -PathType Leaf) {
+    $existingHash = (Get-FileHash -LiteralPath $modelPath -Algorithm SHA256).Hash.ToLowerInvariant()
+    if ($existingHash -eq $model.Sha256) {
+        Write-Host "Verified model already exists; skipping download."
+        $needsDownload = $false
+    } else {
+        Write-Host "Existing model file is incomplete or has a different checksum; attempting resumable download."
+    }
+}
+
+if ($needsDownload) {
     if ($SkipDownload) {
-        throw "Model file not found and -SkipDownload was specified: $modelPath"
+        throw "Model file is missing or incomplete and -SkipDownload was specified: $modelPath"
     }
 
     $curl = Get-Command "curl.exe" -ErrorAction SilentlyContinue
@@ -53,7 +64,7 @@ if (-not (Test-Path -LiteralPath $modelPath -PathType Leaf)) {
     }
 
     Write-Host "Downloading $($model.Repo) / $($model.File)"
-    Write-Host "The model is several GB; the download is resumable."
+    Write-Host "The model is several GB; an interrupted partial download can be resumed by re-running this script."
     & $curl.Source --location --fail --retry 5 --retry-delay 2 --continue-at - --output $modelPath $downloadUrl
     if ($LASTEXITCODE -ne 0) {
         throw "Model download failed (curl exit code $LASTEXITCODE). Re-run the script to resume."
