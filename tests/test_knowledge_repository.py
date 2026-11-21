@@ -242,3 +242,27 @@ def test_new_repository_migrates_existing_segment_table(tmp_path):
 
     assert stored.modality == "text"
     assert stored.artifact_ref is None
+
+
+
+@pytest.mark.parametrize(
+    ("modality", "locator", "message"),
+    [
+        ("unknown", {"timestamp_ms": 1000}, "unsupported source evidence modality"),
+        ("video_frame", {"timestamp_ms": -1}, "non-negative integers"),
+        ("video_frame", {"start_ms": 10}, "require both"),
+        ("asr", {"start_ms": 10, "end_ms": 10}, "positive duration"),
+        ("video_frame", {}, "non-empty object"),
+    ],
+)
+def test_source_segment_rejects_invalid_modality_or_locator(
+    tmp_path, modality, locator, message
+):
+    repository = KnowledgeRepository(tmp_path / "knowledge.sqlite3")
+    with pytest.raises(ValueError, match=message):
+        repository.add_segment(
+            _segment(
+                modality=modality,
+                locator=locator,
+            )
+        )
