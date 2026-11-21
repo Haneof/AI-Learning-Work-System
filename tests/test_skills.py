@@ -11,7 +11,7 @@ from aios_work_system.skills.registry import (
     SkillVersionRegistry,
     get_clean_git_commit,
 )
-from aios_work_system.skills.sandbox import DockerSandboxRunner
+from aios_work_system.skills.sandbox import DockerSandboxRunner, SandboxUnavailableError
 from aios_work_system.skills.validator import validate_skill_package
 
 
@@ -226,14 +226,13 @@ def test_sandbox_run_records_result_after_validation(tmp_path, monkeypatch):
     write_valid_package(package)
     report = validate_skill_package(package)
     runner = DockerSandboxRunner()
-    monkeypatch.setattr(
-        "aios_work_system.skills.sandbox.subprocess.run",
-        lambda *_args, **_kwargs: SimpleNamespace(
-            returncode=0,
-            stdout="test passed",
-            stderr="",
-        ),
-    )
+
+    def fake_run(command, **_kwargs):
+        if command[1] == "info":
+            return SimpleNamespace(returncode=0, stdout="Docker", stderr="")
+        return SimpleNamespace(returncode=0, stdout="test passed", stderr="")
+
+    monkeypatch.setattr("aios_work_system.skills.sandbox.subprocess.run", fake_run)
 
     result = runner.run(
         package,
@@ -257,7 +256,9 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
 
     def fake_run(command, **_kwargs):
         commands.append(command)
-        if len(commands) == 1:
+        if command[1] == "info":
+            return SimpleNamespace(returncode=0, stdout="Docker", stderr="")
+        if command[1] == "run":
             raise subprocess.TimeoutExpired(command, timeout=1, output="partial")
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -271,4 +272,25 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
     )
 
     assert result.timed_out
-    assert commands[1][1:3] == ["rm", "--force"]
+    cleanup_commands = [command for command in commands if command[1:3] == ["rm", "--force"]]
+    assert len(cleanup_commands) == 1
+
+
+def test_sandbox_reports_unavailable_when_docker_cli_is_missing(tmp_path, monkeypatch):
+    package = tmp_path / "valid"
+    package.mkdir()
+    write_valid_package(package)
+    report = validate_skill_package(package)
+
+    def missing_docker(*_args, **_kwargs):
+        raise FileNotFoundError("docker")
+
+    monkeypatch.setattr("aios_work_system.skills.sandbox.subprocess.run", missing_docker)
+
+    with pytest.raises(SandboxUnavailableError, match="Docker is not available"):
+        DockerSandboxRunner().run(
+            package,
+            "scripts/run.py",
+            "python@sha256:" + "a" * 64,
+            package_hash=report.package_hash,
+        )
