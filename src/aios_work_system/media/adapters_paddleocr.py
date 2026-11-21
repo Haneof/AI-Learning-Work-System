@@ -5,9 +5,10 @@ from __future__ import annotations
 import json
 import math
 import tempfile
+from collections.abc import Callable
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 
 from aios_work_system.media.adapters import OCRSegment
 
