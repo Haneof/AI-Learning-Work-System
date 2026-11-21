@@ -218,7 +218,10 @@ def compiled_pvd_skill_factory(tmp_path):
         manifest = {
             "id": "pvd.pilot.product-operations",
             "version": "1.0.0",
-            "purpose": "Make evidence-based product-operation decisions without bypassing safety gates.",
+            "purpose": (
+                "Make evidence-based product-operation decisions "
+                "without bypassing safety gates."
+            ),
             "conditions": {
                 "applicable_when": [
                     "Product and supplier information is available for review."
@@ -242,12 +245,18 @@ def compiled_pvd_skill_factory(tmp_path):
                 ],
             },
             "counterexamples": [
-                "A lifestyle image can look like a supplier photo but is not an actual product photo.",
+                (
+                    "A lifestyle image can look like a supplier photo "
+                    "but is not an actual product photo."
+                ),
                 "A supplier rating of 4.49 looks close to 4.5 but does not meet the threshold.",
             ],
             "recovery": [
                 "Stop when required facts are missing and request the missing evidence.",
-                "Preserve the no-list/no-order decision until a human reviews the updated evidence.",
+                (
+                    "Preserve the no-list/no-order decision until a human "
+                    "reviews the updated evidence."
+                ),
             ],
             "scope": "PVD pilot tasks; declarative acceptance only.",
             "inputs": {"task_context": "object"},
