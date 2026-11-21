@@ -85,6 +85,7 @@ class FakeOCR:
                 timestamp_ms=timestamp_ms,
                 text=f"Screen label at {timestamp_ms}ms",
                 bounding_box=[0.1, 0.2, 0.8, 0.9],
+                confidence=0.93,
             )
         ]
 
