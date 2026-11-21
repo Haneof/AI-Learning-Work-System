@@ -307,9 +307,7 @@ class BilibiliPlatformAdapter:
                         detail = "blocked by Bilibili anti-bot/risk control"
                     else:
                         detail = f"HTTP {status}"
-                    raise AcquisitionPlatformError(
-                        f"Bilibili {operation} {detail} (HTTP {status})"
-                    )
+                    raise AcquisitionPlatformError(f"Bilibili {operation} {detail} (HTTP {status})")
                 raw_body = response.read()
         except HTTPError as exc:
             if exc.code == 429:
@@ -324,16 +322,12 @@ class BilibiliPlatformAdapter:
                 f"Bilibili {operation} request failed: {exc.reason}"
             ) from exc
         except OSError as exc:
-            raise AcquisitionPlatformError(
-                f"Bilibili {operation} request failed: {exc}"
-            ) from exc
+            raise AcquisitionPlatformError(f"Bilibili {operation} request failed: {exc}") from exc
 
         try:
             payload = json.loads(raw_body.decode("utf-8"))
         except (AttributeError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise AcquisitionPlatformError(
-                f"Bilibili {operation} returned invalid JSON"
-            ) from exc
+            raise AcquisitionPlatformError(f"Bilibili {operation} returned invalid JSON") from exc
         if not isinstance(payload, dict):
             raise AcquisitionPlatformError(
                 f"Bilibili {operation} returned an invalid response object"
