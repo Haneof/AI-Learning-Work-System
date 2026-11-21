@@ -122,6 +122,52 @@ class PaddleOCRAdapter:
             raise ValueError("PaddleOCR result JSON has an invalid res field")
         return inner
 
+    @staticmethod
+    def _normalize_box(raw_box: Any) -> list[float] | None:
+        try:
+            values = raw_box.tolist()
+        except AttributeError:
+            values = raw_box
+        if not isinstance(values, (list, tuple)) or len(values) != 4:
+            return None
+
+        try:
+            if all(
+                isinstance(value, (int, float))
+                and not isinstance(value, bool)
+                and math.isfinite(value)
+                for value in values
+            ):
+                return [float(value) for value in values]
+
+            points: list[tuple[float, float]] = []
+            for point in values:
+                try:
+                    coordinates = point.tolist()
+                except AttributeError:
+                    coordinates = point
+                if (
+                    not isinstance(coordinates, (list, tuple))
+                    or len(coordinates) != 2
+                    or any(
+                        isinstance(value, bool)
+                        or not isinstance(value, (int, float))
+                        or not math.isfinite(value)
+                        for value in coordinates
+                    )
+                ):
+                    return None
+                points.append((float(coordinates[0]), float(coordinates[1])))
+        except (TypeError, ValueError, OverflowError):
+            return None
+
+        return [
+            min(point[0] for point in points),
+            min(point[1] for point in points),
+            max(point[0] for point in points),
+            max(point[1] for point in points),
+        ]
+
     def recognize(self, image_path: Path, timestamp_ms: int) -> list[OCRSegment]:
         source = Path(image_path).expanduser().resolve(strict=True)
         if not source.is_file():
@@ -168,36 +214,11 @@ class PaddleOCRAdapter:
                 if score is not None and score < self.min_confidence:
                     continue
 
-                bbox: list[float] | None = None
-                if index < len(boxes):
-                    raw_box = boxes[index]
-                    try:
-                        values = raw_box.tolist()
-                    except AttributeError:
-                        values = raw_box
-                    try:
-                        if len(values) == 4 and all(
-                            math.isfinite(float(value)) for value in values
-                        ):
-                            bbox = [float(value) for value in values]
-                        elif len(values) == 4 and all(
-                            hasattr(point, "__len__") and len(point) == 2
-                            for point in values
-                        ):
-                            coordinates = [
-                                float(coordinate)
-                                for point in values
-                                for coordinate in point
-                            ]
-                            if all(math.isfinite(value) for value in coordinates):
-                                bbox = [
-                                    min(coordinates[0::2]),
-                                    min(coordinates[1::2]),
-                                    max(coordinates[0::2]),
-                                    max(coordinates[1::2]),
-                                ]
-                    except (TypeError, ValueError, OverflowError):
-                        bbox = None
+                bbox = (
+                    self._normalize_box(boxes[index])
+                    if index < len(boxes)
+                    else None
+                )
 
                 output.append(
                     OCRSegment(
