@@ -36,6 +36,7 @@ jobs:
           src/aios_work_system/orchestration/__init__.py
           src/aios_work_system/orchestration/repository.py
           src/aios_work_system/skills/registry.py
+          src/aios_work_system/phase0.py
           tests/test_bilibili_adapter.py
           tests/test_orchestration_repository.py
           tests/test_skills.py
