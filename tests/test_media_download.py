@@ -237,7 +237,7 @@ def test_aria2_streams_progress_over_private_loopback_rpc(tmp_path):
     result = Aria2Adapter(
         process_factory=process_factory,
         rpc_opener=rpc_opener,
-        progress_poll_interval=0.01,
+        progress_poll_interval=0.5,
     ).download(
         DownloadRequest(
             "https://example.com/archive.bin",
