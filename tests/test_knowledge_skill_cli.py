@@ -42,6 +42,19 @@ def test_knowledge_and_skill_cli_commands_parse_expected_arguments():
             "Checked evidence.",
         ]
     )
+    skill_review = parser.parse_args(
+        [
+            "skill-review",
+            "--input-file",
+            "procedure.json",
+            "--reviewer-id",
+            "human-reviewer",
+            "--decision",
+            "APPROVED",
+            "--note",
+            "Checked the exact frames.",
+        ]
+    )
     compile_args = parser.parse_args(
         [
             "skill-compile",
@@ -56,6 +69,8 @@ def test_knowledge_and_skill_cli_commands_parse_expected_arguments():
     assert index.run_id == "analysis-1"
     assert add.command == "knowledge-add"
     assert review.decision == "APPROVED"
+    assert skill_review.command == "skill-review"
+    assert skill_review.reviewer_id == "human-reviewer"
     assert compile_args.command == "skill-compile"
     assert compile_args.output == "packages/skill"
 
