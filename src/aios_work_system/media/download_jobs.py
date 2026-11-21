@@ -307,7 +307,8 @@ class DownloadJobRepository:
             cursor = connection.execute(
                 """
                 UPDATE download_jobs
-                SET bytes_downloaded=?, total_bytes=COALESCE(?, total_bytes), speed_bytes_per_second=?,
+                SET bytes_downloaded=?, total_bytes=COALESCE(?, total_bytes),
+                    speed_bytes_per_second=?,
                     eta_seconds=?, updated_at=?
                 WHERE job_id=? AND status=?
                 """,
