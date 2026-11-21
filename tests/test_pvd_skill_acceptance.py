@@ -219,13 +219,10 @@ def compiled_pvd_skill_factory(tmp_path):
             "id": "pvd.pilot.product-operations",
             "version": "1.0.0",
             "purpose": (
-                "Make evidence-based product-operation decisions "
-                "without bypassing safety gates."
+                "Make evidence-based product-operation decisions without bypassing safety gates."
             ),
             "conditions": {
-                "applicable_when": [
-                    "Product and supplier information is available for review."
-                ],
+                "applicable_when": ["Product and supplier information is available for review."],
                 "not_applicable_when": [
                     "Required facts are missing or a decision needs external authorization."
                 ],

@@ -56,9 +56,7 @@ def write_valid_package(root):
     (root / "scripts").mkdir(parents=True)
     (root / "tests").mkdir()
     _write_skill_sections(root)
-    (root / "manifest.json").write_text(
-        json.dumps(_knowledge_manifest()), encoding="utf-8"
-    )
+    (root / "manifest.json").write_text(json.dumps(_knowledge_manifest()), encoding="utf-8")
     (root / "procedure.json").write_text(
         json.dumps(
             {

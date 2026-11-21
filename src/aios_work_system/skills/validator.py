@@ -163,9 +163,7 @@ def _validate_knowledge_sections(manifest: dict[str, object]) -> list[str]:
             )
         )
 
-    errors.extend(
-        _validate_string_array(manifest.get("judgement_criteria"), "judgement_criteria")
-    )
+    errors.extend(_validate_string_array(manifest.get("judgement_criteria"), "judgement_criteria"))
 
     experience = manifest.get("experience")
     if not isinstance(experience, dict):

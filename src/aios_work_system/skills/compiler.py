@@ -161,8 +161,7 @@ class ProceduralSkillCompiler:
         if not isinstance(value, (list, tuple)) or not value:
             raise ValueError(f"{label} must be a non-empty string array")
         return [
-            cls._non_empty_string(item, f"{label}[{index}]")
-            for index, item in enumerate(value)
+            cls._non_empty_string(item, f"{label}[{index}]") for index, item in enumerate(value)
         ]
 
     @classmethod
@@ -179,9 +178,7 @@ class ProceduralSkillCompiler:
                 "conditions.not_applicable_when",
             ),
         }
-        judgement_criteria = cls._string_list(
-            spec.judgement_criteria, "judgement_criteria"
-        )
+        judgement_criteria = cls._string_list(spec.judgement_criteria, "judgement_criteria")
         if not isinstance(spec.experience, dict):
             raise ValueError("experience must be an object")
         experience = {
@@ -359,9 +356,7 @@ class ProceduralSkillCompiler:
             step = dict(raw)
             step_id = raw.get("step_id")
             if step_id is not None:
-                step_id = self._non_empty_string(
-                    step_id, f"suggested_steps[{index}].step_id"
-                )
+                step_id = self._non_empty_string(step_id, f"suggested_steps[{index}].step_id")
                 if step_id in seen_step_ids:
                     raise ValueError(f"duplicate suggested step_id: {step_id}")
                 seen_step_ids.add(step_id)
@@ -379,9 +374,7 @@ class ProceduralSkillCompiler:
 
             raw_refs = raw.get("evidence_refs", [])
             if not isinstance(raw_refs, list):
-                raise ValueError(
-                    f"suggested_steps[{index}].evidence_refs must be an array"
-                )
+                raise ValueError(f"suggested_steps[{index}].evidence_refs must be an array")
             validated_refs = [
                 self._validate_evidence_ref(
                     expert_id=spec.expert_id,

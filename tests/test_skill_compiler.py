@@ -116,15 +116,11 @@ def _step(index, *, visual=False, status="frame_verified"):
 
 def _spec(*, annotation_status="unreviewed", suggested_steps=None, evidence_refs=None):
     selected_steps = (
-        list(suggested_steps)
-        if suggested_steps is not None
-        else [_step(1, visual=False)]
+        list(suggested_steps) if suggested_steps is not None else [_step(1, visual=False)]
     )
     if evidence_refs is None:
         evidence_refs = [
-            reference
-            for step in selected_steps
-            for reference in step.get("evidence_refs", [])
+            reference for step in selected_steps for reference in step.get("evidence_refs", [])
         ]
     reviewed = annotation_status == "reviewed"
     return ProcedureSkillSpec(
@@ -148,9 +144,7 @@ def _spec(*, annotation_status="unreviewed", suggested_steps=None, evidence_refs
             "success": ["Confirm the resulting state after any change."],
             "failure": ["A hidden or ambiguous control is not proof of success."],
         },
-        counterexamples=(
-            "A click animation is not evidence that the setting changed.",
-        ),
+        counterexamples=("A click animation is not evidence that the setting changed.",),
         recovery=(
             "Stop when the observed state differs from the expected state.",
             "Return to a known state and reassess before trying another approach.",
