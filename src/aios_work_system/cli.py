@@ -133,7 +133,6 @@ def build_parser() -> argparse.ArgumentParser:
     analysis_parser.add_argument(
         "--ocr-model-tier", choices=("tiny", "small", "medium"), default="small"
     )
-    analysis_parser.add_argument("--ocr-language", default="ch")
     analysis_parser.add_argument("--ocr-device", default="cpu")
     analysis_parser.add_argument("--ocr-min-confidence", type=float, default=0.0)
 
@@ -364,7 +363,7 @@ def _run_media_analyze(args: argparse.Namespace) -> None:
         from aios_work_system.media import PaddleOCRAdapter
 
         ocr_adapter = PaddleOCRAdapter(
-            lang=args.ocr_language,
+            lang=None,
             device=args.ocr_device,
             model_version="PP-OCRv6",
             text_detection_model_name=f"PP-OCRv6_{args.ocr_model_tier}_det",
