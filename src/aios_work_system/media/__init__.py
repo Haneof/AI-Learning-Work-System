@@ -9,6 +9,11 @@ from aios_work_system.media.download import (
     DownloadVerifier,
     YtDlpAdapter,
 )
+from aios_work_system.media.download_jobs import (
+    DownloadJob,
+    DownloadJobRepository,
+    DownloadJobStatus,
+)
 from aios_work_system.media.ffmpeg import FFmpegProcessor, MediaProcessingError, NoAudioStreamError
 from aios_work_system.media.source import SegmentRecord, SourceManifest, register_source
 from aios_work_system.media.tasks import MediaTaskError, TaskJournal
@@ -16,6 +21,9 @@ from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 __all__ = [
     "Aria2Adapter",
     "DownloadError",
+    "DownloadJob",
+    "DownloadJobRepository",
+    "DownloadJobStatus",
     "DownloadRequest",
     "DownloadResult",
     "DownloadService",
