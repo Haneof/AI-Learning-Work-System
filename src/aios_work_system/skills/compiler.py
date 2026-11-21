@@ -158,7 +158,11 @@ class ProceduralSkillCompiler:
                     "review metadata cannot be supplied unless annotation_status is reviewed"
                 )
             return
-        if spec.review_id is None or not isinstance(spec.review_id, str) or not spec.review_id.strip():
+        if (
+            spec.review_id is None
+            or not isinstance(spec.review_id, str)
+            or not spec.review_id.strip()
+        ):
             raise ValueError("reviewed skill requires a persisted review_id")
         if spec.reviewer_id is not None or spec.reviewed_at is not None:
             raise ValueError(
