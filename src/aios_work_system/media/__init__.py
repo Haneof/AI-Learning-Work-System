@@ -14,7 +14,7 @@ from aios_work_system.media.download_runner import DownloadJobExecutor\nfrom aio
     DownloadJobRepository,
     DownloadJobStatus,
 )
-from aios_work_system.media.ffmpeg import FFmpegProcessor, MediaProcessingError, NoAudioStreamError
+from aios_work_system.media.download_runner import DownloadJobExecutor\nfrom aios_work_system.media.ffmpeg import FFmpegProcessor, MediaProcessingError, NoAudioStreamError
 from aios_work_system.media.source import SegmentRecord, SourceManifest, register_source
 from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 
