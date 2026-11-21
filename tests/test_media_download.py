@@ -192,7 +192,7 @@ def test_ytdlp_streams_normalized_progress_and_uses_explicit_output_marker(tmp_p
         )
     ]
     assert "--progress-template" in commands[0]
-    assert "__AIOS_OUTPUT__%(filepath)s" in commands[0]
+    assert "after_move:__AIOS_OUTPUT__%(filepath)s" in commands[0]
 
 
 def test_aria2_streams_progress_over_private_loopback_rpc(tmp_path):
