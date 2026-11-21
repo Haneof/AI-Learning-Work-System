@@ -220,6 +220,41 @@ class DownloadJobRepository:
             rows = connection.execute(query, values).fetchall()
         return [self._from_row(row) for row in rows]
 
+
+    def get_active_for_candidate(self, candidate_id: str) -> DownloadJob | None:
+        """Return the candidate's current non-terminal download job, if any."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM download_jobs
+                WHERE candidate_id=?
+                  AND status NOT IN (?, ?, ?)
+                ORDER BY created_at DESC, job_id DESC
+                LIMIT 1
+                """,
+                (
+                    candidate_id,
+                    DownloadJobStatus.COMPLETED.value,
+                    DownloadJobStatus.FAILED.value,
+                    DownloadJobStatus.CANCELLED.value,
+                ),
+            ).fetchone()
+        return self._from_row(row) if row is not None else None
+
+    def get_latest_for_candidate(self, candidate_id: str) -> DownloadJob | None:
+        """Return the most recent job for a candidate, including terminal jobs."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT * FROM download_jobs
+                WHERE candidate_id=?
+                ORDER BY created_at DESC, job_id DESC
+                LIMIT 1
+                """,
+                (candidate_id,),
+            ).fetchone()
+        return self._from_row(row) if row is not None else None
+
     def transition(
         self,
         job_id: str,
