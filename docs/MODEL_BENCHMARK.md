@@ -41,9 +41,9 @@ The script binds only to loopback. The default WinGet installation is a convenie
 | Candidate | GGUF source | File | Approx. download size | SHA-256 |
 |---|---|---|---:|---|
 | 4B Q4_K_M | `ggml-org/Qwen3.5-4B-GGUF` | `Qwen3.5-4B-Q4_K_M.gguf` | 3.03 GB | `217002fa8008ef4fc6d548353a3aebef055a96e6ff8e0e2c0953ef8254a89c14` |
-| 9B Q4_K_M | `gguf/Qwen3.5-9B-GGUF` | `qwen3.5-9b-Q4_K_M.gguf` | 6.17 GB | `d784ce9eda1a5a7b51e8f705a9e6310844bf4f173654d115823c775fdea56d43` |
+| 9B Q4_K_M | `SoAIHQ/Qwen3.5-9B-GGUF` | `Qwen3.5-9B-Q4_K_M.gguf` | 5.8 GB | `ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93` |
 
-The 8 GB RTX 3070 Laptop cannot be assumed to hold the 9B weights plus KV cache entirely in VRAM. The launcher uses llama.cpp's automatic GPU-layer fit and a conservative 4K context by default; some layers may run on system RAM/CPU. Actual speed and peak resource use must be measured on the target machine. Change `-ContextLength` only as part of a recorded benchmark configuration.
+The 4B GGUF repository declares Apache-2.0. The 9B repackaging declares the original Qwen model's Apache-2.0 license and documents the source revision/conversion provenance; see its model card and published checksum manifest.\n\nThe 8 GB RTX 3070 Laptop cannot be assumed to hold the 9B weights plus KV cache entirely in VRAM. The launcher uses llama.cpp's automatic GPU-layer fit and a conservative 4K context by default; some layers may run on system RAM/CPU. Actual speed and peak resource use must be measured on the target machine. Change `-ContextLength` only as part of a recorded benchmark configuration.
 
 The launcher downloads text GGUF weights only. It does not download a multimodal projection (`mmproj`) file, so this integration benchmarks text prompts; vision capability remains untested.
 
