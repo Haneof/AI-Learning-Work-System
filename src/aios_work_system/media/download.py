@@ -15,17 +15,17 @@ from queue import Empty, Queue
 from typing import Any, Protocol
 from urllib.error import URLError
 from urllib.parse import unquote, urlparse
-from urllib.request import Request as UrlRequest, urlopen
+from urllib.request import Request as UrlRequest
+from urllib.request import urlopen
 
 from aios_work_system.media.download_progress import (
-    DownloadProgress,
     YTDLP_PROGRESS_PREFIX,
+    DownloadProgress,
     parse_aria2_status,
     parse_ytdlp_progress_line,
 )
 from aios_work_system.media.ffmpeg import FFmpegProcessor
 from aios_work_system.media.source import sha256_file
-
 
 ProgressCallback = Callable[[DownloadProgress], None]
 
