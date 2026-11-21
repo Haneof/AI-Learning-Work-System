@@ -20,6 +20,10 @@ jobs:
           python-version: "3.12"
       - name: Install pinned Ruff
         run: python -m pip install ruff==0.17.6
+      - name: Run formatter and print the exact patch for review
+        run: |
+          ruff format tests/test_pvd_skill_acceptance.py
+          git diff -- tests/test_pvd_skill_acceptance.py
       - name: Check only this PR's new Python file
         run: ruff format --check tests/test_pvd_skill_acceptance.py
 
