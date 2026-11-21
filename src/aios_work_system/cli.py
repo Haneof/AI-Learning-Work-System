@@ -50,6 +50,48 @@ def build_parser() -> argparse.ArgumentParser:
         "--database", default="artifacts/acquisition/candidates.sqlite3"
     )
 
+
+    review_parser = subparsers.add_parser(
+        "discover-review", help="list discovered candidates for curation"
+    )
+    review_parser.add_argument("--batch-id")
+    review_parser.add_argument("--status")
+    review_parser.add_argument("--limit", type=int, default=20)
+    review_parser.add_argument(
+        "--database", default="artifacts/acquisition/candidates.sqlite3"
+    )
+
+    select_parser = subparsers.add_parser(
+        "discover-select", help="mark one discovered candidate as selected"
+    )
+    select_parser.add_argument("--candidate-id", required=True)
+    select_parser.add_argument(
+        "--database", default="artifacts/acquisition/candidates.sqlite3"
+    )
+
+    download_parser = subparsers.add_parser(
+        "discover-download", help="download one selected candidate and register its asset"
+    )
+    download_parser.add_argument("--candidate-id", required=True)
+    download_parser.add_argument("--engine", choices=("yt-dlp", "aria2"), default="yt-dlp")
+    download_parser.add_argument(
+        "--candidate-database", default="artifacts/acquisition/candidates.sqlite3"
+    )
+    download_parser.add_argument(
+        "--jobs-database", default="artifacts/acquisition/download_jobs.sqlite3"
+    )
+    download_parser.add_argument(
+        "--assets-database", default="artifacts/acquisition/assets.sqlite3"
+    )
+    download_parser.add_argument(
+        "--manifest-dir", default="artifacts/acquisition/asset_manifests"
+    )
+    download_parser.add_argument(
+        "--destination", default="artifacts/media/downloads"
+    )
+    download_parser.add_argument("--max-concurrent-jobs", type=int, default=2)
+    download_parser.add_argument("--max-retries", type=int, default=2)
+
     demo_parser = subparsers.add_parser(
         "phase0-demo",
         help="run the deterministic Phase 0 source-to-skill integration fixture",
@@ -137,6 +179,117 @@ def _run_discovery_search(args: argparse.Namespace) -> None:
         print("Search completed but returned no candidates.", file=sys.stderr)
 
 
+
+def _run_discovery_review(args: argparse.Namespace) -> None:
+    from aios_work_system.acquisition import CandidateRepository, CandidateStatus
+
+    status = CandidateStatus(args.status) if args.status else None
+    repository = CandidateRepository(args.database)
+    rows = repository.list_candidates(
+        batch_id=args.batch_id,
+        status=status,
+        limit=args.limit,
+    )
+    print(
+        json.dumps(
+            {
+                "batch_id": args.batch_id,
+                "candidate_count": len(rows),
+                "candidates": [
+                    {
+                        "candidate_id": candidate.candidate_id,
+                        "platform": candidate.platform,
+                        "title": candidate.title,
+                        "author": candidate.author_name,
+                        "url": candidate.url,
+                        "duration_seconds": candidate.duration_seconds,
+                        "status": candidate_status.value,
+                        "reason": reason,
+                    }
+                    for candidate, candidate_status, reason in rows
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def _run_discovery_select(args: argparse.Namespace) -> None:
+    from aios_work_system.acquisition import CandidateRepository, CandidateStatus
+
+    repository = CandidateRepository(args.database)
+    candidate, status, _reason = repository.get(args.candidate_id)
+    if status in {CandidateStatus.DISCOVERED, CandidateStatus.REVIEW_PENDING}:
+        repository.transition(candidate.candidate_id, CandidateStatus.SELECTED)
+        status = CandidateStatus.SELECTED
+    elif status != CandidateStatus.SELECTED:
+        raise ValueError(
+            f"candidate cannot be selected from current state: {status}"
+        )
+    print(
+        json.dumps(
+            {
+                "candidate_id": candidate.candidate_id,
+                "title": candidate.title,
+                "status": status.value,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def _run_discovery_download(args: argparse.Namespace) -> None:
+    from aios_work_system.acquisition import (
+        AcquisitionDownloadPipeline,
+        CandidateRepository,
+    )
+    from aios_work_system.media import (
+        DownloadJobRepository,
+        MediaAssetRepository,
+    )
+
+    pipeline = AcquisitionDownloadPipeline(
+        candidate_repository=CandidateRepository(args.candidate_database),
+        job_repository=DownloadJobRepository(args.jobs_database),
+        asset_repository=MediaAssetRepository(
+            args.assets_database,
+            args.manifest_dir,
+        ),
+        destination_root=args.destination,
+        max_concurrent_jobs=args.max_concurrent_jobs,
+        max_retries=args.max_retries,
+    )
+    try:
+        job = pipeline.run_selected(args.candidate_id, engine=args.engine)
+        asset = (
+            pipeline.assets.get(job.asset_id)
+            if job.asset_id is not None
+            else None
+        )
+        print(
+            json.dumps(
+                {
+                    "candidate_id": job.candidate_id,
+                    "job_id": job.job_id,
+                    "status": job.status.value,
+                    "engine": job.engine,
+                    "bytes_downloaded": job.bytes_downloaded,
+                    "total_bytes": job.total_bytes,
+                    "asset_id": job.asset_id,
+                    "sha256": job.sha256,
+                    "asset_manifest": asset.manifest_path if asset else None,
+                    "error": job.error,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
+    finally:
+        pipeline.shutdown()
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "serve":
@@ -145,6 +298,12 @@ def main() -> None:
         _run_benchmark(args)
     elif args.command == "discover-search":
         _run_discovery_search(args)
+    elif args.command == "discover-review":
+        _run_discovery_review(args)
+    elif args.command == "discover-select":
+        _run_discovery_select(args)
+    elif args.command == "discover-download":
+        _run_discovery_download(args)
     elif args.command == "phase0-demo":
         from aios_work_system.phase0 import run_phase0_demo
 
