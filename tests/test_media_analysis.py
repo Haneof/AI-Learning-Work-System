@@ -265,3 +265,149 @@ def test_pipeline_rejects_invalid_asr_segments(tmp_path, segment):
 
     with pytest.raises(ValueError, match="invalid transcript segment"):
         pipeline.analyze(asset_id)
+
+
+
+def test_analysis_run_claim_prevents_duplicate_worker_execution_and_recovers(tmp_path):
+    repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
+    identity = {
+        "asset_id": "asset-1",
+        "source_sha256": "a" * 64,
+        "config_hash": "b" * 64,
+        "settings": {"pipeline_version": 1},
+    }
+
+    run_id, should_execute = repository.start_or_resume(**identity)
+    duplicate_id, duplicate_should_execute = repository.start_or_resume(**identity)
+
+    assert duplicate_id == run_id
+    assert should_execute is True
+    assert duplicate_should_execute is False
+    assert repository.get(run_id).status == AnalysisStatus.RUNNING
+
+    assert repository.recover_interrupted(asset_id="asset-1") == 1
+    recovered_id, retry_should_execute = repository.start_or_resume(**identity)
+
+    assert recovered_id == run_id
+    assert retry_should_execute is True
+    assert repository.get(run_id).attempts == 2
+
+
+def test_analysis_pipeline_keeps_frame_limit_when_duration_is_unknown(tmp_path):
+    assets, asset_id, _source = _registered_video(tmp_path)
+    repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
+    ffmpeg = FakeFFmpeg(duration=None)
+    pipeline = MediaAnalysisPipeline(
+        assets,
+        repository,
+        tmp_path / "derived",
+        ffmpeg=ffmpeg,
+        frame_interval_seconds=5.0,
+        max_frames=3,
+    )
+
+    result = pipeline.analyze(asset_id)
+
+    assert result.status == AnalysisStatus.PARTIAL
+    assert result.duration_seconds is None
+    assert ffmpeg.last_interval == 5.0
+    assert ffmpeg.last_max_frames == 3
+
+
+def test_pipeline_rejects_ocr_timestamp_beyond_video_duration(tmp_path):
+    assets, asset_id, _source = _registered_video(tmp_path)
+    repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
+
+    class OutOfRangeOCR:
+        name = "out-of-range-ocr"
+        version = "1"
+
+        def recognize(self, image_path, timestamp_ms):
+            return [OCRSegment(timestamp_ms=600_001, text="outside")]
+
+    pipeline = MediaAnalysisPipeline(
+        assets,
+        repository,
+        tmp_path / "derived",
+        ffmpeg=FakeFFmpeg(duration=600.0),
+        asr_adapter=FakeASR(),
+        ocr_adapter=OutOfRangeOCR(),
+    )
+
+    with pytest.raises(ValueError, match="beyond media duration"):
+        pipeline.analyze(asset_id)
+
+
+def test_pipeline_cleans_partial_frame_outputs_before_retry(tmp_path):
+    assets, asset_id, _source = _registered_video(tmp_path)
+    repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
+    asr = FakeASR(fail_once=True)
+
+    class StaleFrameFFmpeg(FakeFFmpeg):
+        def extract_frames(self, source, output_dir, interval_seconds=5.0, max_frames=None):
+            frames = super().extract_frames(
+                source,
+                output_dir,
+                interval_seconds=interval_seconds,
+                max_frames=max_frames,
+            )
+            if self.frame_calls == 1:
+                stale = output_dir / "frame_999999.jpg"
+                stale.write_bytes(b"stale frame from failed attempt")
+            return frames
+
+    ffmpeg = StaleFrameFFmpeg()
+    pipeline = MediaAnalysisPipeline(
+        assets,
+        repository,
+        tmp_path / "derived",
+        ffmpeg=ffmpeg,
+        asr_adapter=asr,
+        ocr_adapter=FakeOCR(),
+    )
+
+    with pytest.raises(RuntimeError, match="temporary ASR service error"):
+        pipeline.analyze(asset_id)
+    retried = pipeline.analyze(asset_id)
+
+    assert retried.status == AnalysisStatus.COMPLETED
+    assert len(retried.frame_paths) == 2
+    assert all("999999" not in path.name for path in retried.frame_paths)
+
+
+@pytest.mark.parametrize(
+    "bounding_box",
+    [
+        "bad",
+        [0.1, 0.2, float("nan"), 0.9],
+        [0.1, 0.2, True, 0.9],
+    ],
+)
+def test_pipeline_rejects_invalid_ocr_bounding_boxes(tmp_path, bounding_box):
+    assets, asset_id, _source = _registered_video(tmp_path)
+    repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
+
+    class InvalidBoxOCR:
+        name = "invalid-box-ocr"
+        version = "1"
+
+        def recognize(self, image_path, timestamp_ms):
+            return [
+                OCRSegment(
+                    timestamp_ms=timestamp_ms,
+                    text="invalid box",
+                    bounding_box=bounding_box,
+                )
+            ]
+
+    pipeline = MediaAnalysisPipeline(
+        assets,
+        repository,
+        tmp_path / "derived",
+        ffmpeg=FakeFFmpeg(),
+        asr_adapter=FakeASR(),
+        ocr_adapter=InvalidBoxOCR(),
+    )
+
+    with pytest.raises(ValueError, match="invalid bounding box"):
+        pipeline.analyze(asset_id)
