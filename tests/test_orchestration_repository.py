@@ -37,9 +37,9 @@ def test_task_audit_and_experience_rows_are_expert_isolated(tmp_path):
 
     assert [row.task_id for row in repository.list_task_runs("expert-a")] == [task_a.task_id]
     assert [row.audit_id for row in repository.list_audit_logs("expert-a")] == [audit_a.audit_id]
-    assert [
-        row.experience_id for row in repository.list_experiences("expert-a")
-    ] == [experience_a.experience_id]
+    assert [row.experience_id for row in repository.list_experiences("expert-a")] == [
+        experience_a.experience_id
+    ]
 
     with pytest.raises(PermissionError, match="another expert"):
         repository.get_task_run(task_b.task_id, "expert-a")
