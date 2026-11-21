@@ -28,7 +28,7 @@ class PaddleOCRAdapter:
     def __init__(
         self,
         *,
-        lang: str = "ch",
+        lang: str | None = "ch",
         device: str = "cpu",
         model_version: str = "PP-OCRv6",
         text_detection_model_name: str | None = None,
@@ -39,8 +39,14 @@ class PaddleOCRAdapter:
         ocr_factory: Callable[..., Any] | None = None,
         package_version: str | None = None,
     ) -> None:
-        if not lang.strip():
-            raise ValueError("lang must not be empty")
+        if lang is not None and not lang.strip():
+            raise ValueError("lang must be None or a non-empty language code")
+        if (
+            text_detection_model_name is None
+            and text_recognition_model_name is None
+            and lang is None
+        ):
+            raise ValueError("lang is required when default OCR models are used")
         if not device.strip():
             raise ValueError("device must not be empty")
         if model_version not in {"PP-OCRv6", "PP-OCRv5", "PP-OCRv4", "PP-OCRv3"}:
@@ -84,7 +90,11 @@ class PaddleOCRAdapter:
     @property
     def config(self) -> dict[str, Any]:
         return {
-            "lang": self.lang,
+            "lang": (
+                self.lang
+                if self.text_detection_model_name is None
+                else None
+            ),
             "device": self.device,
             "model_version": self.model_version,
             "text_detection_model_name": self.text_detection_model_name,
