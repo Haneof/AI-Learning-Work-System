@@ -175,9 +175,7 @@ def summarize_dom(html: str) -> str:
     ]
     if not summary:
         return "No semantic or interactive DOM elements were found."
-    return json.dumps(summary, ensure_ascii=False, separators=(",", ":"))[
-        :_MAX_DOM_SUMMARY_CHARS
-    ]
+    return json.dumps(summary, ensure_ascii=False, separators=(",", ":"))[:_MAX_DOM_SUMMARY_CHARS]
 
 
 def _summarize_accessibility(value: object) -> str:
