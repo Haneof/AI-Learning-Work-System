@@ -1,6 +1,6 @@
 # Download Job Lifecycle
 
-Status: implemented persistence and lifecycle contract; process scheduler and engine event adapters remain pending.
+Status: implemented persistent jobs, bounded execution, and normalized live engine progress; process pause/resume/cancel and real HTTP Range integration remain pending.
 
 ## Scope
 
@@ -10,7 +10,7 @@ The acquisition stack uses existing engines rather than reimplementing media pro
 - `aria2c`: ordinary HTTP(S) files, multi-connection transfers and continuation when supported by the server.
 - `ffprobe`: optional media-stream validation after download.
 
-`DownloadJobRepository` persists job metadata and enforces the state machine. `DownloadJobExecutor` now runs persisted jobs through the existing yt-dlp/aria2 adapters with a bounded worker pool, records lifecycle transitions, verifies output, and calls an explicit asset-registration callback. It does not yet expose live engine progress, pause/resume/cancel a running OS process, or implement a local HTTP Range integration harness.
+`DownloadJobRepository` persists job metadata and enforces the state machine. `DownloadJobExecutor` runs persisted jobs through the existing yt-dlp/aria2 adapters with a bounded worker pool, records lifecycle transitions, verifies output, and calls an explicit asset-registration callback. Both adapters can emit normalized `DownloadProgress` events: yt-dlp uses its structured JSON progress template; aria2 is queried through a per-job JSON-RPC endpoint bound to loopback and protected by a random token. The executor persists byte count, known/estimated total, speed and ETA in SQLite. Unknown totals remain unknown and do not erase an earlier known total. Running process pause/resume/cancel, per-host limits, and a local HTTP Range integration harness remain out of scope.
 
 ## State machine
 
@@ -72,13 +72,18 @@ After the engine exits successfully, the future scheduler must move the job to `
 | External smoke test | A pinned public sample can be fetched at test time | Long-term platform availability |
 | Windows acceptance | Actual local environment setup and user workflow | Other machines or networks |
 
+## Progress event contract
+
+`DownloadProgress` contains `bytes_downloaded`, optional `total_bytes`, optional `speed_bytes_per_second`, and optional `eta_seconds`. Parsers reject malformed/negative/non-finite values. yt-dlp's estimated total is used only when an exact total is unavailable. aria2's ETA is derived only when both total and positive speed are known. Event persistence is accepted only while the job is `DOWNLOADING`; an omitted total does not overwrite a previously known total.
+
+Progress reporting is best-effort telemetry and is not completion evidence. A successful engine exit still requires file integrity verification and asset registration before `COMPLETED`.
+
 ## Next implementation increment
 
-1. Add a bounded scheduler with per-host concurrency and process lifecycle management.
-2. Parse stable progress events from yt-dlp and aria2 without exposing raw log text as the public API.
-3. Implement pause/resume/cancel and graceful process termination.
-4. Reconcile partial files and engine resume metadata after restart.
-5. Add a local HTTP Range test server and real binary integration jobs.
-6. Connect candidate selection to queue creation and asset registration.
+1. Add process supervision with pause/resume/cancel and graceful termination semantics.
+2. Reconcile partial files and engine resume metadata after restart.
+3. Add a local HTTP Range test server and real binary integration jobs.
+4. Add per-host concurrency/rate controls without weakening job-level limits.
+5. Connect candidate selection to queue creation, durable asset registration, and downstream ASR/OCR/keyframe analysis.
 
 Do not claim a job is completed until integrity and media validation have passed.
