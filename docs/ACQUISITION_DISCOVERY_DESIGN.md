@@ -1,7 +1,7 @@
 # 教程发现与采集中心：平台搜索接口设计
 
 版本：V1.0  
-状态：SearchService、平台目录与 Bilibili 适配器代码已提交；真实网络可用性尚待运行环境验证
+状态：搜索/候选存储、选中后下载入队、持久任务执行、媒体资产登记已实现；真实平台外网可用性仍需运行环境验证
 
 ## 1. 目标交互
 
@@ -38,7 +38,15 @@
 - `SourceSearchAdapter`：异步平台搜索协议。
 - `AdapterRegistry`：显式注册和按平台查找适配器。
 - `canonicalize_url`：去除 URL fragment 和常见跟踪参数；保留平台可能需要的查询参数，例如 xsec_token。
-- `deduplicate_candidates`：按平台 + 规范化 URL 去重，保留首次发现记录。\n- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。\n- `PlatformCatalog`：平台能力与实现/验证状态目录。\n- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页、标题/作者/时长/互动指标映射；支持可注入 HTTP transport 和可选 Cookie。\n- `CandidateRepository`：SQLite 持久化、跨搜索批次去重关联、人工筛选状态和受控状态迁移。\n- `DownloadService`：显式区分视频页面和普通 HTTP 文件，分别调用 `YtDlpAdapter` / `Aria2Adapter`，不自行实现媒体下载协议。\n- `DownloadVerifier`：文件存在性、非空、SHA-256 校验；可选调用 FFprobe 检查媒体流。\n- CLI：`aios discover-search --platform bilibili --keyword "关键词"` 可执行真实平台搜索并将结果写入 SQLite；可通过环境变量 `BILIBILI_COOKIE` 提供可选会话 Cookie。\n- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。\n- `PlatformCatalog`：平台能力和实现/验证状态目录。\n- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页、元数据映射；支持可注入 HTTP transport 和可选 Cookie。
+- `deduplicate_candidates`：按平台 + 规范化 URL 去重，保留首次发现记录。
+- `SearchService`：有界并发、超时、平台失败隔离、跨平台结果汇总。
+- `PlatformCatalog`：平台能力和实现/验证状态目录。
+- `BilibiliSearchAdapter`：WBI 签名视频关键词搜索、分页和元数据映射；支持可注入 HTTP transport 和可选 Cookie。
+- `CandidateRepository`：SQLite 持久化、跨搜索批次去重关联、人工筛选和下载结果状态。
+- `DownloadJobRepository` / `DownloadJobExecutor`：持久下载状态机、有界 worker、引擎进度和重试。
+- `MediaAssetRepository`：再次核验文件大小与 SHA-256，写入来源 manifest；同内容哈希复用资产 ID，并保留多条来源记录。
+- `AcquisitionDownloadPipeline`：仅允许 SELECTED 候选入队，连接候选、下载任务和资产登记；失败可重试，下载成功后候选才变为 DOWNLOADED。
+- CLI：`aios discover-search --platform bilibili --keyword "关键词"` 执行搜索并保存候选；下载管线目前通过 Python API 使用。
 
 接口层不内置伪造搜索结果。Bilibili 适配器使用站点 WBI 搜索接口，默认通过 Python 标准库发起 HTTP 请求；测试通过注入 transport 验证签名请求与字段映射。当前 CI 的 mock transport 测试不等于外网实测，真实运行可能遇到 -412 风控响应，届时会明确报错而不会返回假结果。
 
@@ -96,7 +104,7 @@ HLS/DASH 分片并发优先使用 yt-dlp 的原生能力；需要时配置 aria2
 
 候选状态建议：
 
-`DISCOVERED → REVIEW_PENDING → SELECTED → QUEUED → DOWNLOADING → DOWNLOADED → VERIFIED`
+`DISCOVERED → REVIEW_PENDING → SELECTED → QUEUED → DOWNLOADED`
 
 分支状态：
 
