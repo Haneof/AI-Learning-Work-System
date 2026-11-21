@@ -13,7 +13,6 @@ from pathlib import Path
 
 from aios_work_system.skills import sandbox, validator
 
-
 CONTRACT_SCRIPT = "tests/test_procedure_contract.py"
 
 
@@ -43,7 +42,7 @@ def _run_package(
     script: str,
     *,
     timeout_seconds: int = 30,
-) -> SandboxResult:
+) -> sandbox.SandboxResult:
     contract_path = package / CONTRACT_SCRIPT
     contract_path.write_text(script, encoding="utf-8")
     report = validator.validate_skill_package(package)
