@@ -18,6 +18,7 @@ from aios_work_system.media.download_jobs import (
     DownloadJobRepository,
     DownloadJobStatus,
 )
+from aios_work_system.media.download_progress import DownloadProgress
 
 AssetRegistrar = Callable[[DownloadJob, Path, str, int], str]
 
