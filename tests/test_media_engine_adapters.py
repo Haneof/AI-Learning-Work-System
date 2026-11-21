@@ -6,9 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from aios_work_system.media.adapters import OCRSegment, TranscriptSegment
 from aios_work_system.media.adapters_faster_whisper import FasterWhisperASRAdapter
 from aios_work_system.media.adapters_paddleocr import PaddleOCRAdapter
-from aios_work_system.media.adapters import OCRSegment, TranscriptSegment
 
 
 class FakeWhisperModel:
