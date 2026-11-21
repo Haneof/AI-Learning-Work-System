@@ -10,6 +10,7 @@ import threading
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from typing import Any
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests" / "fixtures" / "gui"
@@ -25,7 +26,7 @@ class _QuietFixtureHandler(SimpleHTTPRequestHandler):
         return
 
 
-async def _run_demo(model: OpenAICompatibleDecisionModel, trace_path: Path):
+async def _run_demo(model: Any, trace_path: Path):
     from aios_work_system.gui.agent import BrowserAgent
     try:
         from playwright.async_api import async_playwright
