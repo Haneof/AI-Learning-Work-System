@@ -185,8 +185,32 @@ class KnowledgeRepository:
     def add_segment(self, segment: SourceSegment) -> None:
         if not segment.segment_id.strip() or not segment.source_id.strip():
             raise ValueError("segment_id and source_id are required")
-        if not segment.text_content.strip():
+        if not isinstance(segment.text_content, str) or not segment.text_content.strip():
             raise ValueError("source segment text_content must not be empty")
+        if segment.modality not in {
+            "text", "asr", "ocr", "video_frame", "ui_snapshot", "subtitle"
+        }:
+            raise ValueError(f"unsupported source evidence modality: {segment.modality}")
+        if not isinstance(segment.locator, dict) or not segment.locator:
+            raise ValueError("source segment locator must be a non-empty object")
+        if any(
+            not isinstance(value, int)
+            or isinstance(value, bool)
+            or value < 0
+            for value in segment.locator.values()
+        ):
+            raise ValueError("source segment locator values must be non-negative integers")
+        if ("start_ms" in segment.locator) != ("end_ms" in segment.locator):
+            raise ValueError("time-range locators require both start_ms and end_ms")
+        if "start_ms" in segment.locator and (
+            segment.locator["end_ms"] <= segment.locator["start_ms"]
+        ):
+            raise ValueError("source segment time range must have positive duration")
+        if any(
+            not isinstance(expert, str) or not expert.strip()
+            for expert in segment.shared_with_experts
+        ):
+            raise ValueError("shared expert IDs must be non-empty strings")
         payload = _segment_to_dict(segment)
         with self._connect() as connection:
             existing = connection.execute(
