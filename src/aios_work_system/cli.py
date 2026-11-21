@@ -559,8 +559,8 @@ def _run_knowledge_review(args: argparse.Namespace) -> None:
 def _run_skill_compile(args: argparse.Namespace) -> None:
     from aios_work_system.knowledge import KnowledgeRepository
     from aios_work_system.skills import (
-        ProcedureSkillSpec,
         ProceduralSkillCompiler,
+        ProcedureSkillSpec,
         SkillVersionRepository,
     )
 
