@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import Future
+from hashlib import sha256
 from pathlib import Path
 from threading import RLock
 
@@ -134,7 +135,8 @@ class AcquisitionDownloadPipeline:
                     candidate_id=candidate.candidate_id,
                     source_url=candidate.url,
                     engine=engine or "yt-dlp",
-                    destination=self.destination_root / candidate.candidate_id,
+                    destination=self.destination_root
+                    / sha256(candidate.candidate_id.encode("utf-8")).hexdigest()[:32],
                 )
             except ValueError:
                 # Another caller may have created the active job between the
@@ -169,7 +171,7 @@ class AcquisitionDownloadPipeline:
         self,
         candidate_id: str,
         *,
-        engine: str = "yt-dlp",
+        engine: str | None = None,
     ) -> Future[DownloadJob]:
         """Queue and asynchronously execute a selected candidate."""
         job = self.enqueue_selected(candidate_id, engine=engine)
