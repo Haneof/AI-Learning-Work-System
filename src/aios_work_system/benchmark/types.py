@@ -69,6 +69,7 @@ class BenchmarkResult:
     checks: dict[str, bool]
     error: str | None = None
     resource_metrics: dict[str, Any] = field(default_factory=dict)
+    backend_metadata: dict[str, Any] = field(default_factory=dict)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
