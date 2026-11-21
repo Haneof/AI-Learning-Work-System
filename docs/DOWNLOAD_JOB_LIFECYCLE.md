@@ -10,7 +10,7 @@ The acquisition stack uses existing engines rather than reimplementing media pro
 - `aria2c`: ordinary HTTP(S) files, multi-connection transfers and continuation when supported by the server.
 - `ffprobe`: optional media-stream validation after download.
 
-`DownloadJobRepository` persists job metadata and enforces the state machine. It does not yet launch processes, parse engine progress, or schedule work. Those responsibilities belong to the next scheduler increment.
+`DownloadJobRepository` persists job metadata and enforces the state machine. `DownloadJobExecutor` now runs persisted jobs through the existing yt-dlp/aria2 adapters with a bounded worker pool, records lifecycle transitions, verifies output, and calls an explicit asset-registration callback. It does not yet expose live engine progress, pause/resume/cancel a running OS process, or implement a local HTTP Range integration harness.
 
 ## State machine
 
