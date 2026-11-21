@@ -11,8 +11,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from aios_work_system.skills.sandbox import DockerSandboxRunner, SandboxResult
-from aios_work_system.skills.validator import validate_skill_package
+from aios_work_system.skills import sandbox, validator
 
 
 CONTRACT_SCRIPT = "tests/test_procedure_contract.py"
@@ -47,18 +46,18 @@ def _run_package(
 ) -> SandboxResult:
     contract_path = package / CONTRACT_SCRIPT
     contract_path.write_text(script, encoding="utf-8")
-    report = validate_skill_package(package)
+    report = validator.validate_skill_package(package)
     assert report.passed, report.errors
     assert report.package_hash is not None
 
-    result = DockerSandboxRunner().run(
+    result = sandbox.DockerSandboxRunner().run(
         package_path=package,
         script_path=CONTRACT_SCRIPT,
         image_digest=_pinned_image_id(),
         package_hash=report.package_hash,
         timeout_seconds=timeout_seconds,
     )
-    assert isinstance(result, SandboxResult)
+    assert isinstance(result, sandbox.SandboxResult)
     assert result.package_hash == report.package_hash
     assert result.image_digest == _pinned_image_id()
     assert not result.stderr or result.exit_code != 0 or result.timed_out
@@ -69,11 +68,11 @@ def test_compiled_pvd_contract_really_executes_inside_docker(
     compiled_pvd_skill_factory,
 ):
     package = compiled_pvd_skill_factory()
-    report = validate_skill_package(package)
+    report = validator.validate_skill_package(package)
     assert report.passed, report.errors
     assert report.package_hash
 
-    result = DockerSandboxRunner().run(
+    result = sandbox.DockerSandboxRunner().run(
         package_path=package,
         script_path=CONTRACT_SCRIPT,
         image_digest=_pinned_image_id(),
@@ -187,10 +186,10 @@ def test_unpinned_image_tag_is_rejected_before_docker_execution(
     compiled_pvd_skill_factory,
 ):
     package = compiled_pvd_skill_factory()
-    report = validate_skill_package(package)
+    report = validator.validate_skill_package(package)
     assert report.passed and report.package_hash
 
-    runner = DockerSandboxRunner()
+    runner = sandbox.DockerSandboxRunner()
     try:
         runner.run(
             package_path=package,
