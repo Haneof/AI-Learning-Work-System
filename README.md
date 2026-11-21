@@ -122,7 +122,7 @@ python -m aios_work_system serve --host 127.0.0.1 --port 8000
 aios discover-search --platform bilibili --keyword "Python 教程"
 ```
 
-如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载适配器目前通过 Python API 调用，依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。持久化下载任务状态与状态机已实现；进程调度、引擎进度解析和断点续传端到端验收仍在开发中，详见[下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md)。
+如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载适配器目前通过 Python API 调用，依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。持久化下载任务状态、状态机和有界并发任务执行器已实现；实时引擎进度、运行中暂停/恢复/取消和断点续传端到端验收仍在开发中，详见[下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md)。
 
 ## 当前项目状态
 
