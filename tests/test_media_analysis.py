@@ -24,6 +24,7 @@ class FakeFFmpeg:
         self.audio_calls = 0
         self.frame_calls = 0
         self.last_interval = None
+        self.last_max_frames = None
 
     def probe(self, source):
         self.probe_calls += 1
@@ -41,9 +42,12 @@ class FakeFFmpeg:
         destination.write_bytes(b"fake 16 kHz mono audio")
         return destination
 
-    def extract_frames(self, source, output_dir, interval_seconds=5.0):
+    def extract_frames(
+        self, source, output_dir, interval_seconds=5.0, max_frames=None
+    ):
         self.frame_calls += 1
         self.last_interval = interval_seconds
+        self.last_max_frames = max_frames
         output_dir.mkdir(parents=True, exist_ok=True)
         frames = []
         for index in range(2):
@@ -139,6 +143,7 @@ def test_pipeline_extracts_audio_frames_and_persists_timestamped_asr_ocr(tmp_pat
     assert stored.asset_id == asset_id
     assert len(stored.artifacts) == 3
     assert ffmpeg.last_interval == 6.0
+    assert ffmpeg.last_max_frames == 100
 
 
 def test_identical_completed_analysis_run_is_reused(tmp_path):
