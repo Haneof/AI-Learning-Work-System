@@ -1,0 +1,60 @@
+name: Video Learning Evidence Smoke Test
+
+on:
+  workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/aios_work_system/video_learning.py"
+      - "scripts/run_video_learning_sample.py"
+      - "tests/test_video_learning.py"
+      - "docs/MEDIA_INGEST.md"
+      - "docs/KNOWLEDGE_EVIDENCE.md"
+      - ".github/workflows/video-learning-evidence.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  licensed-screencast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install FFmpeg and package
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          python -m pip install -e .
+      - name: Download CC BY-SA 4.0 screencast and English timed text
+        run: |
+          mkdir -p artifacts/video-learning
+          curl --fail --location --retry 3 \
+            "https://commons.wikimedia.org/wiki/Special:Redirect/file/Content_Translation_Screencast_%28English%29.webm" \
+            --output artifacts/video-learning/tutorial.webm
+          curl --fail --location --retry 3 --get \
+            --data-urlencode "title=TimedText:Content Translation Screencast (English).webm.en.srt" \
+            --data "action=raw" \
+            "https://commons.wikimedia.org/w/index.php" \
+            --output artifacts/video-learning/tutorial.en.srt
+          test -s artifacts/video-learning/tutorial.webm
+          test -s artifacts/video-learning/tutorial.en.srt
+      - name: Run real FFmpeg with deterministic ASR/OCR stubs
+        run: |
+          python scripts/run_video_learning_sample.py \
+            --input artifacts/video-learning/tutorial.webm \
+            --captions artifacts/video-learning/tutorial.en.srt \
+            --output-dir artifacts/video-learning/output
+      - name: Upload generated source manifest and knowledge evidence
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: video-learning-knowledge-evidence
+          path: artifacts/video-learning/
+          if-no-files-found: warn
+          retention-days: 14
