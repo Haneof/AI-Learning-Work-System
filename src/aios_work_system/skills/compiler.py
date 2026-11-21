@@ -26,7 +26,6 @@ from aios_work_system.skills.registry import SkillVersionRecord
 from aios_work_system.skills.repository import SkillVersionRepository
 from aios_work_system.skills.validator import validate_skill_package
 
-
 _ALLOWED_EVIDENCE_KINDS = {
     "video_frame",
     "subtitle",
@@ -394,7 +393,8 @@ class ProceduralSkillCompiler:
                 "from pathlib import Path\n\n"
                 "def test_procedure_contract_is_non_empty_and_evidence_grounded():\n"
                 "    root = Path(__file__).resolve().parents[1]\n"
-                "    procedure = json.loads((root / 'procedure.json').read_text(encoding='utf-8'))\n"
+                "    procedure_path = root / 'procedure.json'\n"
+                "    procedure = json.loads(procedure_path.read_text(encoding='utf-8'))\n"
                 "    assert procedure['schema_version'] == '1.0'\n"
                 "    assert procedure['steps']\n"
                 "    assert all(step['evidence_refs'] for step in procedure['steps'])\n"
