@@ -1,8 +1,8 @@
 """End-to-end tests for selected candidate -> download -> asset registration."""
 
-from pathlib import Path
-
 import pytest
+
+from aios_work_system.media.download_progress import DownloadProgress
 
 from aios_work_system.acquisition import (
     CandidateRepository,
@@ -34,10 +34,7 @@ class FakeYtDlp:
         output.write_bytes(payload)
         if progress_callback is not None:
             progress_callback(
-                __import__(
-                    "aios_work_system.media.download_progress",
-                    fromlist=["DownloadProgress"],
-                ).DownloadProgress(
+                DownloadProgress(
                     bytes_downloaded=len(payload),
                     total_bytes=len(payload),
                     speed_bytes_per_second=128.0,
