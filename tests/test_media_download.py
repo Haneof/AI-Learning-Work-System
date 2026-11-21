@@ -141,8 +141,6 @@ def test_aria2_adapter_surfaces_nonzero_exit(tmp_path):
             )
         )
 
-
-
 class FakeProcess:
     def __init__(self, lines):
         self.stdout = iter(lines)
