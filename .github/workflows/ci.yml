@@ -26,5 +26,14 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
+      - name: Format check for knowledge package changes
+        run: >
+          ruff format --check
+          src/aios_work_system/skills/compiler.py
+          src/aios_work_system/skills/validator.py
+          src/aios_work_system/phase0.py
+          tests/test_skill_compiler.py
+          tests/test_skills.py
+          tests/test_pvd_skill_acceptance.py
       - name: Test
         run: pytest

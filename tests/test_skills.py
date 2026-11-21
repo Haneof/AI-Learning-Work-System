@@ -1,4 +1,4 @@
-"""Tests for skill package static validation and sandbox command policy."""
+"""Tests for knowledge package validation and sandbox command policy."""
 
 import json
 import subprocess
@@ -11,14 +11,22 @@ from aios_work_system.skills.sandbox import DockerSandboxRunner
 from aios_work_system.skills.validator import validate_skill_package
 
 
-def write_valid_package(root):
-    (root / "scripts").mkdir(parents=True)
-    (root / "tests").mkdir()
-    (root / "SKILL.md").write_text("# Demo skill", encoding="utf-8")
-    manifest = {
+def _knowledge_manifest():
+    return {
         "id": "demo.skill",
         "version": "1.0.0",
-        "goal": "Parse a local text file",
+        "purpose": "Parse local text while preserving source context.",
+        "conditions": {
+            "applicable_when": ["The input is a local text file."],
+            "not_applicable_when": ["The file is remote or untrusted code."],
+        },
+        "judgement_criteria": ["The extracted text matches the source content."],
+        "experience": {
+            "success": ["Preserve the original source reference."],
+            "failure": ["A missing source reference invalidates the result."],
+        },
+        "counterexamples": ["A plausible summary without source evidence is not verified."],
+        "recovery": ["Stop and request a source file when the input is missing."],
         "scope": "workspace",
         "inputs": {"text": "string"},
         "outputs": {"summary": "string"},
@@ -29,7 +37,40 @@ def write_valid_package(root):
         "tests": ["tests/test_demo.py"],
         "dependencies": [],
     }
-    (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+
+
+def _write_skill_sections(root):
+    (root / "SKILL.md").write_text(
+        "# Demo knowledge package\n\n"
+        "## Purpose\nParse local text while preserving source context.\n\n"
+        "## Conditions\nApplicable to local text files; not for remote or untrusted code.\n\n"
+        "## Judgement criteria\nThe extracted text matches the source.\n\n"
+        "## Experience\nSuccess and failure examples are recorded.\n\n"
+        "## Counterexamples\nA plausible summary without evidence is not verified.\n\n"
+        "## Recovery\nStop and request a source file when missing.\n",
+        encoding="utf-8",
+    )
+
+
+def write_valid_package(root):
+    (root / "scripts").mkdir(parents=True)
+    (root / "tests").mkdir()
+    _write_skill_sections(root)
+    (root / "manifest.json").write_text(
+        json.dumps(_knowledge_manifest()), encoding="utf-8"
+    )
+    (root / "procedure.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "2.0",
+                "knowledge_ids": ["demo.knowledge"],
+                "annotation_status": "unreviewed",
+                "evidence_refs": [],
+                "suggested_steps": [],
+            }
+        ),
+        encoding="utf-8",
+    )
     (root / "scripts" / "run.py").write_text("print('ok')\n", encoding="utf-8")
     (root / "tests" / "test_demo.py").write_text(
         "def test_demo():\n    assert True\n",
@@ -37,7 +78,7 @@ def write_valid_package(root):
     )
 
 
-def test_valid_skill_package_has_stable_hash(tmp_path):
+def test_valid_knowledge_package_has_stable_hash(tmp_path):
     package = tmp_path / "demo"
     package.mkdir()
     write_valid_package(package)
@@ -63,6 +104,52 @@ def test_validator_rejects_missing_fields_and_network_permission(tmp_path):
     assert not report.passed
     assert any("manifest missing required fields" in error for error in report.errors)
     assert any("permission is not allowlisted" in error for error in report.errors)
+
+
+def test_validator_rejects_incomplete_knowledge_content(tmp_path):
+    package = tmp_path / "incomplete"
+    package.mkdir()
+    write_valid_package(package)
+    manifest_path = package / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["experience"].pop("failure")
+    manifest["counterexamples"] = []
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert not report.passed
+    assert any("experience.failure" in error for error in report.errors)
+    assert any("counterexamples" in error for error in report.errors)
+
+
+def test_validator_accepts_empty_or_partial_suggested_steps(tmp_path):
+    package = tmp_path / "optional-flow"
+    package.mkdir()
+    write_valid_package(package)
+    procedure_path = package / "procedure.json"
+    procedure = json.loads(procedure_path.read_text(encoding="utf-8"))
+    procedure["suggested_steps"] = [{"note": "Optional hint only."}]
+    procedure_path.write_text(json.dumps(procedure), encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert report.passed, report.errors
+
+
+def test_validator_rejects_legacy_mandatory_steps_key(tmp_path):
+    package = tmp_path / "legacy-procedure"
+    package.mkdir()
+    write_valid_package(package)
+    procedure_path = package / "procedure.json"
+    procedure = json.loads(procedure_path.read_text(encoding="utf-8"))
+    procedure["steps"] = [{"action": "must execute"}]
+    procedure_path.write_text(json.dumps(procedure), encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert not report.passed
+    assert any("suggested_steps instead of steps" in error for error in report.errors)
 
 
 def test_validator_rejects_dynamic_execution_and_network_imports(tmp_path):
@@ -181,7 +268,6 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
     package = tmp_path / "valid"
     package.mkdir()
     write_valid_package(package)
-    report = validate_skill_package(package)
     runner = DockerSandboxRunner()
     commands = []
 
@@ -196,7 +282,7 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
         package,
         "scripts/run.py",
         "python@sha256:" + "a" * 64,
-        package_hash=report.package_hash,
+        package_hash=validate_skill_package(package).package_hash,
         timeout_seconds=1,
     )
 

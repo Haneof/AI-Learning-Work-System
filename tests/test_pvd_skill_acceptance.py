@@ -1,8 +1,8 @@
-"""Acceptance tests for compiled PVD pilot skill packages.
+"""Acceptance tests for declarative PVD knowledge packages.
 
-The fixture is hand-authored to the published package contract. These tests inspect
-declarative procedure content, run the existing static validator, and build (but never
-execute) the Docker sandbox command.
+The fixture is hand-authored to the new package contract. These tests inspect
+knowledge content, optional suggested steps, static validation, and Docker command
+construction only; they never execute a container or perform external actions.
 """
 
 from __future__ import annotations
@@ -153,21 +153,23 @@ TASKS = (
 
 @pytest.fixture
 def compiled_pvd_skill_factory(tmp_path):
-    """Write a minimal, contract-shaped package without invoking the compiler."""
+    """Write a minimal new-format package without invoking the compiler."""
     sequence = 0
 
-    def build(input_overrides=None, expected_overrides=None):
+    def build(input_overrides=None, expected_overrides=None, include_suggested_steps=True):
         nonlocal sequence
         sequence += 1
         input_overrides = input_overrides or {}
         expected_overrides = expected_overrides or {}
-        root = tmp_path / f"pvd-skill-{sequence}"
+        root = tmp_path / f"pvd-knowledge-{sequence}"
         (root / "tests").mkdir(parents=True)
         (root / "references").mkdir()
 
-        steps = []
-        step_evidence = []
+        suggested_steps = []
+        suggested_step_evidence = []
         for index, task in enumerate(TASKS, start=1):
+            if not include_suggested_steps:
+                continue
             step_id = task["step_id"]
             evidence_ref = f"pvd-pilot-segment-{index}"
             step = {
@@ -195,50 +197,106 @@ def compiled_pvd_skill_factory(tmp_path):
                         "timestamp_seconds": float(index * 10),
                     }
                 ],
-                "recovery_strategy": (
-                    "Stop and request human review; do not perform external side effects."
-                ),
                 "ui_verification_status": "pending_frame_review",
             }
-            steps.append(step)
-            step_evidence.append({"step_id": step_id, "evidence_refs": step["evidence_refs"]})
+            suggested_steps.append(step)
+            suggested_step_evidence.append(
+                {
+                    "suggested_step_id": step_id,
+                    "evidence_refs": step["evidence_refs"],
+                }
+            )
 
+        evidence_refs = [
+            {
+                "kind": "video_frame",
+                "ref": f"pvd-pilot-segment-{index}",
+                "timestamp_seconds": float(index * 10),
+            }
+            for index in range(1, len(TASKS) + 1)
+        ]
         manifest = {
             "id": "pvd.pilot.product-operations",
             "version": "1.0.0",
-            "goal": "Evaluate four PVD product-operations procedures.",
+            "purpose": "Make evidence-based product-operation decisions without bypassing safety gates.",
+            "conditions": {
+                "applicable_when": [
+                    "Product and supplier information is available for review."
+                ],
+                "not_applicable_when": [
+                    "Required facts are missing or a decision needs external authorization."
+                ],
+            },
+            "judgement_criteria": [
+                "All calculations match the declared fee and cost inputs.",
+                "Product images preserve actual product attributes.",
+                "Listing remains blocked until the sample is received.",
+                "Supplier eligibility requires complete facts and the rating threshold.",
+            ],
+            "experience": {
+                "success": [
+                    "Recalculate every product rather than extrapolating from one example."
+                ],
+                "failure": [
+                    "A plausible total or image appearance does not prove the underlying facts."
+                ],
+            },
+            "counterexamples": [
+                "A lifestyle image can look like a supplier photo but is not an actual product photo.",
+                "A supplier rating of 4.49 looks close to 4.5 but does not meet the threshold.",
+            ],
+            "recovery": [
+                "Stop when required facts are missing and request the missing evidence.",
+                "Preserve the no-list/no-order decision until a human reviews the updated evidence.",
+            ],
             "scope": "PVD pilot tasks; declarative acceptance only.",
             "inputs": {"task_context": "object"},
-            "outputs": {"procedure_result": "object"},
+            "outputs": {"knowledge_result": "object"},
             "tools": [],
             "permissions": [],
             "risk": "LOW",
             "evidence": [KNOWLEDGE_ID],
-            "tests": ["tests/test_procedure_contract.py"],
+            "tests": ["tests/test_knowledge_contract.py"],
             "dependencies": [],
             "lifecycle_status": "DRAFT",
             "execution_status": "SPEC_ONLY",
             "expert_id": EXPERT_ID,
         }
         procedure = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "source_id": SOURCE_ID,
             "expert_id": EXPERT_ID,
             "knowledge_ids": [KNOWLEDGE_ID],
             "annotation_status": "unreviewed",
-            "steps": steps,
+            "evidence_refs": evidence_refs,
+            "suggested_steps": suggested_steps,
         }
         evidence_manifest = {
             "source_id": SOURCE_ID,
             "expert_id": EXPERT_ID,
             "knowledge_ids": [KNOWLEDGE_ID],
-            "step_evidence": step_evidence,
+            "evidence_refs": evidence_refs,
+            "suggested_step_evidence": suggested_step_evidence,
         }
 
         (root / "SKILL.md").write_text(
             "# PVD Pilot Product Operations\n\n"
-            "This is a declarative, evidence-linked procedure package.\n\n"
-            "It is SPEC_ONLY and does not execute listing, purchasing, or payments.\n",
+            "## Purpose\n\n"
+            "Make evidence-based product-operation decisions without bypassing safety gates.\n\n"
+            "## Conditions\n\n"
+            "Apply only when product and supplier information is available; do not apply when "
+            "required facts or authorization are missing.\n\n"
+            "## Judgement criteria\n\n"
+            "Validate calculations, image integrity, sample status, and supplier evidence.\n\n"
+            "## Experience\n\n"
+            "Success: recalculate all products. Failure: do not infer facts from appearance.\n\n"
+            "## Counterexamples\n\n"
+            "A near-threshold rating or plausible-looking image can still be invalid.\n\n"
+            "## Recovery\n\n"
+            "Stop and request missing evidence or human review.\n\n"
+            "## Suggested steps\n\n"
+            "Optional reference hints only; not a mandatory execution checklist.\n\n"
+            "This package is SPEC_ONLY and does not execute listing, purchasing, or payments.\n",
             encoding="utf-8",
         )
         (root / "manifest.json").write_text(
@@ -249,15 +307,15 @@ def compiled_pvd_skill_factory(tmp_path):
             json.dumps(procedure, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        (root / "tests" / "test_procedure_contract.py").write_text(
+        (root / "tests" / "test_knowledge_contract.py").write_text(
             "import json\n"
             "from pathlib import Path\n\n"
-            "def test_procedure_contract_is_evidence_linked():\n"
+            "def test_knowledge_package_contract_is_evidence_linked():\n"
             "    root = Path(__file__).resolve().parents[1]\n"
             "    data = json.loads((root / 'procedure.json').read_text(encoding='utf-8'))\n"
-            "    assert data['schema_version'] == '1.0'\n"
-            "    assert data['steps']\n"
-            "    assert all(step['evidence_refs'] for step in data['steps'])\n",
+            "    assert data['schema_version'] == '2.0'\n"
+            "    assert isinstance(data['suggested_steps'], list)\n"
+            "    assert data['evidence_refs']\n",
             encoding="utf-8",
         )
         (root / "references" / "evidence_manifest.json").write_text(
@@ -276,7 +334,7 @@ def _load_step(package: Path, step_id: str) -> tuple[dict, dict, dict]:
 
     command = DockerSandboxRunner().build_command(
         package_path=package,
-        script_path="tests/test_procedure_contract.py",
+        script_path="tests/test_knowledge_contract.py",
         image_digest="python@sha256:" + "a" * 64,
     )
     assert "--pull=never" in command
@@ -284,16 +342,16 @@ def _load_step(package: Path, step_id: str) -> tuple[dict, dict, dict]:
     assert "--read-only" in command
     assert "--cap-drop=ALL" in command
     assert "--security-opt=no-new-privileges" in command
-    assert command[-2:] == ["python", "tests/test_procedure_contract.py"]
+    assert command[-2:] == ["python", "tests/test_knowledge_contract.py"]
 
     procedure = json.loads((package / "procedure.json").read_text(encoding="utf-8"))
-    assert procedure["schema_version"] == "1.0"
+    assert procedure["schema_version"] == "2.0"
     assert procedure["source_id"] == SOURCE_ID
     assert procedure["expert_id"] == EXPERT_ID
     assert procedure["annotation_status"] == "unreviewed"
-    assert len(procedure["steps"]) == 4
+    assert len(procedure["suggested_steps"]) == 4
 
-    step = next(item for item in procedure["steps"] if item["step_id"] == step_id)
+    step = next(item for item in procedure["suggested_steps"] if item["step_id"] == step_id)
     assert step["knowledge_id"] == KNOWLEDGE_ID
     assert step["evidence_refs"]
     assert step["ui_verification_status"] == "pending_frame_review"
@@ -365,6 +423,19 @@ def _supplier_decision(inputs: dict) -> dict:
     )
     decision = "ready_for_manual_order_approval" if complete_and_valid else "do_not_order"
     return {"decision": decision}
+
+
+def test_optional_suggested_steps_do_not_change_pvd_judgement_criteria(
+    compiled_pvd_skill_factory,
+):
+    package = compiled_pvd_skill_factory(include_suggested_steps=False)
+    report = validate_skill_package(package)
+    procedure = json.loads((package / "procedure.json").read_text(encoding="utf-8"))
+    manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
+
+    assert report.passed, report.errors
+    assert procedure["suggested_steps"] == []
+    assert manifest["judgement_criteria"]
 
 
 def test_gross_recalculation_matches_all_three_ranges_and_rejects_wrong_result(

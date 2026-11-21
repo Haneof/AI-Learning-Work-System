@@ -1,7 +1,7 @@
-"""Evidence-gated compiler for structured procedural skills.
+"""Evidence-gated compiler for evidence-backed knowledge packages.
 
-The compiler writes declarative procedures only. It never generates Python
-action code and never marks unreviewed narration as verified UI behavior.
+The compiler writes declarative knowledge only. Suggested steps are optional
+reference material, never an execution checklist.
 """
 
 from __future__ import annotations
@@ -17,11 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from aios_work_system.knowledge.repository import KnowledgeRepository
-from aios_work_system.knowledge.types import (
-    EvidenceRelation,
-    KnowledgeState,
-    KnowledgeType,
-)
+from aios_work_system.knowledge.types import EvidenceRelation, KnowledgeState
 from aios_work_system.skills.registry import SkillVersionRecord
 from aios_work_system.skills.repository import SkillVersionRepository
 from aios_work_system.skills.validator import validate_skill_package
@@ -43,15 +39,23 @@ _MODALITY_FOR_KIND = {
 
 @dataclass(frozen=True)
 class ProcedureSkillSpec:
+    """Input contract for compiling approved evidence into a knowledge package."""
+
     expert_id: str
     skill_id: str
     version: str
     title: str
-    goal: str
+    purpose: str
     scope: str
     source_id: str
     knowledge_ids: tuple[str, ...]
-    steps: tuple[dict[str, Any], ...]
+    conditions: dict[str, Any]
+    judgement_criteria: tuple[str, ...]
+    experience: dict[str, Any]
+    counterexamples: tuple[str, ...]
+    recovery: tuple[str, ...]
+    evidence_refs: tuple[dict[str, Any], ...] = ()
+    suggested_steps: tuple[dict[str, Any], ...] = ()
     annotation_status: str = "unreviewed"
     annotator_id: str | None = None
     review_id: str | None = None
@@ -75,7 +79,7 @@ class SkillCompilationResult:
 
 
 class ProceduralSkillCompiler:
-    """Compile approved knowledge plus timestamp-grounded steps into a package."""
+    """Compile approved knowledge and evidence into a declarative knowledge package."""
 
     def __init__(
         self,
@@ -87,17 +91,23 @@ class ProceduralSkillCompiler:
 
     @staticmethod
     def spec_fingerprint(spec: ProcedureSkillSpec) -> str:
-        """Hash the exact reviewable procedure content, excluding review metadata."""
+        """Hash all reviewable knowledge content and evidence, excluding review metadata."""
         payload = {
             "expert_id": spec.expert_id,
             "skill_id": spec.skill_id,
             "version": spec.version,
             "title": spec.title,
-            "goal": spec.goal,
+            "purpose": spec.purpose,
             "scope": spec.scope,
             "source_id": spec.source_id,
             "knowledge_ids": list(spec.knowledge_ids),
-            "steps": list(spec.steps),
+            "conditions": spec.conditions,
+            "judgement_criteria": list(spec.judgement_criteria),
+            "experience": spec.experience,
+            "counterexamples": list(spec.counterexamples),
+            "recovery": list(spec.recovery),
+            "evidence_refs": list(spec.evidence_refs),
+            "suggested_steps": list(spec.suggested_steps),
             "risk": spec.risk,
         }
         canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
@@ -111,9 +121,9 @@ class ProceduralSkillCompiler:
         decision: str,
         note: str,
     ):
-        """Record an explicit review against the exact reviewed procedure hash."""
+        """Record an explicit review against the exact reviewed knowledge package hash."""
         if spec.annotation_status != "reviewed":
-            raise ValueError("skill review requires annotation_status='reviewed'")
+            raise ValueError("knowledge package review requires annotation_status='reviewed'")
         if spec.review_id is not None:
             raise ValueError("review_id is assigned by the review repository")
         if spec.reviewer_id is not None or spec.reviewed_at is not None:
@@ -125,8 +135,10 @@ class ProceduralSkillCompiler:
             raise ValueError("skill_id must be a 2-64 character lowercase slug")
         if not re.fullmatch(r"\d+\.\d+\.\d+", version):
             raise ValueError("version must use MAJOR.MINOR.PATCH")
-        knowledge_items = self._approved_procedure_knowledge(spec)
-        self._normalize_steps(spec, knowledge_items)
+        self._normalize_knowledge_content(spec)
+        knowledge_items = self._approved_knowledge(spec)
+        self._normalize_evidence_refs(spec, knowledge_items)
+        self._normalize_suggested_steps(spec, knowledge_items)
         return self.versions.record_review(
             expert_id=expert_id,
             skill_id=skill_id,
@@ -144,13 +156,56 @@ class ProceduralSkillCompiler:
             raise ValueError(f"{label} must be a non-empty string")
         return value.strip()
 
+    @classmethod
+    def _string_list(cls, value: object, label: str) -> list[str]:
+        if not isinstance(value, (list, tuple)) or not value:
+            raise ValueError(f"{label} must be a non-empty string array")
+        return [
+            cls._non_empty_string(item, f"{label}[{index}]")
+            for index, item in enumerate(value)
+        ]
+
+    @classmethod
+    def _normalize_knowledge_content(cls, spec: ProcedureSkillSpec) -> dict[str, Any]:
+        purpose = cls._non_empty_string(spec.purpose, "purpose")
+        if not isinstance(spec.conditions, dict):
+            raise ValueError("conditions must be an object")
+        conditions = {
+            "applicable_when": cls._string_list(
+                spec.conditions.get("applicable_when"), "conditions.applicable_when"
+            ),
+            "not_applicable_when": cls._string_list(
+                spec.conditions.get("not_applicable_when"),
+                "conditions.not_applicable_when",
+            ),
+        }
+        judgement_criteria = cls._string_list(
+            spec.judgement_criteria, "judgement_criteria"
+        )
+        if not isinstance(spec.experience, dict):
+            raise ValueError("experience must be an object")
+        experience = {
+            "success": cls._string_list(spec.experience.get("success"), "experience.success"),
+            "failure": cls._string_list(spec.experience.get("failure"), "experience.failure"),
+        }
+        counterexamples = cls._string_list(spec.counterexamples, "counterexamples")
+        recovery = cls._string_list(spec.recovery, "recovery")
+        return {
+            "purpose": purpose,
+            "conditions": conditions,
+            "judgement_criteria": judgement_criteria,
+            "experience": experience,
+            "counterexamples": counterexamples,
+            "recovery": recovery,
+        }
+
     @staticmethod
     def _validate_review(spec: ProcedureSkillSpec) -> None:
         if spec.annotation_status not in {"unreviewed", "reviewed", "synthetic"}:
             raise ValueError("annotation_status must be unreviewed, reviewed, or synthetic")
         if spec.annotation_status != "reviewed":
             if spec.review_id is not None:
-                raise ValueError("draft skill cannot carry a review_id")
+                raise ValueError("draft knowledge package cannot carry a review_id")
             if spec.reviewer_id is not None or spec.reviewed_at is not None:
                 raise ValueError(
                     "review metadata cannot be supplied unless annotation_status is reviewed"
@@ -161,20 +216,19 @@ class ProceduralSkillCompiler:
             or not isinstance(spec.review_id, str)
             or not spec.review_id.strip()
         ):
-            raise ValueError("reviewed skill requires a persisted review_id")
+            raise ValueError("reviewed knowledge package requires a persisted review_id")
         if spec.reviewer_id is not None or spec.reviewed_at is not None:
             raise ValueError(
                 "reviewer_id and reviewed_at are loaded from the persisted review record"
             )
 
-    def _approved_procedure_knowledge(self, spec: ProcedureSkillSpec) -> dict[str, Any]:
+    def _approved_knowledge(self, spec: ProcedureSkillSpec) -> dict[str, Any]:
+        """Load approved source-grounded knowledge; no specific knowledge type is privileged."""
         if not spec.knowledge_ids:
-            raise ValueError("at least one approved PROCEDURE knowledge item is required")
+            raise ValueError("at least one approved knowledge item is required")
         items: dict[str, Any] = {}
         for knowledge_id in spec.knowledge_ids:
             item = self.knowledge.get(knowledge_id, spec.expert_id)
-            if item.knowledge_type != KnowledgeType.PROCEDURE:
-                raise ValueError(f"knowledge item {knowledge_id} is not PROCEDURE")
             if item.state != KnowledgeState.APPROVED:
                 raise ValueError(f"knowledge item {knowledge_id} is not APPROVED")
             if not any(
@@ -241,98 +295,136 @@ class ProceduralSkillCompiler:
             "timestamp_seconds": round(float(timestamp), 3),
         }
 
-    def _normalize_steps(
+    @staticmethod
+    def _supporting_segments(knowledge_items: dict[str, Any]) -> set[str]:
+        return {
+            evidence.segment_id
+            for item in knowledge_items.values()
+            for evidence in item.evidence
+            if evidence.relation == EvidenceRelation.SUPPORTS
+        }
+
+    def _raw_evidence_refs(self, spec: ProcedureSkillSpec) -> list[dict[str, Any]]:
+        if spec.evidence_refs:
+            return list(spec.evidence_refs)
+        collected: list[dict[str, Any]] = []
+        for suggested_step in spec.suggested_steps:
+            if isinstance(suggested_step, dict):
+                references = suggested_step.get("evidence_refs", [])
+                if isinstance(references, list):
+                    collected.extend(references)
+        return collected
+
+    def _normalize_evidence_refs(
         self,
         spec: ProcedureSkillSpec,
         knowledge_items: dict[str, Any],
     ) -> list[dict[str, Any]]:
-        if not spec.steps:
-            raise ValueError("procedure must include at least one step")
+        raw_refs = self._raw_evidence_refs(spec)
+        if not raw_refs:
+            raise ValueError("knowledge package requires timestamped SUPPORTS evidence_refs")
+        normalized = [
+            self._validate_evidence_ref(
+                expert_id=spec.expert_id,
+                source_id=spec.source_id,
+                evidence_ref=evidence_ref,
+            )
+            for evidence_ref in raw_refs
+        ]
+        supporting_segments = self._supporting_segments(knowledge_items)
+        for evidence_ref in normalized:
+            if evidence_ref["ref"] not in supporting_segments:
+                raise ValueError(
+                    f"evidence {evidence_ref['ref']} must be linked as SUPPORTS "
+                    "evidence by an approved knowledge item"
+                )
+        if spec.annotation_status == "reviewed" and not any(
+            reference["kind"] in _VISUAL_KINDS for reference in normalized
+        ):
+            raise ValueError("reviewed knowledge package requires visual frame/UI evidence")
+        return normalized
+
+    def _normalize_suggested_steps(
+        self,
+        spec: ProcedureSkillSpec,
+        knowledge_items: dict[str, Any],
+    ) -> list[dict[str, Any]]:
+        """Normalize optional reference steps without requiring a complete procedure."""
         normalized: list[dict[str, Any]] = []
         seen_step_ids: set[str] = set()
-        for index, raw in enumerate(spec.steps):
+        supporting_segments = self._supporting_segments(knowledge_items)
+        for index, raw in enumerate(spec.suggested_steps):
             if not isinstance(raw, dict):
-                raise ValueError(f"steps[{index}] must be an object")
-            step_id = self._non_empty_string(raw.get("step_id"), f"steps[{index}].step_id")
-            if step_id in seen_step_ids:
-                raise ValueError(f"duplicate step_id: {step_id}")
-            seen_step_ids.add(step_id)
+                raise ValueError(f"suggested_steps[{index}] must be an object")
+            step = dict(raw)
+            step_id = raw.get("step_id")
+            if step_id is not None:
+                step_id = self._non_empty_string(
+                    step_id, f"suggested_steps[{index}].step_id"
+                )
+                if step_id in seen_step_ids:
+                    raise ValueError(f"duplicate suggested step_id: {step_id}")
+                seen_step_ids.add(step_id)
+                step["step_id"] = step_id
 
-            knowledge_id = self._non_empty_string(
-                raw.get("knowledge_id"), f"steps[{index}].knowledge_id"
-            )
-            if knowledge_id not in knowledge_items:
-                raise ValueError(f"step {step_id} must reference one of the approved knowledge_ids")
+            knowledge_id = raw.get("knowledge_id")
+            if knowledge_id is not None:
+                knowledge_id = self._non_empty_string(
+                    knowledge_id, f"suggested_steps[{index}].knowledge_id"
+                )
+                if knowledge_id not in knowledge_items:
+                    raise ValueError(
+                        f"suggested step {step_id or index} must reference an approved knowledge_id"
+                    )
 
-            evidence_refs = raw.get("evidence_refs")
-            if not isinstance(evidence_refs, list) or not evidence_refs:
-                raise ValueError(f"step {step_id} requires at least one evidence reference")
+            raw_refs = raw.get("evidence_refs", [])
+            if not isinstance(raw_refs, list):
+                raise ValueError(
+                    f"suggested_steps[{index}].evidence_refs must be an array"
+                )
             validated_refs = [
                 self._validate_evidence_ref(
                     expert_id=spec.expert_id,
                     source_id=spec.source_id,
                     evidence_ref=evidence_ref,
                 )
-                for evidence_ref in evidence_refs
+                for evidence_ref in raw_refs
             ]
-            supporting_segment_ids = {
-                evidence.segment_id
-                for evidence in knowledge_items[knowledge_id].evidence
-                if evidence.relation == EvidenceRelation.SUPPORTS
-            }
-            if any(ref["ref"] not in supporting_segment_ids for ref in validated_refs):
+            if any(ref["ref"] not in supporting_segments for ref in validated_refs):
                 raise ValueError(
-                    f"step {step_id} evidence must be explicitly linked as SUPPORTS "
-                    f"evidence by knowledge item {knowledge_id}"
+                    f"suggested step {step_id or index} evidence must be linked as "
+                    "SUPPORTS evidence by an approved knowledge item"
                 )
-            if spec.annotation_status == "reviewed":
-                if raw.get("ui_verification_status") != "frame_verified":
-                    raise ValueError(f"reviewed step {step_id} must be marked frame_verified")
+            if spec.annotation_status == "reviewed" and validated_refs:
                 if not any(ref["kind"] in _VISUAL_KINDS for ref in validated_refs):
-                    raise ValueError(f"reviewed step {step_id} requires visual frame/UI evidence")
-                ui_status = "frame_verified"
-            else:
-                # A caller cannot promote a draft merely by setting a field.
-                ui_status = "pending_frame_review"
-
-            preconditions = raw.get("preconditions", [])
-            if not isinstance(preconditions, list) or any(
-                not isinstance(value, str) or not value.strip() for value in preconditions
-            ):
-                raise ValueError(f"step {step_id} preconditions must be a string array")
-
-            normalized.append(
-                {
-                    "step_id": step_id,
-                    "knowledge_id": knowledge_id,
-                    "goal": self._non_empty_string(raw.get("goal"), f"{step_id}.goal"),
-                    "preconditions": [value.strip() for value in preconditions],
-                    "action": self._non_empty_string(raw.get("action"), f"{step_id}.action"),
-                    "target": self._non_empty_string(raw.get("target"), f"{step_id}.target"),
-                    "expected_state": self._non_empty_string(
-                        raw.get("expected_state"), f"{step_id}.expected_state"
-                    ),
-                    "evidence_refs": validated_refs,
-                    "recovery_strategy": self._non_empty_string(
-                        raw.get("recovery_strategy"), f"{step_id}.recovery_strategy"
-                    ),
-                    "ui_verification_status": ui_status,
-                }
-            )
-        if spec.annotation_status == "reviewed" and len(normalized) < 8:
-            raise ValueError(
-                "reviewed procedural skills require at least eight visually verified steps"
-            )
+                    raise ValueError(
+                        f"reviewed suggested step {step_id or index} requires visual evidence"
+                    )
+                if raw.get("ui_verification_status", "frame_verified") != "frame_verified":
+                    raise ValueError(
+                        f"reviewed suggested step {step_id or index} must be frame_verified"
+                    )
+                step["ui_verification_status"] = "frame_verified"
+            elif raw_refs or "ui_verification_status" in raw:
+                # A caller cannot promote a draft reference step by setting a field.
+                step["ui_verification_status"] = "pending_frame_review"
+            if raw_refs:
+                step["evidence_refs"] = validated_refs
+            normalized.append(step)
         return normalized
 
     @staticmethod
     def _safe_output_path(path: str | Path) -> Path:
         target = Path(path).expanduser().resolve(strict=False)
         if target.exists() or target.is_symlink():
-            raise FileExistsError(f"skill package output already exists: {target}")
+            raise FileExistsError(f"knowledge package output already exists: {target}")
         if target.name in {"", ".", ".."}:
             raise ValueError("package output must name a new directory")
         return target
+
+    @staticmethod
+    def _markdown_list(values: list[str]) -> str:
+        return "\n".join(f"- {value}" for value in values)
 
     def compile(
         self,
@@ -347,14 +439,15 @@ class ProceduralSkillCompiler:
         if not re.fullmatch(r"\d+\.\d+\.\d+", version):
             raise ValueError("version must use MAJOR.MINOR.PATCH")
         title = self._non_empty_string(spec.title, "title")
-        goal = self._non_empty_string(spec.goal, "goal")
         scope = self._non_empty_string(spec.scope, "scope")
         source_id = self._non_empty_string(spec.source_id, "source_id")
         if spec.risk not in {"LOW", "MEDIUM"}:
-            raise ValueError("compiled procedural skill risk must be LOW or MEDIUM")
+            raise ValueError("compiled knowledge package risk must be LOW or MEDIUM")
         self._validate_review(spec)
-        knowledge_items = self._approved_procedure_knowledge(spec)
-        steps = self._normalize_steps(spec, knowledge_items)
+        knowledge_content = self._normalize_knowledge_content(spec)
+        knowledge_items = self._approved_knowledge(spec)
+        evidence_refs = self._normalize_evidence_refs(spec, knowledge_items)
+        suggested_steps = self._normalize_suggested_steps(spec, knowledge_items)
 
         reviewed = spec.annotation_status == "reviewed"
         review_record = None
@@ -362,27 +455,28 @@ class ProceduralSkillCompiler:
             assert spec.review_id is not None
             review_record = self.versions.get_review(spec.review_id, expert_id)
             if review_record.decision != "APPROVED":
-                raise ValueError("skill compilation requires an APPROVED review record")
+                raise ValueError("knowledge package compilation requires an APPROVED review record")
             if (
                 review_record.skill_id != skill_id
                 or review_record.version != version
                 or review_record.spec_hash != self.spec_fingerprint(spec)
             ):
-                raise ValueError("skill procedure content differs from the reviewed spec hash")
+                raise ValueError("knowledge package content differs from the reviewed spec hash")
             if review_record.annotator_id != spec.annotator_id:
-                raise ValueError("skill annotator differs from the reviewed record")
+                raise ValueError("knowledge package annotator differs from the reviewed record")
         lifecycle_status = "REVIEWED" if reviewed else "DRAFT"
         target = self._safe_output_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         stage = Path(tempfile.mkdtemp(prefix=f".{target.name}.compile-", dir=target.parent))
         try:
             procedure: dict[str, Any] = {
-                "schema_version": "1.0",
+                "schema_version": "2.0",
                 "source_id": source_id,
                 "expert_id": expert_id,
                 "knowledge_ids": list(spec.knowledge_ids),
                 "annotation_status": spec.annotation_status,
-                "steps": steps,
+                "evidence_refs": evidence_refs,
+                "suggested_steps": suggested_steps,
             }
             if reviewed:
                 assert review_record is not None
@@ -405,15 +499,15 @@ class ProceduralSkillCompiler:
             manifest = {
                 "id": skill_id,
                 "version": version,
-                "goal": goal,
+                **knowledge_content,
                 "scope": f"{scope} (expert scope: {expert_id})",
                 "inputs": {"task_context": "object"},
-                "outputs": {"procedure_result": "object"},
+                "outputs": {"knowledge_result": "object"},
                 "tools": [],
                 "permissions": [],
                 "risk": spec.risk,
                 "evidence": list(spec.knowledge_ids),
-                "tests": ["tests/test_procedure_contract.py"],
+                "tests": ["tests/test_knowledge_contract.py"],
                 "dependencies": [],
                 "lifecycle_status": lifecycle_status,
                 "execution_status": "SPEC_ONLY",
@@ -426,45 +520,67 @@ class ProceduralSkillCompiler:
             (stage / "SKILL.md").write_text(
                 (
                     f"# {title}\n\n"
-                    f"Goal: {goal}\n\n"
+                    f"## Purpose\n\n{knowledge_content['purpose']}\n\n"
+                    "## Conditions\n\n"
+                    "### Applicable when\n\n"
+                    f"{self._markdown_list(knowledge_content['conditions']['applicable_when'])}\n\n"
+                    "### Not applicable when\n\n"
+                    f"{self._markdown_list(knowledge_content['conditions']['not_applicable_when'])}\n\n"
+                    "## Judgement criteria\n\n"
+                    f"{self._markdown_list(knowledge_content['judgement_criteria'])}\n\n"
+                    "## Experience\n\n### Success\n\n"
+                    f"{self._markdown_list(knowledge_content['experience']['success'])}\n\n"
+                    "### Failure\n\n"
+                    f"{self._markdown_list(knowledge_content['experience']['failure'])}\n\n"
+                    "## Counterexamples\n\n"
+                    f"{self._markdown_list(knowledge_content['counterexamples'])}\n\n"
+                    "## Recovery\n\n"
+                    f"{self._markdown_list(knowledge_content['recovery'])}\n\n"
+                    "## Suggested steps\n\n"
+                    "The optional reference flow is in procedure.json. It is not a "
+                    "mandatory or exhaustive execution checklist.\n\n"
                     f"Scope: {scope}\n\n"
                     f"Expert scope: {expert_id}\n\n"
-                    "This package contains a declarative procedure specification. "
-                    "It is not an autonomous executor. Each step must be checked "
-                    "against its evidence and expected state by a compatible "
-                    "approved execution adapter. External side effects require "
-                    "separate authorization.\n\n"
                     f"Evidence review status: {spec.annotation_status}.\n"
                     f"Lifecycle status: {lifecycle_status}.\n"
+                    "This package is declarative knowledge, not an autonomous executor. "
+                    "External side effects require separate authorization.\n"
                 ),
                 encoding="utf-8",
             )
             package_test = (
                 "import json\n"
                 "from pathlib import Path\n\n"
-                "def test_procedure_contract_is_non_empty_and_evidence_grounded():\n"
+                "def test_knowledge_package_contract_is_evidence_grounded():\n"
                 "    root = Path(__file__).resolve().parents[1]\n"
-                "    procedure_path = root / 'procedure.json'\n"
-                "    procedure = json.loads(procedure_path.read_text(encoding='utf-8'))\n"
-                "    assert procedure['schema_version'] == '1.0'\n"
-                "    assert procedure['steps']\n"
-                "    assert all(step['evidence_refs'] for step in procedure['steps'])\n"
-                "    assert all(step['ui_verification_status'] == 'pending_frame_review' "
-                "for step in procedure['steps']) or procedure['annotation_status'] == 'reviewed'\n"
+                "    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))\n"
+                "    procedure = json.loads((root / 'procedure.json').read_text(encoding='utf-8'))\n"
+                "    assert manifest['purpose'].strip()\n"
+                "    assert manifest['conditions']['applicable_when']\n"
+                "    assert manifest['judgement_criteria']\n"
+                "    assert manifest['experience']['success']\n"
+                "    assert manifest['counterexamples']\n"
+                "    assert manifest['recovery']\n"
+                "    assert procedure['schema_version'] == '2.0'\n"
+                "    assert isinstance(procedure['suggested_steps'], list)\n"
+                "    assert procedure['evidence_refs']\n"
+                "    assert 'steps' not in procedure\n"
             )
-            (stage / "tests" / "test_procedure_contract.py").write_text(
+            (stage / "tests" / "test_knowledge_contract.py").write_text(
                 package_test, encoding="utf-8"
             )
             evidence_manifest = {
                 "source_id": source_id,
                 "expert_id": expert_id,
                 "knowledge_ids": list(spec.knowledge_ids),
-                "step_evidence": [
+                "evidence_refs": evidence_refs,
+                "suggested_step_evidence": [
                     {
-                        "step_id": step["step_id"],
-                        "evidence_refs": step["evidence_refs"],
+                        "suggested_step_id": step.get("step_id", f"suggested-{index + 1}"),
+                        "evidence_refs": step.get("evidence_refs", []),
                     }
-                    for step in steps
+                    for index, step in enumerate(suggested_steps)
+                    if step.get("evidence_refs")
                 ],
             }
             (stage / "references" / "evidence_manifest.json").write_text(
@@ -475,7 +591,8 @@ class ProceduralSkillCompiler:
             report = validate_skill_package(stage)
             if not report.passed or report.package_hash is None:
                 raise ValueError(
-                    "generated skill package failed static validation: " + "; ".join(report.errors)
+                    "generated knowledge package failed static validation: "
+                    + "; ".join(report.errors)
                 )
             stage.replace(target)
 
