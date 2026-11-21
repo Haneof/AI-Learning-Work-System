@@ -97,18 +97,24 @@ class PaddleOCRAdapter:
                 ) from exc
             factory = PaddleOCR
 
+        if (self.text_detection_model_name is None) != (
+            self.text_recognition_model_name is None
+        ):
+            raise ValueError(
+                "text detection and recognition model names must be provided together"
+            )
         kwargs: dict[str, Any] = {
-            "lang": self.lang,
             "device": self.device,
-            "ocr_version": self.model_version,
             "use_doc_orientation_classify": False,
             "use_doc_unwarping": False,
             "use_textline_orientation": False,
             "cpu_threads": self.cpu_threads,
         }
-        if self.text_detection_model_name is not None:
+        if self.text_detection_model_name is None:
+            kwargs["lang"] = self.lang
+            kwargs["ocr_version"] = self.model_version
+        else:
             kwargs["text_detection_model_name"] = self.text_detection_model_name
-        if self.text_recognition_model_name is not None:
             kwargs["text_recognition_model_name"] = self.text_recognition_model_name
         if self.engine is not None:
             kwargs["engine"] = self.engine
