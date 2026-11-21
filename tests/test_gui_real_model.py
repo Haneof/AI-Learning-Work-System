@@ -92,7 +92,7 @@ def test_openai_compatible_multimodal_request_uses_local_fake_endpoint() -> None
                     '<main><label for="name">Name</label>'
                     '<input id="name" name="name" type="text">'
                     '<button id="save">Save</button></main>'
-                    '<script>ignored-secret-looking-node()</script>'
+                    "<script>ignored-secret-looking-node()</script>"
                 ),
                 "accessibility_snapshot": "main\n  textbox Name\n  button Save",
             },
