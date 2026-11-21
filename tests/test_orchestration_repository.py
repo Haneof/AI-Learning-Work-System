@@ -98,13 +98,14 @@ def test_audit_log_is_time_ordered_and_sqlite_enforces_append_only(tmp_path):
         "earlier",
         "target",
         "started",
-        occurred_at="2026-11-21T11:00:00+00:00",
+        occurred_at="2026-11-21T13:00:00+02:00",
     )
 
     assert [row.audit_id for row in repository.list_audit_logs("expert-a")] == [
         earlier.audit_id,
         later.audit_id,
     ]
+    assert earlier.occurred_at == "2026-11-21T11:00:00+00:00"
     with sqlite3.connect(database) as connection:
         with pytest.raises(sqlite3.IntegrityError, match="append-only"):
             connection.execute(
