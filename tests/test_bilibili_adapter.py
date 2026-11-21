@@ -38,8 +38,8 @@ def _nav_payload():
         "message": "0",
         "data": {
             "wbi_img": {
-                "img_url": "https://i0.hdslb.com/bfs/wbi/test-img-key.jpg",
-                "sub_url": "https://i0.hdslb.com/bfs/wbi/test-sub-key.png",
+                "img_url": "https://i0.hdslb.com/bfs/wbi/test-img-key-012345678901234567890123456789.jpg",
+                "sub_url": "https://i0.hdslb.com/bfs/wbi/test-sub-key-012345678901234567890123456789.png",
             }
         },
     }
