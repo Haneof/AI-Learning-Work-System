@@ -436,7 +436,8 @@ class MediaAnalysisPipeline:
 
     @staticmethod
     def _duration_seconds(probe: dict[str, Any]) -> float | None:
-        raw = probe.get("format", {}).get("duration")
+        format_info = probe.get("format")
+        raw = format_info.get("duration") if isinstance(format_info, dict) else None
         try:
             value = float(raw)
         except (TypeError, ValueError):
@@ -451,11 +452,14 @@ class MediaAnalysisPipeline:
         previous_start = -1
         for item in segments:
             if (
-                isinstance(item.start_ms, bool)
+                not isinstance(item.start_ms, int)
+                or isinstance(item.start_ms, bool)
+                or not isinstance(item.end_ms, int)
                 or isinstance(item.end_ms, bool)
                 or item.start_ms < 0
                 or item.end_ms <= item.start_ms
                 or item.start_ms < previous_start
+                or not isinstance(item.text, str)
                 or not item.text.strip()
             ):
                 raise ValueError("ASR adapter returned an invalid transcript segment")
@@ -468,14 +472,21 @@ class MediaAnalysisPipeline:
         validated: list[OCRSegment] = []
         for item in segments:
             if (
-                isinstance(item.timestamp_ms, bool)
+                not isinstance(item.timestamp_ms, int)
+                or isinstance(item.timestamp_ms, bool)
                 or item.timestamp_ms < 0
+                or not isinstance(item.text, str)
                 or not item.text.strip()
             ):
                 raise ValueError("OCR adapter returned an invalid OCR segment")
             if item.bounding_box is not None and (
                 len(item.bounding_box) != 4
-                or any(not math.isfinite(value) for value in item.bounding_box)
+                or any(
+                    isinstance(value, bool)
+                    or not isinstance(value, (int, float))
+                    or not math.isfinite(value)
+                    for value in item.bounding_box
+                )
             ):
                 raise ValueError("OCR adapter returned an invalid bounding box")
             validated.append(item)
@@ -493,6 +504,8 @@ class MediaAnalysisPipeline:
         )
 
     def analyze(self, asset_id: str) -> MediaAnalysisResult:
+        if Path(asset_id).name != asset_id or asset_id in {".", ".."}:
+            raise ValueError("asset_id must be a safe path component")
         asset = self.assets.get(asset_id)
         source_path = self._local_asset_path(asset.storage_uri)
         if source_path.stat().st_size != asset.size_bytes:
