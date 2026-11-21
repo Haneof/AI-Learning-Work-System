@@ -6,6 +6,9 @@ This proves the contracts connect. It does not run an LLM, real OCR/ASR, or Dock
 from __future__ import annotations
 
 import json
+import shutil
+import subprocess
+import tempfile
 from pathlib import Path
 from typing import Any
 
@@ -68,6 +71,67 @@ def _write_skill_package(root: Path, *, unsafe: bool = False) -> None:
         "def test_placeholder():\n    assert True\n",
         encoding="utf-8",
     )
+
+
+def _register_fixture_skill_version(
+    registry: SkillVersionRegistry,
+    skill_id: str,
+    version: str,
+    package_hash: str,
+    skill_root: Path,
+) -> None:
+    """Register the deterministic fixture against a real, isolated Git commit.
+
+    The demo package lives in a caller-selected output directory, which may not
+    itself be in Git. A temporary repository copy proves provenance without
+    initializing Git or creating commits inside the caller's output/worktree.
+    """
+    with tempfile.TemporaryDirectory(prefix="phase0-skill-git-") as temporary:
+        repository_root = Path(temporary)
+        package_copy = repository_root / "skill-package"
+        shutil.copytree(
+            skill_root,
+            package_copy,
+            ignore=shutil.ignore_patterns(".git", "__pycache__"),
+        )
+        subprocess.run(
+            ["git", "-C", str(repository_root), "init", "-q"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repository_root), "config", "user.email", "phase0@example.invalid"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repository_root), "config", "user.name", "Phase 0 Fixture"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repository_root), "add", "--", "skill-package"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(repository_root), "commit", "-m", "Register Phase 0 fixture skill"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        registry.register(
+            SkillVersionRecord(
+                skill_id=skill_id,
+                version=version,
+                package_hash=package_hash,
+            ),
+            package_path=package_copy,
+        )
 
 
 def _write_report(output: Path, report: dict[str, Any]) -> None:
@@ -188,12 +252,16 @@ def run_phase0_demo(output_dir: str | Path) -> dict[str, Any]:
     if not skill_report.passed or not skill_report.package_hash:
         raise RuntimeError(f"Fixture skill failed validation: {skill_report.errors}")
     skill_registry = SkillVersionRegistry()
-    skill_registry.register(
-        SkillVersionRecord(
-            skill_id=skill_report.skill_id or "",
-            version=skill_report.version or "",
-            package_hash=skill_report.package_hash,
-        )
+    _register_fixture_skill_version(
+        skill_registry,
+        skill_report.skill_id or "",
+        skill_report.version or "",
+        skill_report.package_hash,
+        skill_root,
+    )
+    registered_skill_version = skill_registry.get(
+        skill_report.skill_id or "",
+        skill_report.version or "",
     )
 
     sandbox_command = DockerSandboxRunner().build_command(
@@ -226,12 +294,9 @@ def run_phase0_demo(output_dir: str | Path) -> dict[str, Any]:
             not ungrounded_result.accepted and bool(ungrounded_result.errors)
         ),
         "valid skill package passes static validation": skill_report.passed,
-        "skill version is registered against immutable package hash": (
-            skill_registry.get(
-                skill_report.skill_id or "",
-                skill_report.version or "",
-            ).package_hash
-            == skill_report.package_hash
+        "skill version is registered against package hash and clean Git commit": (
+            registered_skill_version.package_hash == skill_report.package_hash
+            and bool(registered_skill_version.git_commit)
         ),
         "network import in malicious skill is blocked": (
             not malicious_report.passed
@@ -268,6 +333,7 @@ def run_phase0_demo(output_dir: str | Path) -> dict[str, Any]:
             "id": skill_report.skill_id,
             "version": skill_report.version,
             "package_hash": skill_report.package_hash,
+            "git_commit": registered_skill_version.git_commit,
             "static_validation_passed": skill_report.passed,
             "malicious_package_errors": malicious_report.errors,
             "sandbox_execution": "NOT_EXECUTED",

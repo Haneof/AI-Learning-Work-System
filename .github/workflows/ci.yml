@@ -37,6 +37,21 @@ jobs:
           tests/test_skills.py
       - name: Test
         run: pytest
+      - name: Format changed Python files
+        run: >-
+          ruff format --check
+          src/aios_work_system/acquisition/__init__.py
+          src/aios_work_system/acquisition/models.py
+          src/aios_work_system/acquisition/platforms.py
+          src/aios_work_system/acquisition/selector.py
+          src/aios_work_system/orchestration/__init__.py
+          src/aios_work_system/orchestration/repository.py
+          src/aios_work_system/skills/registry.py
+          src/aios_work_system/phase0.py
+          tests/test_bilibili_adapter.py
+          tests/test_orchestration_repository.py
+          tests/test_phase0.py
+          tests/test_skills.py
 
   docker-sandbox:
     name: Docker sandbox security regression
@@ -70,4 +85,3 @@ jobs:
           echo "Pinned base image: $BASE_IMAGE"
       - name: Execute compiled PVD contract and sandbox security regressions
         run: pytest -q tests/docker_sandbox_e2e.py
-
