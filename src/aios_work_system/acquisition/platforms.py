@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib
 import json
+import re
+from html import unescape
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -176,9 +178,6 @@ class YouTubePlatformAdapter:
 
 def _strip_html_tags(value: str) -> str:
     """Remove Bilibili's HTML keyword-highlighting tags from a search title."""
-    from html import unescape
-    import re
-
     return unescape(re.sub(r"<[^>]*>", "", value)).strip()
 
 
