@@ -113,7 +113,7 @@ class DockerSandboxRunner:
             )
         except FileNotFoundError as exc:
             raise SandboxUnavailableError(
-                "Docker executable disappeared before sandbox execution."
+                "Docker is not available. Install Docker Desktop or configure a sandbox runtime."
             ) from exc
         except subprocess.TimeoutExpired as exc:
             raise SandboxUnavailableError(
