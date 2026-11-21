@@ -242,7 +242,7 @@ class KnowledgeRepository:
             raise ValueError("limit must be between 1 and 10000")
         query = """
             SELECT * FROM knowledge_source_segments
-            WHERE expert_id=? OR shared_with_experts_json LIKE ?
+            WHERE (expert_id=? OR shared_with_experts_json LIKE ?)
         """
         params: list[Any] = [expert_id, f'%"{expert_id}"%']
         if source_id is not None:
