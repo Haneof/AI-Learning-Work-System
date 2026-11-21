@@ -114,8 +114,7 @@ TASKS = (
         "step_id": "gross_recalculation",
         "goal": "Recalculate the take-home remainder for all three jewelry products.",
         "action": (
-            "Apply the 15 percent category fee and 0.40 USD per-order fee, "
-            "then subtract unit cost."
+            "Apply the 15 percent category fee and 0.40 USD per-order fee, then subtract unit cost."
         ),
         "target": "US eBay jewelry listing economics",
         "preconditions": GROSS_INPUT,
@@ -125,8 +124,7 @@ TASKS = (
         "step_id": "main_image_redline",
         "goal": "Classify supplier photos, scene images, and AI-altered product images.",
         "action": (
-            "Only an actual supplier product photo may be the main image; "
-            "scenes are secondary."
+            "Only an actual supplier product photo may be the main image; scenes are secondary."
         ),
         "target": "Product listing image set",
         "preconditions": IMAGE_INPUT,
@@ -136,8 +134,7 @@ TASKS = (
         "step_id": "sample_gate",
         "goal": "Prevent listing before a physical sample has arrived.",
         "action": (
-            "Block listing while sample_received is false, regardless of elapsed "
-            "preparation days."
+            "Block listing while sample_received is false, regardless of elapsed preparation days."
         ),
         "target": "Sample status and listing decision",
         "preconditions": SAMPLE_INPUT,
@@ -204,9 +201,7 @@ def compiled_pvd_skill_factory(tmp_path):
                 "ui_verification_status": "pending_frame_review",
             }
             steps.append(step)
-            step_evidence.append(
-                {"step_id": step_id, "evidence_refs": step["evidence_refs"]}
-            )
+            step_evidence.append({"step_id": step_id, "evidence_refs": step["evidence_refs"]})
 
         manifest = {
             "id": "pvd.pilot.product-operations",
@@ -318,12 +313,8 @@ def _calculate_gross_ranges(inputs: dict) -> dict:
     ranges = {}
     for product in inputs["products"]:
         proceeds = Decimal(product["sale_price"]) * (Decimal("1") - fee_rate)
-        low_remaining = _money(
-            proceeds - fixed_fee - Decimal(product["unit_cost_max"])
-        )
-        high_remaining = _money(
-            proceeds - fixed_fee - Decimal(product["unit_cost_min"])
-        )
+        low_remaining = _money(proceeds - fixed_fee - Decimal(product["unit_cost_max"]))
+        high_remaining = _money(proceeds - fixed_fee - Decimal(product["unit_cost_min"]))
         ranges[product["name"]] = [low_remaining, high_remaining]
     return {"remaining_ranges": ranges}
 
@@ -336,10 +327,7 @@ def _image_placements(inputs: dict) -> dict:
         changed = set(image["modified_product_attributes"])
         if changed.intersection({"color", "shape", "material"}):
             placement = "reject"
-        elif (
-            image["source"] == "supplier_real_photo"
-            and image["is_actual_supplier_photo"]
-        ):
+        elif image["source"] == "supplier_real_photo" and image["is_actual_supplier_photo"]:
             placement = "main"
             main_image_id = image_id
         elif image["source"] == "scene":
@@ -373,16 +361,9 @@ def _supplier_decision(inputs: dict) -> dict:
     except (ArithmeticError, ValueError):
         return {"decision": "do_not_order"}
     complete_and_valid = (
-        unit_price > 0
-        and rating >= Decimal("4.5")
-        and shipping >= 0
-        and delivery_days > 0
+        unit_price > 0 and rating >= Decimal("4.5") and shipping >= 0 and delivery_days > 0
     )
-    decision = (
-        "ready_for_manual_order_approval"
-        if complete_and_valid
-        else "do_not_order"
-    )
+    decision = "ready_for_manual_order_approval" if complete_and_valid else "do_not_order"
     return {"decision": decision}
 
 
@@ -467,15 +448,9 @@ def test_supplier_gate_requires_every_field_and_rejects_order_when_one_is_missin
 
     wrong_package = compiled_pvd_skill_factory(
         input_overrides={"supplier_checklist": incomplete},
-        expected_overrides={
-            "supplier_checklist": {
-                "decision": "ready_for_manual_order_approval"
-            }
-        },
+        expected_overrides={"supplier_checklist": {"decision": "ready_for_manual_order_approval"}},
     )
-    _, wrong_inputs, wrong_declared = _load_step(
-        wrong_package, "supplier_checklist"
-    )
+    _, wrong_inputs, wrong_declared = _load_step(wrong_package, "supplier_checklist")
     assert wrong_declared != _supplier_decision(wrong_inputs)
 
 
@@ -494,9 +469,7 @@ def test_supplier_gate_accepts_rating_of_4_5_but_blocks_a_lower_rating(
         input_overrides={"supplier_checklist": low_rating},
         expected_overrides={"supplier_checklist": {"decision": "do_not_order"}},
     )
-    _, blocked_inputs, blocked_declared = _load_step(
-        blocked_package, "supplier_checklist"
-    )
+    _, blocked_inputs, blocked_declared = _load_step(blocked_package, "supplier_checklist")
     assert blocked_declared == _supplier_decision(blocked_inputs)
 
     wrong_package = compiled_pvd_skill_factory(
