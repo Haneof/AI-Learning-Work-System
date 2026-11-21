@@ -2,13 +2,13 @@
 
 ## Endpoint and access boundary
 
-The adapter uses the public web video-search GET endpoint:
+The adapter uses the current WBI-signed public video-search GET endpoint:
 
-https://api.bilibili.com/x/web-interface/search/type
+https://api.bilibili.com/x/web-interface/wbi/search/type
 
-It sends search_type=video, the keyword, page number, and the default total-rank order with a normal desktop-browser User-Agent and the Bilibili site as Referer. It does not send SESSDATA, login cookies, access tokens, or credentials. It does not call login-only metadata endpoints or attempt to bypass WBI or anti-bot checks.
+It first opens the public Bilibili home page to establish an anonymous browser cookie jar, then reads the public WBI image keys from the unauthenticated navigation endpoint and signs the video-search request. This uses the platform's normal public request protocol; it does not provide SESSDATA, login cookies, access tokens, account credentials, or a logged-in session. It does not call login-only metadata endpoints or attempt to bypass anti-bot checks.
 
-Bilibili may return HTTP 403/412, HTTP 429, or API codes such as -412, -352, or -509. The adapter raises AcquisitionPlatformError with an explicit risk-control or rate-limit message. It does not turn these failures into an empty result list and does not silently retry.
+The request includes search_type=video, keyword, page, and order=totalrank, plus the required WBI signature. Bilibili may return HTTP 403/412, HTTP 429, or API codes such as -412, -352, -799, or -1200. The adapter raises AcquisitionPlatformError with an explicit risk-control or rate-limit message. It does not turn these failures into an empty result list or silently retry.
 
 ## Field mapping
 
@@ -24,4 +24,8 @@ Bilibili may return HTTP 403/412, HTTP 429, or API codes such as -412, -352, or 
 | license_info | unknown |
 | license_source / license_verification | unknown |
 
-The public search result does not provide a reliable reuse license. The adapter therefore never infers one. A missing series is represented as None; VideoCandidate.series_folder displays it as 未分组. Fields that would require a separate authenticated or otherwise unavailable endpoint remain unset.
+The public search response does not provide a reliable reuse license. The adapter therefore never infers one. A missing series is represented as None; VideoCandidate.series_folder displays it as 未分组. Fields that would require a separate authenticated or otherwise unavailable endpoint remain unset.
+
+## Testing boundary
+
+All adapter tests inject a fake HTTP opener. They do not contact Bilibili, request real cookies, or use account credentials. The tests cover WBI key lookup, signed search URL construction, metadata normalization, empty results, API/risk-control errors, HTTP 429, and direct use of RuleBasedVideoSelector.
