@@ -1,4 +1,4 @@
-"""Bounded execution of persisted download jobs using existing media engines."""\n\n# ruff: noqa: I001
+"""Bounded execution of persisted download jobs using existing media engines."""
 
 from __future__ import annotations
 
@@ -66,12 +66,15 @@ class DownloadJobExecutor:
             job = self.repository.get(job_id)
             if existing is not None and (
                 not existing.done()
-                or job.status not in {
+                or job.status
+                not in {
                     DownloadJobStatus.QUEUED,
                     DownloadJobStatus.RETRY_WAIT,
                 }
             ):
-                raise ValueError(f"download job is already scheduled or finished: {job_id}")
+                raise ValueError(
+                    f"download job is already scheduled or finished: {job_id}"
+                )
             if job.status not in {
                 DownloadJobStatus.QUEUED,
                 DownloadJobStatus.RETRY_WAIT,
@@ -135,9 +138,7 @@ class DownloadJobExecutor:
                     if current.retry_count < self.max_retries
                     else DownloadJobStatus.FAILED
                 )
-                self.repository.transition(
-                    job_id, target, error=message
-                )
+                self.repository.transition(job_id, target, error=message)
             raise
 
     def shutdown(self, *, wait: bool = True) -> None:
