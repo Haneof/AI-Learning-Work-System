@@ -281,6 +281,7 @@ def test_package_output_is_not_overwritten(tmp_path):
     with pytest.raises(FileExistsError):
         compiler.compile(_spec(), output)
 
+
 def test_compiler_rejects_content_changed_after_spec_bound_review(tmp_path):
     from dataclasses import replace
 
