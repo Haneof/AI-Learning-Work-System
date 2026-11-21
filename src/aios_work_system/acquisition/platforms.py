@@ -175,7 +175,6 @@ class YouTubePlatformAdapter:
         return self.downloader.download(candidate.video_url, candidate.video_id, output_dir)
 
 
-
 def _strip_html_tags(value: str) -> str:
     """Remove Bilibili's HTML keyword-highlighting tags from a search title."""
     return unescape(re.sub(r"<[^>]*>", "", value)).strip()
@@ -226,10 +225,70 @@ class BilibiliPlatformAdapter:
         "Chrome/131.0.0.0 Safari/537.36"
     )
     WBI_MIXIN_KEY_ENC_TAB = (
-        46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35,
-        27, 43, 5, 49, 33, 9, 42, 19, 29, 28, 14, 39, 12, 38, 41, 13,
-        37, 48, 7, 16, 24, 55, 40, 61, 26, 17, 0, 1, 60, 51, 30, 4,
-        22, 25, 54, 21, 56, 59, 6, 63, 57, 62, 11, 36, 20, 34, 44, 52,
+        46,
+        47,
+        18,
+        2,
+        53,
+        8,
+        23,
+        32,
+        15,
+        50,
+        10,
+        31,
+        58,
+        3,
+        45,
+        35,
+        27,
+        43,
+        5,
+        49,
+        33,
+        9,
+        42,
+        19,
+        29,
+        28,
+        14,
+        39,
+        12,
+        38,
+        41,
+        13,
+        37,
+        48,
+        7,
+        16,
+        24,
+        55,
+        40,
+        61,
+        26,
+        17,
+        0,
+        1,
+        60,
+        51,
+        30,
+        4,
+        22,
+        25,
+        54,
+        21,
+        56,
+        59,
+        6,
+        63,
+        57,
+        62,
+        11,
+        36,
+        20,
+        34,
+        44,
+        52,
     )
 
     def __init__(
@@ -374,9 +433,7 @@ class BilibiliPlatformAdapter:
             image_keys.append(key)
         source = image_keys[0] + image_keys[1]
         try:
-            self._mixin_key = "".join(
-                source[index] for index in self.WBI_MIXIN_KEY_ENC_TAB
-            )[:32]
+            self._mixin_key = "".join(source[index] for index in self.WBI_MIXIN_KEY_ENC_TAB)[:32]
         except IndexError as exc:
             raise AcquisitionPlatformError("Bilibili WBI image keys are invalid") from exc
         return self._mixin_key
@@ -393,14 +450,9 @@ class BilibiliPlatformAdapter:
             "order": "totalrank",
             "wts": int(time.time()),
         }
-        sanitized = {
-            key: re.sub(r"[!'()*]", "", str(value))
-            for key, value in parameters.items()
-        }
+        sanitized = {key: re.sub(r"[!'()*]", "", str(value)) for key, value in parameters.items()}
         query_string = urlencode(sorted(sanitized.items()))
-        signature = hashlib.md5(
-            (query_string + self._get_mixin_key()).encode("utf-8")
-        ).hexdigest()
+        signature = hashlib.md5((query_string + self._get_mixin_key()).encode("utf-8")).hexdigest()
         return f"{self.API_URL}?{query_string}&w_rid={signature}"
 
     def _fetch_search_page(self, query: str, page: int) -> list[dict[str, Any]]:
@@ -434,9 +486,7 @@ class BilibiliPlatformAdapter:
                     owner = item.get("owner")
                     author = owner.get("name") if isinstance(owner, dict) else None
                 uploader = (
-                    author.strip()
-                    if isinstance(author, str) and author.strip()
-                    else "unknown"
+                    author.strip() if isinstance(author, str) and author.strip() else "unknown"
                 )
                 candidates.append(
                     VideoCandidate(
