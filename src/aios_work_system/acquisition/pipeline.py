@@ -63,7 +63,7 @@ class AcquisitionDownloadPipeline:
         self,
         candidate_id: str,
         *,
-        engine: str = "yt-dlp",
+        engine: str | None = None,
     ) -> DownloadJob:
         """Create or reuse a job for a SELECTED candidate.
 
@@ -86,6 +86,10 @@ class AcquisitionDownloadPipeline:
             if status == CandidateStatus.QUEUED:
                 active = self.jobs.get_active_for_candidate(candidate_id)
                 if active is not None:
+                    if engine is not None and active.engine != engine:
+                        raise ValueError(
+                            f"candidate already has an active {active.engine} job"
+                        )
                     return active
                 latest = self.jobs.get_latest_for_candidate(candidate_id)
                 if latest is None:
@@ -129,7 +133,7 @@ class AcquisitionDownloadPipeline:
                 job = self.jobs.create(
                     candidate_id=candidate.candidate_id,
                     source_url=candidate.url,
-                    engine=engine,
+                    engine=engine or "yt-dlp",
                     destination=self.destination_root / candidate.candidate_id,
                 )
             except ValueError:
@@ -138,15 +142,23 @@ class AcquisitionDownloadPipeline:
                 active = self.jobs.get_active_for_candidate(candidate_id)
                 if active is None:
                     raise
-                self.candidates.transition(candidate_id, CandidateStatus.QUEUED)
+                if engine is not None and active.engine != engine:
+                    raise ValueError(
+                        f"candidate already has an active {active.engine} job"
+                    )
+                _, current_status, _reason = self.candidates.get(candidate_id)
+                if current_status == CandidateStatus.SELECTED:
+                    self.candidates.transition(candidate_id, CandidateStatus.QUEUED)
+                elif current_status != CandidateStatus.QUEUED:
+                    raise RuntimeError(
+                        f"candidate state changed while enqueueing: {current_status}"
+                    )
                 return active
 
             try:
                 self.candidates.transition(candidate_id, CandidateStatus.QUEUED)
             except Exception:
-                current_candidate, current_status, _ = self.candidates.get(
-                    candidate_id
-                )
+                _, current_status, _reason = self.candidates.get(candidate_id)
                 if current_status == CandidateStatus.QUEUED:
                     return job
                 self.jobs.transition(job.job_id, DownloadJobStatus.CANCELLED)
@@ -167,7 +179,9 @@ class AcquisitionDownloadPipeline:
             return future
         future = self.executor.submit(job.job_id)
         future.add_done_callback(
-            lambda completed: self._finalize_candidate(candidate_id, job.job_id, completed)
+            lambda completed: self._finalize_candidate(
+                candidate_id, job.job_id, completed
+            )
         )
         return future
 
