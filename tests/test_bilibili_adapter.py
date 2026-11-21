@@ -32,6 +32,30 @@ def _payload(results):
     return {"code": 0, "message": "0", "data": {"result": results}}
 
 
+def _nav_payload():
+    return {
+        "code": 0,
+        "message": "0",
+        "data": {
+            "wbi_img": {
+                "img_url": "https://i0.hdslb.com/bfs/wbi/test-img-key.jpg",
+                "sub_url": "https://i0.hdslb.com/bfs/wbi/test-sub-key.png",
+            }
+        },
+    }
+
+
+def _fake_open(search_payload, seen=None):
+    def fake_open(request, *, timeout):
+        if seen is not None:
+            seen.append((request, timeout))
+        if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
+            return FakeResponse(_nav_payload())
+        return FakeResponse(search_payload)
+
+    return fake_open
+
+
 def _video(**overrides):
     item = {
         "bvid": "BV1ab411c7mD",
@@ -51,11 +75,10 @@ def _video(**overrides):
 def test_search_maps_public_result_to_video_candidate_and_uses_browser_headers():
     seen = []
 
-    def fake_open(request, *, timeout):
-        seen.append((request, timeout))
-        return FakeResponse(_payload([_video()]))
-
-    adapter = BilibiliPlatformAdapter(http_open=fake_open, timeout_seconds=4)
+    adapter = BilibiliPlatformAdapter(
+        http_open=_fake_open(_payload([_video()]), seen),
+        timeout_seconds=4,
+    )
     candidates = adapter.search("Python 自动化", max_results=5)
 
     assert len(candidates) == 1
@@ -71,26 +94,25 @@ def test_search_maps_public_result_to_video_candidate_and_uses_browser_headers()
     assert candidate.license_source == "unknown"
     assert candidate.license_verification == "unknown"
     assert seen[0][1] == 4
-    headers = {name.lower(): value for name, value in seen[0][0].header_items()}
+    search_request = seen[-1][0]
+    headers = {name.lower(): value for name, value in search_request.header_items()}
     assert headers["user-agent"].startswith("Mozilla/5.0")
     assert headers["referer"] == "https://www.bilibili.com/"
     assert "cookie" not in headers
-    assert "SESSDATA" not in seen[0][0].full_url
+    assert search_request.full_url.startswith(BilibiliPlatformAdapter.API_URL)
+    assert "w_rid=" in search_request.full_url
+    assert "SESSDATA" not in search_request.full_url
 
 
 def test_search_returns_empty_list_for_a_valid_empty_result():
-    adapter = BilibiliPlatformAdapter(
-        http_open=lambda *_args, **_kwargs: FakeResponse(_payload([]))
-    )
+    adapter = BilibiliPlatformAdapter(http_open=_fake_open(_payload([])))
 
     assert adapter.search("no matching video") == []
 
 
 def test_search_keeps_unavailable_series_unset_and_license_unknown():
     adapter = BilibiliPlatformAdapter(
-        http_open=lambda *_args, **_kwargs: FakeResponse(
-            _payload([_video(season_title=None)])
-        )
+        http_open=_fake_open(_payload([_video(season_title=None)]))
     )
 
     candidate = adapter.search("Python")[0]
@@ -102,7 +124,7 @@ def test_search_keeps_unavailable_series_unset_and_license_unknown():
 
 def test_search_strips_html_highlights_and_converts_short_duration():
     adapter = BilibiliPlatformAdapter(
-        http_open=lambda *_args, **_kwargs: FakeResponse(
+        http_open=_fake_open(
             _payload([_video(title='<em class="keyword">API</em> 指南', duration="2:05")])
         )
     )
@@ -121,9 +143,7 @@ def test_search_strips_html_highlights_and_converts_short_duration():
     ],
 )
 def test_search_surfaces_api_risk_control_and_rate_limit_errors(payload, message):
-    adapter = BilibiliPlatformAdapter(
-        http_open=lambda *_args, **_kwargs: FakeResponse(payload)
-    )
+    adapter = BilibiliPlatformAdapter(http_open=_fake_open(payload))
 
     with pytest.raises(AcquisitionPlatformError, match=message):
         adapter.search("Python")
@@ -131,6 +151,8 @@ def test_search_surfaces_api_risk_control_and_rate_limit_errors(payload, message
 
 def test_search_surfaces_http_429_instead_of_returning_empty_results():
     def reject_request(request, *, timeout):
+        if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
+            return FakeResponse(_nav_payload())
         raise HTTPError(request.full_url, 429, "Too Many Requests", None, None)
 
     adapter = BilibiliPlatformAdapter(http_open=reject_request)
@@ -141,7 +163,7 @@ def test_search_surfaces_http_429_instead_of_returning_empty_results():
 
 def test_rule_based_selector_accepts_bilibili_candidates_directly():
     adapter = BilibiliPlatformAdapter(
-        http_open=lambda *_args, **_kwargs: FakeResponse(
+        http_open=_fake_open(
             _payload([_video(title="Python 自动化入门", duration="4:30")])
         )
     )
