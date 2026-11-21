@@ -194,7 +194,10 @@ class KnowledgeRepository:
             not isinstance(segment.expert_id, str) or not segment.expert_id.strip()
         ):
             raise ValueError("expert_id must be None or a non-empty string")
-        if not isinstance(segment.text_content, str) or not segment.text_content.strip():
+        if (
+            not isinstance(segment.text_content, str)
+            or not segment.text_content.strip()
+        ):
             raise ValueError("source segment text_content must not be empty")
         if not isinstance(segment.modality, str) or segment.modality not in {
             "text", "asr", "ocr", "video_frame", "ui_snapshot", "subtitle"
