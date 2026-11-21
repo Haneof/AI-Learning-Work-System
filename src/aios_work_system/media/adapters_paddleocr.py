@@ -44,7 +44,7 @@ class PaddleOCRAdapter:
             raise ValueError("device must not be empty")
         if model_version not in {"PP-OCRv6", "PP-OCRv5", "PP-OCRv4", "PP-OCRv3"}:
             raise ValueError("unsupported PaddleOCR model version")
-        if cpu_threads < 1 or isinstance(cpu_threads, bool):
+        if not isinstance(cpu_threads, int) or isinstance(cpu_threads, bool) or cpu_threads < 1:
             raise ValueError("cpu_threads must be a positive integer")
         if (
             isinstance(min_confidence, bool)
