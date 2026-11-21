@@ -208,9 +208,7 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
                 "without bypassing safety gates."
             ),
             "conditions": {
-                "applicable_when": [
-                    "Product and supplier information is available for review."
-                ],
+                "applicable_when": ["Product and supplier information is available for review."],
                 "not_applicable_when": [
                     "Required facts are missing or external authorization is needed."
                 ],
