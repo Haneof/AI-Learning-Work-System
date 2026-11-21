@@ -17,10 +17,11 @@
       "minLength": 1
     },
     "annotation_status": {
+      "type": "string",
       "enum": [
-        "synthetic",
         "unreviewed",
-        "reviewed"
+        "reviewed",
+        "synthetic"
       ]
     },
     "steps": {
@@ -150,6 +151,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "review_id": {
+      "type": "string",
+      "minLength": 1
     }
   },
   "additionalProperties": false
