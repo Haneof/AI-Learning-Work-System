@@ -50,6 +50,8 @@ class SourceSegment:
     locator: dict[str, int]
     text_content: str
     shared_with_experts: frozenset[str] = frozenset()
+    modality: str = "text"
+    artifact_ref: str | None = None
 
 
 @dataclass(frozen=True)
