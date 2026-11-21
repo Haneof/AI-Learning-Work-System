@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import shutil
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -171,7 +172,11 @@ class MediaAnalysisRepository:
             if row is not None:
                 run_id = str(row["run_id"])
                 status = AnalysisStatus(row["status"])
-                if status in {AnalysisStatus.COMPLETED, AnalysisStatus.PARTIAL}:
+                if status in {
+                    AnalysisStatus.RUNNING,
+                    AnalysisStatus.COMPLETED,
+                    AnalysisStatus.PARTIAL,
+                }:
                     return run_id, False
                 connection.execute(
                     """
@@ -203,6 +208,32 @@ class MediaAnalysisRepository:
                 ),
             )
         return run_id, True
+
+    def recover_interrupted(self, *, asset_id: str | None = None) -> int:
+        """Mark abandoned RUNNING rows as FAILED so a worker restart can retry.
+
+        Call this only at a worker startup boundary after the previous worker
+        process is known to be gone. It must not be used while analyses are
+        actively running in another process.
+        """
+        now = _now()
+        query = """
+            UPDATE media_analysis_runs
+            SET status=?, error=?, updated_at=?
+            WHERE status=?
+        """
+        values: list[str] = [
+            AnalysisStatus.FAILED.value,
+            "Recovered abandoned RUNNING analysis during worker startup",
+            now,
+            AnalysisStatus.RUNNING.value,
+        ]
+        if asset_id is not None:
+            query += " AND asset_id=?"
+            values.append(asset_id)
+        with self._connect() as connection:
+            cursor = connection.execute(query, values)
+            return cursor.rowcount
 
     def mark_failed(self, run_id: str, error: str) -> None:
         with self._connect() as connection:
@@ -507,12 +538,16 @@ class MediaAnalysisPipeline:
 
     @staticmethod
     def _artifact(path: Path, kind: str, key: str, **metadata: Any) -> AnalysisArtifact:
+        resolved = path.resolve(strict=True)
+        size_bytes = resolved.stat().st_size
+        if size_bytes <= 0:
+            raise ValueError(f"FFmpeg produced an empty {kind.lower()} artifact")
         return AnalysisArtifact(
             artifact_key=key,
             kind=kind,
-            path=str(path.resolve(strict=True)),
-            sha256=sha256_file(path),
-            size_bytes=path.stat().st_size,
+            path=str(resolved),
+            sha256=sha256_file(resolved),
+            size_bytes=size_bytes,
             metadata=metadata,
         )
 
@@ -568,8 +603,16 @@ class MediaAnalysisPipeline:
                 isinstance(stream, dict) and stream.get("codec_type") == "video"
                 for stream in streams
             )
-            run_dir = self.output_root / asset_id / run_id
-            run_dir.mkdir(parents=True, exist_ok=True)
+            asset_dir = self.output_root / asset_id
+            if asset_dir.is_symlink():
+                raise ValueError("analysis asset output directory must not be a symlink")
+            asset_dir.mkdir(parents=True, exist_ok=True)
+            run_dir = asset_dir / run_id
+            if run_dir.is_symlink():
+                raise ValueError("analysis run output directory must not be a symlink")
+            if run_dir.exists():
+                shutil.rmtree(run_dir)
+            run_dir.mkdir(parents=True, exist_ok=False)
             artifacts: list[AnalysisArtifact] = []
             transcripts: list[TranscriptSegment] = []
             ocr_segments: list[OCRSegment] = []
@@ -617,16 +660,28 @@ class MediaAnalysisPipeline:
                 transcripts = self._validate_transcripts(
                     self.asr_adapter.transcribe(audio_path)
                 )
+                if duration is not None and any(
+                    item.end_ms > round(duration * 1000) for item in transcripts
+                ):
+                    raise ValueError(
+                        "ASR adapter returned a segment beyond media duration"
+                    )
             elif self.asr_adapter is None:
                 warnings.append("ASR adapter not configured")
             if self.ocr_adapter is not None and frames:
                 for index, frame_path in enumerate(frames):
                     timestamp_ms = round(index * effective_interval * 1000)
-                    ocr_segments.extend(
-                        self._validate_ocr(
-                            self.ocr_adapter.recognize(frame_path, timestamp_ms)
-                        )
+                    recognized = self._validate_ocr(
+                        self.ocr_adapter.recognize(frame_path, timestamp_ms)
                     )
+                    if duration is not None and any(
+                        item.timestamp_ms > round(duration * 1000)
+                        for item in recognized
+                    ):
+                        raise ValueError(
+                            "OCR adapter returned a timestamp beyond media duration"
+                        )
+                    ocr_segments.extend(recognized)
             elif self.ocr_adapter is None:
                 warnings.append("OCR adapter not configured")
 
