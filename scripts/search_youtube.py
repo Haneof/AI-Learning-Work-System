@@ -17,11 +17,7 @@ def main() -> None:
 
     videos = YouTubePlatformAdapter().search(args.query, max_results=args.max_results)
     payload = [
-        {
-            key: value
-            for key, value in asdict(video).items()
-            if key != "metadata"
-        }
+        {key: value for key, value in asdict(video).items() if key != "metadata"}
         for video in videos
     ]
     print(json.dumps(payload, ensure_ascii=False, indent=2))
