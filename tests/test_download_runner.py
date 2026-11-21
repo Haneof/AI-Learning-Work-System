@@ -16,12 +16,15 @@ from aios_work_system.media.download_runner import DownloadJobExecutor
 class FakeAdapter:
     name = "fake-engine"
 
-    def __init__(self, output: Path):
+    def __init__(self, output: Path, fail_downloads: int = 0):
         self.output = output
+        self.fail_downloads = fail_downloads
         self.calls = 0
 
     def download(self, request, *, progress_callback=None):
         self.calls += 1
+        if self.calls <= self.fail_downloads:
+            raise RuntimeError("temporary network error")
         request.destination_dir.mkdir(parents=True, exist_ok=True)
         self.output.write_bytes(b"valid media bytes")
         if progress_callback is not None:
@@ -46,7 +49,9 @@ class FakeVerifier:
         )
 
 
-def make_executor(tmp_path, *, fail_register=False, max_retries=2):
+def make_executor(
+    tmp_path, *, fail_register=False, fail_downloads=0, max_retries=2
+):
     repository = DownloadJobRepository(tmp_path / "jobs.sqlite3")
     job = repository.create(
         candidate_id="candidate-1",
@@ -55,7 +60,7 @@ def make_executor(tmp_path, *, fail_register=False, max_retries=2):
         destination=tmp_path / "downloads",
     )
     output = tmp_path / "downloads" / "lesson.mp4"
-    adapter = FakeAdapter(output)
+    adapter = FakeAdapter(output, fail_downloads=fail_downloads)
 
     def register(_job, _path, _sha256, _size):
         if fail_register:
@@ -129,3 +134,25 @@ def test_submit_rejects_duplicate_active_future(tmp_path):
         future.result(timeout=5)
     finally:
         executor.shutdown()
+
+
+
+def test_executor_requeues_retry_wait_job_before_second_attempt(tmp_path):
+    repository, job, adapter, executor = make_executor(
+        tmp_path,
+        fail_downloads=1,
+        max_retries=1,
+    )
+    try:
+        with pytest.raises(RuntimeError, match="temporary network error"):
+            executor.run(job.job_id)
+        retry_wait = repository.get(job.job_id)
+        assert retry_wait.status == DownloadJobStatus.RETRY_WAIT
+
+        result = executor.run(job.job_id)
+    finally:
+        executor.shutdown()
+
+    assert adapter.calls == 2
+    assert result.status == DownloadJobStatus.COMPLETED
+    assert result.retry_count == 1
