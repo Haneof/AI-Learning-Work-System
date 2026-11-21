@@ -93,6 +93,12 @@ class DownloadJobExecutor:
         }:
             raise ValueError(f"job is not ready to run: {job.status}")
 
+        if job.status == DownloadJobStatus.RETRY_WAIT:
+            job = self.repository.transition(
+                job_id,
+                DownloadJobStatus.QUEUED,
+                expected_status=DownloadJobStatus.RETRY_WAIT,
+            )
         self.repository.transition(
             job_id, DownloadJobStatus.PREPARING, expected_status=job.status
         )
