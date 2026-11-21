@@ -90,8 +90,9 @@
 | [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 | [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
-| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 
-| [教程发现与采集中心](docs/ACQUISITION_DISCOVERY_DESIGN.md) | 平台关键词搜索、候选筛选、B站适配器、SQLite 候选库和 yt-dlp/aria2 下载适配器 |\n| [下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md) | SQLite 持久化下载任务、状态机、进度契约和异常重启恢复边界 |
+| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |
+| [教程发现与采集中心](docs/ACQUISITION_DISCOVERY_DESIGN.md) | 平台关键词搜索、候选筛选、候选入队和采集状态 |
+| [下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md) | yt-dlp/aria2 执行、实时进度、文件校验、资产登记和恢复边界 |
 | [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
 | [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 | [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |
