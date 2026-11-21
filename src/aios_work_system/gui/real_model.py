@@ -329,9 +329,9 @@ class OpenAICompatibleDecisionModel:
             history_summary = json.dumps(history[-6:], ensure_ascii=False, default=str)[:3_000]
         else:
             history_summary = "[]"
-        failure_summary = json.dumps(
-            request.get("last_failure"), ensure_ascii=False, default=str
-        )[:2_000]
+        failure_summary = json.dumps(request.get("last_failure"), ensure_ascii=False, default=str)[
+            :2_000
+        ]
         text = "\n\n".join(
             (
                 f"Objective: {objective}",
