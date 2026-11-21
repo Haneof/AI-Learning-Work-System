@@ -1,6 +1,7 @@
 """Traceable knowledge and evidence contracts."""
 
 from aios_work_system.knowledge.registry import KnowledgeRegistry, RegistryResult
+from aios_work_system.knowledge.repository import KnowledgeRepository
 from aios_work_system.knowledge.types import (
     ConfidenceLabel,
     EpistemicType,
@@ -20,6 +21,7 @@ __all__ = [
     "EvidenceRelation",
     "KnowledgeItem",
     "KnowledgeRegistry",
+    "KnowledgeRepository",
     "KnowledgeState",
     "KnowledgeType",
     "RegistryResult",

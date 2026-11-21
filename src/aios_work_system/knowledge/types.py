@@ -49,6 +49,8 @@ class SourceSegment:
     expert_id: str | None
     locator: dict[str, int]
     text_content: str
+    modality: str = "text"
+    artifact_ref: str | None = None
     shared_with_experts: frozenset[str] = frozenset()
     source_file: str | None = None
     source_sha256: str | None = None

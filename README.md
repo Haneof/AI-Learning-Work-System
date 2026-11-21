@@ -93,6 +93,7 @@
 | [视频采集管线](docs/ACQUISITION_PIPELINE.md) | YouTube 搜索、选片、下载、Drive 归档与证据提取接口 |
 | [Google Drive 授权配置](docs/GOOGLE_DRIVE_SETUP.md) | 官方 Drive API 的一次性 OAuth 授权与凭证管理 |
 | [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
+| [程序化技能编译](docs/SKILL_COMPILATION.md) | 从已审核知识与时间戳证据生成结构化技能包 |
 | [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 | [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |
 
