@@ -1,5 +1,6 @@
 """Offline media ingestion primitives."""
 
+from aios_work_system.media.assets import MediaAsset, MediaAssetRepository
 from aios_work_system.media.download import (
     Aria2Adapter,
     DownloadError,
@@ -26,6 +27,8 @@ from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 
 __all__ = [
     "Aria2Adapter",
+    "MediaAsset",
+    "MediaAssetRepository",
     "DownloadError",
     "DownloadJob",
     "DownloadJobExecutor",
