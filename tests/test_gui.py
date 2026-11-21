@@ -11,7 +11,11 @@ from pathlib import Path
 from typing import Any
 
 import pytest
-from playwright.async_api import async_playwright
+
+try:
+    from playwright.async_api import async_playwright
+except ModuleNotFoundError:
+    async_playwright = None
 
 from aios_work_system.gui.agent import AgentConfig, BrowserAgent
 from aios_work_system.gui.browser import (
@@ -32,6 +36,9 @@ from aios_work_system.gui.trace import (
 def run_in_local_browser(
     scenario: Callable[[Any, str], Awaitable[None]],
 ) -> None:
+    if async_playwright is None:
+        pytest.skip("Playwright is optional; install the gui extra to run browser tests")
+
     async def run() -> None:
         fixture_dir = Path(__file__).parent / "fixtures" / "gui"
         handler = partial(SimpleHTTPRequestHandler, directory=str(fixture_dir))
