@@ -344,8 +344,10 @@ class OrchestrationRepository:
             if status == "RUNNING" and start_time is None:
                 start_time = _now()
             end_time = (
-                _required_text(ended_at, "ended_at") if ended_at else _now()
-            ) if status in self._TERMINAL_STATES else None
+                (_required_text(ended_at, "ended_at") if ended_at else _now())
+                if status in self._TERMINAL_STATES
+                else None
+            )
             saved_result_ref = (
                 _required_text(result_ref, "result_ref")
                 if result_ref is not None
@@ -455,9 +457,7 @@ class OrchestrationRepository:
             else None
         )
         experience_id = (
-            _required_text(experience_id, "experience_id")
-            if experience_id
-            else str(uuid.uuid4())
+            _required_text(experience_id, "experience_id") if experience_id else str(uuid.uuid4())
         )
         shared = _shared_expert_ids(shared_with_experts, expert_id)
         with self._connect() as connection:
