@@ -11,10 +11,7 @@ import re
 import subprocess
 from pathlib import Path
 
-from aios_work_system.skills.sandbox import (
-    DockerSandboxRunner,
-    SandboxResult,
-)
+from aios_work_system.skills.sandbox import DockerSandboxRunner, SandboxResult
 from aios_work_system.skills.validator import validate_skill_package
 
 

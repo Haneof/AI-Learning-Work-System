@@ -49,7 +49,9 @@ class DockerSandboxRunner:
             re.fullmatch(r".+@sha256:[0-9a-f]{64}", image_digest)
             or re.fullmatch(r"sha256:[0-9a-f]{64}", image_digest)
         ):
-            raise ValueError("Sandbox image must be pinned by an immutable sha256 digest or local image ID")
+            raise ValueError(
+                "Sandbox image must be pinned by an immutable sha256 digest or local image ID"
+            )
         if not re.fullmatch(r"[1-9][0-9]{0,3}[mMgG]", memory_limit):
             raise ValueError("memory_limit must be a positive Docker memory value such as 256m")
         memory_number = int(memory_limit[:-1])
@@ -114,7 +116,9 @@ class DockerSandboxRunner:
                 "Docker executable disappeared before sandbox execution."
             ) from exc
         except subprocess.TimeoutExpired as exc:
-            raise SandboxUnavailableError("Docker daemon did not respond to docker info within 10 seconds") from exc
+            raise SandboxUnavailableError(
+                "Docker daemon did not respond to docker info within 10 seconds"
+            ) from exc
         if completed.returncode != 0:
             detail = (completed.stderr or completed.stdout or "unknown Docker daemon error").strip()
             raise SandboxUnavailableError(f"Docker daemon is unavailable: {detail[-1000:]}")

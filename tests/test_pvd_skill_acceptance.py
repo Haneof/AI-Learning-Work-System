@@ -11,16 +11,16 @@ import pytest
 from aios_work_system.skills.sandbox import DockerSandboxRunner
 from aios_work_system.skills.validator import validate_skill_package
 from tests.pvd_skill_fixture import (
-    SOURCE_ID,
     EXPERT_ID,
-    KNOWLEDGE_ID,
-    GROSS_INPUT,
     GROSS_EXPECTED,
-    IMAGE_INPUT,
+    GROSS_INPUT,
     IMAGE_EXPECTED,
+    IMAGE_INPUT,
+    KNOWLEDGE_ID,
     SAMPLE_EXPECTED,
-    SUPPLIER_INPUT,
+    SOURCE_ID,
     SUPPLIER_EXPECTED,
+    SUPPLIER_INPUT,
 )
 
 def _load_step(package: Path, step_id: str) -> tuple[dict, dict, dict]:
