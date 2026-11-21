@@ -1,0 +1,47 @@
+name: Temporary scoped Ruff format verification
+
+on:
+  push:
+    branches: ["feature/pvd-skill-acceptance"]
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  pvd-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned Ruff
+        run: python -m pip install ruff==0.17.6
+      - name: Check only this PR's new Python file
+        run: ruff format --check tests/test_pvd_skill_acceptance.py
+
+  acquisition-format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: feature/video-acquisition-pipeline
+          path: acquisition
+          fetch-depth: 0
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+      - name: Install pinned Ruff
+        run: python -m pip install ruff==0.17.6
+      - name: Check only changed Python files in PR 27
+        working-directory: acquisition
+        shell: bash
+        run: |
+          git fetch origin main
+          mapfile -t files < <(git diff --name-only origin/main...HEAD -- '*.py')
+          printf 'Formatting check scope:\n%s\n' "\${files[@]}"
+          test "\${#files[@]}" -gt 0
+          ruff format --check "\${files[@]}"
