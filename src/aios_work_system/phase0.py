@@ -35,14 +35,40 @@ def _write_skill_package(root: Path, *, unsafe: bool = False) -> None:
     (root / "scripts").mkdir(parents=True)
     (root / "tests").mkdir()
     (root / "SKILL.md").write_text(
-        "# Evidence-backed extraction skill\n\n"
-        "Extract a concise statement and retain its source segment reference.\n",
+        "# Evidence-backed extraction knowledge\n\n"
+        "## Purpose\n\n"
+        "Extract a statement while retaining traceable source evidence.\n\n"
+        "## Conditions\n\n"
+        "Apply when a source segment and locator are available; do not apply when "
+        "the source identity or locator cannot be verified.\n\n"
+        "## Judgement criteria\n\n"
+        "The statement matches the source and preserves its identifier and locator.\n\n"
+        "## Experience\n\n"
+        "Success: retain the original source hash. Failure: do not trust untraceable text.\n\n"
+        "## Counterexamples\n\n"
+        "A plausible summary without a source locator is not verified.\n\n"
+        "## Recovery\n\n"
+        "Stop and recover the source reference before continuing.\n",
         encoding="utf-8",
     )
     manifest = {
         "id": "demo.evidence-extractor",
         "version": "1.0.0",
-        "goal": "Extract a statement while retaining source evidence",
+        "purpose": "Extract a statement while retaining traceable source evidence.",
+        "conditions": {
+            "applicable_when": ["A source segment and its locator are available."],
+            "not_applicable_when": ["The source identity or locator cannot be verified."],
+        },
+        "judgement_criteria": [
+            "The extracted statement matches the source segment.",
+            "The source identifier and locator are preserved.",
+        ],
+        "experience": {
+            "success": ["Preserve the original source hash and segment reference."],
+            "failure": ["An untraceable statement must not be treated as verified."],
+        },
+        "counterexamples": ["A plausible summary without a source locator is not verified."],
+        "recovery": ["Stop and recover the source reference before continuing."],
         "scope": "demo-expert",
         "inputs": {"text": "string", "segment_id": "string"},
         "outputs": {"statement": "string", "evidence_segment_id": "string"},
@@ -66,6 +92,20 @@ def _write_skill_package(root: Path, *, unsafe: bool = False) -> None:
     (root / "scripts" / "run.py").write_text(script, encoding="utf-8")
     (root / "tests" / "test_skill.py").write_text(
         "def test_placeholder():\n    assert True\n",
+        encoding="utf-8",
+    )
+    (root / "procedure.json").write_text(
+        json.dumps(
+            {
+                "schema_version": "2.0",
+                "knowledge_ids": ["source-segment"],
+                "annotation_status": "unreviewed",
+                "evidence_refs": [],
+                "suggested_steps": [],
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
         encoding="utf-8",
     )
 

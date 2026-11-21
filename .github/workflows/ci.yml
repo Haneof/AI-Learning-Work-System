@@ -29,6 +29,10 @@ jobs:
       - name: Format check for PR-owned files
         run: >-
           ruff format --check
+          src/aios_work_system/skills/compiler.py
+          src/aios_work_system/skills/validator.py
+          src/aios_work_system/phase0.py
+          tests/test_skill_compiler.py
           src/aios_work_system/skills/sandbox.py
           tests/conftest.py
           tests/pvd_skill_fixture.py
