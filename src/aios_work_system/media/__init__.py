@@ -1,5 +1,6 @@
 """Offline media ingestion primitives."""
 
+from aios_work_system.media.assets import MediaAsset, MediaAssetRepository
 from aios_work_system.media.download import (
     Aria2Adapter,
     DownloadError,
@@ -9,13 +10,31 @@ from aios_work_system.media.download import (
     DownloadVerifier,
     YtDlpAdapter,
 )
-from aios_work_system.media.ffmpeg import FFmpegProcessor, MediaProcessingError, NoAudioStreamError
+from aios_work_system.media.download_jobs import (
+    DownloadJob,
+    DownloadJobRepository,
+    DownloadJobStatus,
+)
+from aios_work_system.media.download_progress import DownloadProgress
+from aios_work_system.media.download_runner import DownloadJobExecutor
+from aios_work_system.media.ffmpeg import (
+    FFmpegProcessor,
+    MediaProcessingError,
+    NoAudioStreamError,
+)
 from aios_work_system.media.source import SegmentRecord, SourceManifest, register_source
 from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 
 __all__ = [
     "Aria2Adapter",
+    "MediaAsset",
+    "MediaAssetRepository",
     "DownloadError",
+    "DownloadJob",
+    "DownloadJobExecutor",
+    "DownloadJobRepository",
+    "DownloadJobStatus",
+    "DownloadProgress",
     "DownloadRequest",
     "DownloadResult",
     "DownloadService",

@@ -1,6 +1,9 @@
 """Tests for yt-dlp and aria2 delegation and output verification."""
 
 import hashlib
+import json
+import time
+from io import BytesIO
 from types import SimpleNamespace
 
 import pytest
@@ -12,6 +15,10 @@ from aios_work_system.media.download import (
     DownloadService,
     DownloadVerifier,
     YtDlpAdapter,
+)
+from aios_work_system.media.download_progress import (
+    YTDLP_PROGRESS_PREFIX,
+    DownloadProgress,
 )
 
 
@@ -133,3 +140,121 @@ def test_aria2_adapter_surfaces_nonzero_exit(tmp_path):
                 filename="file.zip",
             )
         )
+
+class FakeProcess:
+    def __init__(self, lines):
+        self.stdout = iter(lines)
+        self.returncode = None
+
+    def poll(self):
+        return self.returncode
+
+    def wait(self, timeout=None):
+        self.returncode = 0
+        return self.returncode
+
+    def kill(self):
+        self.returncode = -9
+
+
+def test_ytdlp_streams_normalized_progress_and_uses_explicit_output_marker(tmp_path):
+    output = tmp_path / "lesson.mp4"
+    progress_line = YTDLP_PROGRESS_PREFIX + json.dumps(
+        {
+            "downloaded_bytes": 512,
+            "total_bytes": 2048,
+            "speed": 128,
+            "eta": 12,
+        }
+    )
+    process = FakeProcess(
+        [progress_line, f"__AIOS_OUTPUT__{output}"]
+    )
+    commands = []
+
+    def process_factory(command, **kwargs):
+        commands.append(command)
+        return process
+
+    events = []
+    result = YtDlpAdapter(process_factory=process_factory).download(
+        DownloadRequest("https://example.com/lesson", tmp_path),
+        progress_callback=events.append,
+    )
+
+    assert result == output.resolve()
+    assert events == [
+        DownloadProgress(
+            bytes_downloaded=512,
+            total_bytes=2048,
+            speed_bytes_per_second=128.0,
+            eta_seconds=12.0,
+        )
+    ]
+    assert "--progress-template" in commands[0]
+    assert "after_move:__AIOS_OUTPUT__%(filepath)s" in commands[0]
+
+
+def test_aria2_streams_progress_over_private_loopback_rpc(tmp_path):
+    output = tmp_path / "archive.bin"
+    calls = []
+
+    def delayed_output():
+        time.sleep(0.05)
+        yield "aria2 started"
+
+    process = FakeProcess(delayed_output())
+
+    def rpc_opener(request, timeout):
+        payload = json.loads(request.data.decode("utf-8"))
+        calls.append(payload)
+        assert request.full_url.startswith("http://127.0.0.1:")
+        return BytesIO(
+            json.dumps(
+                {
+                    "result": [
+                        {
+                            "gid": "abc123",
+                            "status": "active",
+                            "completedLength": "300",
+                            "totalLength": "1200",
+                            "downloadSpeed": "150",
+                        }
+                    ]
+                }
+            ).encode("utf-8")
+        )
+
+    commands = []
+
+    def process_factory(command, **kwargs):
+        commands.append(command)
+        return process
+
+    events = []
+    result = Aria2Adapter(
+        process_factory=process_factory,
+        rpc_opener=rpc_opener,
+        progress_poll_interval=0.5,
+    ).download(
+        DownloadRequest(
+            "https://example.com/archive.bin",
+            tmp_path,
+            filename="archive.bin",
+        ),
+        progress_callback=events.append,
+    )
+
+    assert result == output.resolve()
+    assert len(calls) == 1
+    assert calls[0]["method"] == "aria2.tellActive"
+    assert events == [
+        DownloadProgress(
+            bytes_downloaded=300,
+            total_bytes=1200,
+            speed_bytes_per_second=150.0,
+            eta_seconds=6.0,
+        )
+    ]
+    assert any(arg.startswith("--rpc-secret=") for arg in commands[0])
+    assert "--rpc-listen-all=false" in commands[0]
