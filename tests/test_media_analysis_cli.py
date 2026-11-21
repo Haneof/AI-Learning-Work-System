@@ -107,7 +107,6 @@ def test_media_analyze_cli_returns_partial_when_asr_ocr_are_not_configured(
         asr_download_root=str(tmp_path / "models"),
         enable_ocr=False,
         ocr_model_tier="small",
-        ocr_language="ch",
         ocr_device="cpu",
         ocr_min_confidence=0.0,
     )
