@@ -100,6 +100,16 @@ def test_media_analyze_cli_returns_partial_when_asr_ocr_are_not_configured(
         timeout_seconds=60,
         frame_interval_seconds=5.0,
         max_frames=20,
+        asr_model_size=None,
+        asr_device="cpu",
+        asr_compute_type="int8",
+        asr_language="zh",
+        asr_download_root=str(tmp_path / "models"),
+        enable_ocr=False,
+        ocr_model_tier="small",
+        ocr_language="ch",
+        ocr_device="cpu",
+        ocr_min_confidence=0.0,
     )
 
     _run_media_analyze(args)
