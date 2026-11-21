@@ -101,6 +101,7 @@ class DownloadJobExecutor:
                 url=job.source_url,
                 destination_dir=Path(job.destination),
             )
+
             def report_progress(progress: DownloadProgress) -> None:
                 self.repository.update_progress(
                     job_id,
