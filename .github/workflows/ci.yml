@@ -23,7 +23,9 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: pip
       - name: Install package and development tools
-        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev,gui]"
+      - name: Install local browser engine
+        run: playwright install --with-deps chromium
       - name: Lint
         run: ruff check .
       - name: Format check for PR-owned files
@@ -35,6 +37,8 @@ jobs:
           tests/test_pvd_skill_acceptance.py
           tests/docker_sandbox_e2e.py
           tests/test_skills.py
+      - name: Format check for GUI milestone files
+        run: ruff format --check src/aios_work_system/gui tests/test_gui.py
       - name: Test
         run: pytest
       - name: Format changed Python files

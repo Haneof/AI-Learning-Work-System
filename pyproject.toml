@@ -25,6 +25,7 @@ acquisition = [
   "google-api-python-client>=2.150,<4",
   "google-auth-oauthlib>=1.2,<2",
 ]
+gui = ["playwright>=1.52,<2"]
 
 [project.scripts]
 aios = "aios_work_system.cli:main"
