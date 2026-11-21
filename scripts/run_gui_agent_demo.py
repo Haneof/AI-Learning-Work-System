@@ -11,11 +11,6 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-try:
-    from playwright.async_api import async_playwright
-except ModuleNotFoundError:
-    async_playwright = None
-
 from aios_work_system.gui.agent import BrowserAgent
 from aios_work_system.gui.real_model import (
     ModelConfigurationError,
@@ -38,10 +33,12 @@ class _QuietFixtureHandler(SimpleHTTPRequestHandler):
 
 
 async def _run_demo(model: OpenAICompatibleDecisionModel, trace_path: Path):
-    if async_playwright is None:
+    try:
+        from playwright.async_api import async_playwright
+    except ModuleNotFoundError as exc:
         raise RuntimeError(
             "Playwright is not installed. Install the GUI extra and its Chromium browser."
-        )
+        ) from exc
     if not FIXTURE_DIRECTORY.is_dir():
         raise RuntimeError("the repository GUI fixture directory is missing")
 
