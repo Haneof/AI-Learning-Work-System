@@ -159,10 +159,8 @@ class KnowledgeRepository:
             }
             if "modality" not in columns:
                 connection.execute(
-                    (
-                        "ALTER TABLE knowledge_source_segments "
-                        "ADD COLUMN modality TEXT NOT NULL DEFAULT 'text'"
-                    )
+                    "ALTER TABLE knowledge_source_segments "
+                    "ADD COLUMN modality TEXT NOT NULL DEFAULT 'text'"
                 )
             if "artifact_ref" not in columns:
                 connection.execute(
