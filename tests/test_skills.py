@@ -206,7 +206,6 @@ def test_sandbox_timeout_removes_container(tmp_path, monkeypatch):
     assert len(cleanup_commands) == 1
 
 
-
 def test_sandbox_reports_unavailable_when_docker_cli_is_missing(tmp_path, monkeypatch):
     package = tmp_path / "valid"
     package.mkdir()
