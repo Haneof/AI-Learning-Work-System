@@ -11,6 +11,7 @@ from typing import Any
 
 import pytest
 
+from aios_work_system.gui.contracts import GuiAction
 from aios_work_system.gui.real_model import (
     API_KEY_ENV,
     BASE_URL_ENV,
@@ -104,7 +105,7 @@ def test_openai_compatible_multimodal_request_uses_local_fake_endpoint() -> None
         server.server_close()
         thread.join(timeout=2)
 
-    assert decision == action
+    assert decision == GuiAction.from_mapping(action).to_dict()
     assert captured["path"] == "/v1/chat/completions"
     assert captured["authorization"] == "Bearer unit-test-placeholder"
     payload = captured["payload"]
