@@ -23,6 +23,7 @@ from tests.pvd_skill_fixture import (
     SUPPLIER_INPUT,
 )
 
+
 def _load_step(package: Path, step_id: str) -> tuple[dict, dict, dict]:
     report = validate_skill_package(package)
     assert report.passed, report.errors
