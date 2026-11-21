@@ -1,4 +1,4 @@
-"""Bounded execution of persisted download jobs using existing media engines."""
+"""Bounded execution of persisted download jobs using existing media engines."""\n\n# ruff: noqa: I001
 
 from __future__ import annotations
 
