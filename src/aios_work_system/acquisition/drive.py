@@ -127,7 +127,8 @@ class GoogleDriveApiTransport:
         body = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
         if parent_id:
             body["parents"] = [parent_id]
-        response = self.service.files().create(body=body, fields="id,name,mimeType,webViewLink").execute()
+        request = self.service.files().create(body=body, fields="id,name,mimeType,webViewLink")
+        response = request.execute()
         return response["id"]
 
     def upload_file(self, path: Path, parent_id: str) -> DriveFileInfo:
