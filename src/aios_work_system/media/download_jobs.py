@@ -6,6 +6,7 @@ download engines; orchestration and process supervision are layered on later.
 
 from __future__ import annotations
 
+import math
 import sqlite3
 import uuid
 from dataclasses import dataclass
@@ -284,19 +285,29 @@ class DownloadJobRepository:
         speed_bytes_per_second: float | None = None,
         eta_seconds: float | None = None,
     ) -> DownloadJob:
+        if isinstance(bytes_downloaded, bool) or not isinstance(bytes_downloaded, int):
+            raise ValueError("bytes_downloaded must be an integer")
         if bytes_downloaded < 0:
             raise ValueError("bytes_downloaded must be non-negative")
+        if total_bytes is not None and (
+            isinstance(total_bytes, bool) or not isinstance(total_bytes, int)
+        ):
+            raise ValueError("total_bytes must be an integer")
         if total_bytes is not None and total_bytes < 0:
             raise ValueError("total_bytes must be non-negative")
-        if speed_bytes_per_second is not None and speed_bytes_per_second < 0:
-            raise ValueError("speed_bytes_per_second must be non-negative")
-        if eta_seconds is not None and eta_seconds < 0:
-            raise ValueError("eta_seconds must be non-negative")
+        if speed_bytes_per_second is not None and (
+            not math.isfinite(speed_bytes_per_second) or speed_bytes_per_second < 0
+        ):
+            raise ValueError("speed_bytes_per_second must be finite and non-negative")
+        if eta_seconds is not None and (
+            not math.isfinite(eta_seconds) or eta_seconds < 0
+        ):
+            raise ValueError("eta_seconds must be finite and non-negative")
         with self._connect() as connection:
             cursor = connection.execute(
                 """
                 UPDATE download_jobs
-                SET bytes_downloaded=?, total_bytes=?, speed_bytes_per_second=?,
+                SET bytes_downloaded=?, total_bytes=COALESCE(?, total_bytes), speed_bytes_per_second=?,
                     eta_seconds=?, updated_at=?
                 WHERE job_id=? AND status=?
                 """,
