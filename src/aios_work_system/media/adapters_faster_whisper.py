@@ -142,8 +142,9 @@ class FasterWhisperASRAdapter:
                 or not math.isfinite(end)
                 or start < 0
                 or end <= start
-                or not text
             ):
+                raise ValueError("faster-whisper returned invalid segment timestamps")
+            if not text:
                 continue
             start_ms = round(start * 1000)
             end_ms = round(end * 1000)
