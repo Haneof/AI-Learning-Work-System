@@ -6,7 +6,11 @@ from types import SimpleNamespace
 
 import pytest
 
-from aios_work_system.skills.registry import SkillVersionRecord, SkillVersionRegistry
+from aios_work_system.skills.registry import (
+    SkillVersionRecord,
+    SkillVersionRegistry,
+    get_clean_git_commit,
+)
 from aios_work_system.skills.sandbox import DockerSandboxRunner
 from aios_work_system.skills.validator import validate_skill_package
 
@@ -96,15 +100,81 @@ def test_validator_rejects_test_path_traversal(tmp_path):
     assert any("path traversal is not allowed" in error for error in report.errors)
 
 
-def test_version_registry_rejects_mutating_an_existing_version():
+def _init_git_package(tmp_path):
+    repository = tmp_path / "git-repository"
+    repository.mkdir()
+    package = repository / "skills" / "demo"
+    package.mkdir(parents=True)
+    write_valid_package(package)
+    subprocess.run(["git", "init", "-q", str(repository)], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.email", "test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(repository), "config", "user.name", "Test User"],
+        check=True,
+    )
+    subprocess.run(["git", "-C", str(repository), "add", "--all"], check=True)
+    subprocess.run(
+        ["git", "-C", str(repository), "commit", "-m", "Initial skill package"],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    return repository, package
+
+
+def test_version_registry_records_commit_for_clean_skill_package(tmp_path):
+    _repository, package = _init_git_package(tmp_path)
+    expected_commit = get_clean_git_commit(package)
     registry = SkillVersionRegistry()
-    registry.register(SkillVersionRecord("demo.skill", "1.0.0", "hash-a"))
 
-    with pytest.raises(ValueError):
-        registry.register(SkillVersionRecord("demo.skill", "1.0.0", "hash-b"))
+    registry.register(
+        SkillVersionRecord("demo.skill", "1.0.0", "hash-a"),
+        package_path=package,
+    )
 
-    registry.register(SkillVersionRecord("demo.skill", "1.0.1", "hash-b"))
+    stored = registry.get("demo.skill", "1.0.0")
+    assert stored.git_commit == expected_commit
+    assert len(stored.git_commit) == 40
+
+
+def test_version_registry_rejects_mutating_an_existing_version(tmp_path):
+    _repository, package = _init_git_package(tmp_path)
+    registry = SkillVersionRegistry()
+    registry.register(
+        SkillVersionRecord("demo.skill", "1.0.0", "hash-a"),
+        package_path=package,
+    )
+
+    with pytest.raises(ValueError, match="version increment"):
+        registry.register(
+            SkillVersionRecord("demo.skill", "1.0.0", "hash-b"),
+            package_path=package,
+        )
+
+    registry.register(
+        SkillVersionRecord("demo.skill", "1.0.1", "hash-b"),
+        package_path=package,
+    )
     assert registry.get("demo.skill", "1.0.1").package_hash == "hash-b"
+
+
+def test_version_registry_rejects_dirty_skill_package_worktree(tmp_path):
+    _repository, package = _init_git_package(tmp_path)
+    (package / "SKILL.md").write_text("# Modified after commit", encoding="utf-8")
+    registry = SkillVersionRegistry()
+
+    with pytest.raises(ValueError, match="worktree is dirty"):
+        get_clean_git_commit(package)
+    with pytest.raises(ValueError, match="worktree is dirty"):
+        registry.register(
+            SkillVersionRecord("demo.skill", "1.0.0", "hash-a"),
+            package_path=package,
+        )
+    with pytest.raises(KeyError):
+        registry.get("demo.skill", "1.0.0")
 
 
 def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
