@@ -305,7 +305,7 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
             "    print('PVD_PROCEDURE_CONTRACT_OK')\n"
             "\n"
             "if __name__ == '__main__':\n"
-            "    test_procedure_contract_is_evidence_linked()\n",
+            "    test_knowledge_package_contract_is_evidence_linked()\n",
             encoding="utf-8",
         )
         (root / "references" / "evidence_manifest.json").write_text(
