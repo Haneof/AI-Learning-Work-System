@@ -26,5 +26,18 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
+      - name: Format changed Python files
+        run: >-
+          ruff format --check
+          src/aios_work_system/acquisition/__init__.py
+          src/aios_work_system/acquisition/models.py
+          src/aios_work_system/acquisition/platforms.py
+          src/aios_work_system/acquisition/selector.py
+          src/aios_work_system/orchestration/__init__.py
+          src/aios_work_system/orchestration/repository.py
+          src/aios_work_system/skills/registry.py
+          tests/test_bilibili_adapter.py
+          tests/test_orchestration_repository.py
+          tests/test_skills.py
       - name: Test
         run: pytest
