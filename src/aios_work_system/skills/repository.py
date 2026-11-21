@@ -128,8 +128,13 @@ class SkillVersionRepository:
             raise ValueError("reviewer_id must differ from annotator_id")
         if decision not in {"APPROVED", "REJECTED"}:
             raise ValueError("decision must be APPROVED or REJECTED")
-        if not isinstance(spec_hash, str) or len(spec_hash) != 64 or any(
-            character not in "0123456789abcdef" for character in spec_hash.lower()
+        if (
+            not isinstance(spec_hash, str)
+            or len(spec_hash) != 64
+            or any(
+                character not in "0123456789abcdef"
+                for character in spec_hash.lower()
+            )
         ):
             raise ValueError("spec_hash must be a 64-character SHA-256 digest")
 
