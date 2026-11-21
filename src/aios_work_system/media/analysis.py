@@ -157,7 +157,11 @@ class MediaAnalysisRepository:
         config_hash: str,
         settings: dict[str, Any],
     ) -> tuple[str, bool]:
-        """Return (run_id, should_execute); completed identical runs are reused."""
+        """Atomically claim a run, reusing completed or already-running work.
+
+        Abandoned RUNNING rows must first be changed to FAILED with
+        recover_interrupted() at a worker startup boundary.
+        """
         now = _now()
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -524,7 +528,8 @@ class MediaAnalysisPipeline:
             ):
                 raise ValueError("OCR adapter returned an invalid OCR segment")
             if item.bounding_box is not None and (
-                len(item.bounding_box) != 4
+                not isinstance(item.bounding_box, (list, tuple))
+                or len(item.bounding_box) != 4
                 or any(
                     isinstance(value, bool)
                     or not isinstance(value, (int, float))
