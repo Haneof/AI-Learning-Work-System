@@ -1,5 +1,7 @@
 """End-to-end tests for selected candidate -> download -> asset registration."""
 
+from pathlib import Path
+
 import pytest
 
 from aios_work_system.acquisition import (
@@ -101,6 +103,21 @@ def test_enqueue_is_idempotent_and_creates_one_active_job(tmp_path):
         assert len(pipeline.jobs.list()) == 1
     finally:
         pipeline.shutdown()
+
+
+def test_candidate_id_cannot_escape_download_root(tmp_path):
+    candidates = CandidateRepository(tmp_path / "candidates.sqlite3")
+    candidate = _selected_candidate(candidates, candidate_id="../outside")
+    pipeline = _pipeline(tmp_path, candidates)
+    try:
+        job = pipeline.enqueue_selected(candidate.candidate_id)
+        destination = Path(job.destination).resolve()
+        download_root = (tmp_path / "downloads").resolve()
+    finally:
+        pipeline.shutdown()
+
+    assert destination.parent == download_root
+    assert destination != tmp_path / "outside"
 
 
 def test_selected_candidate_runs_through_asset_registration(tmp_path):
