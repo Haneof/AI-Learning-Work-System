@@ -8,7 +8,7 @@ execute) the Docker sandbox command.
 from __future__ import annotations
 
 import json
-from decimal import Decimal, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal
 from pathlib import Path
 
 import pytest
@@ -113,7 +113,10 @@ TASKS = (
     {
         "step_id": "gross_recalculation",
         "goal": "Recalculate the take-home remainder for all three jewelry products.",
-        "action": "Apply the 15 percent category fee and 0.40 USD per-order fee, then subtract unit cost.",
+        "action": (
+            "Apply the 15 percent category fee and 0.40 USD per-order fee, "
+            "then subtract unit cost."
+        ),
         "target": "US eBay jewelry listing economics",
         "preconditions": GROSS_INPUT,
         "expected_state": GROSS_EXPECTED,
@@ -121,7 +124,10 @@ TASKS = (
     {
         "step_id": "main_image_redline",
         "goal": "Classify supplier photos, scene images, and AI-altered product images.",
-        "action": "Only an actual supplier product photo may be the main image; scenes are secondary.",
+        "action": (
+            "Only an actual supplier product photo may be the main image; "
+            "scenes are secondary."
+        ),
         "target": "Product listing image set",
         "preconditions": IMAGE_INPUT,
         "expected_state": IMAGE_EXPECTED,
@@ -129,7 +135,10 @@ TASKS = (
     {
         "step_id": "sample_gate",
         "goal": "Prevent listing before a physical sample has arrived.",
-        "action": "Block listing while sample_received is false, regardless of elapsed preparation days.",
+        "action": (
+            "Block listing while sample_received is false, regardless of elapsed "
+            "preparation days."
+        ),
         "target": "Sample status and listing decision",
         "preconditions": SAMPLE_INPUT,
         "expected_state": SAMPLE_EXPECTED,
@@ -348,6 +357,8 @@ def _sample_decision(inputs: dict) -> dict:
 
 
 def _supplier_decision(inputs: dict) -> dict:
+    if inputs.get("platform") != "AliExpress":
+        return {"decision": "do_not_order"}
     required = ("unit_price_usd", "rating", "shipping_usd", "delivery_days")
     if any(
         key not in inputs or inputs[key] is None or str(inputs[key]).strip() == ""
@@ -406,7 +417,8 @@ def test_main_image_redline_requires_supplier_photo_and_rejects_ai_product_edits
     assert declared == calculated
 
     wrong_result = json.loads(json.dumps(IMAGE_EXPECTED, ensure_ascii=False))
-    wrong_result["main_image_id"] = "ai_color_changed"
+    wrong_result["main_image_id"] = "lifestyle_scene"
+    wrong_result["placements"]["lifestyle_scene"] = "main"
     wrong_result["placements"]["ai_color_changed"] = "main"
     wrong_result["placements"]["ai_shape_changed"] = "secondary"
     wrong_result["placements"]["ai_material_changed"] = "secondary"
