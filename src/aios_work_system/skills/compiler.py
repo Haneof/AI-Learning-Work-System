@@ -7,6 +7,7 @@ action code and never marks unreviewed narration as verified UI behavior.
 from __future__ import annotations
 
 import json
+import math
 import re
 import shutil
 import tempfile
@@ -161,6 +162,7 @@ class ProceduralSkillCompiler:
         if (
             isinstance(timestamp, bool)
             or not isinstance(timestamp, (int, float))
+            or not math.isfinite(timestamp)
             or timestamp < 0
         ):
             raise ValueError("timestamp_seconds must be a non-negative number")
@@ -230,6 +232,16 @@ class ProceduralSkillCompiler:
                 )
                 for evidence_ref in evidence_refs
             ]
+            supporting_segment_ids = {
+                evidence.segment_id
+                for evidence in knowledge_items[knowledge_id].evidence
+                if evidence.relation == EvidenceRelation.SUPPORTS
+            }
+            if any(ref["ref"] not in supporting_segment_ids for ref in validated_refs):
+                raise ValueError(
+                    f"step {step_id} evidence must be explicitly linked as SUPPORTS "
+                    f"evidence by knowledge item {knowledge_id}"
+                )
             if spec.annotation_status == "reviewed":
                 if raw.get("ui_verification_status") != "frame_verified":
                     raise ValueError(
