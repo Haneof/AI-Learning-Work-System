@@ -111,9 +111,7 @@ def test_search_returns_empty_list_for_a_valid_empty_result():
 
 
 def test_search_keeps_unavailable_series_unset_and_license_unknown():
-    adapter = BilibiliPlatformAdapter(
-        http_open=_fake_open(_payload([_video(season_title=None)]))
-    )
+    adapter = BilibiliPlatformAdapter(http_open=_fake_open(_payload([_video(season_title=None)])))
 
     candidate = adapter.search("Python")[0]
 
@@ -163,9 +161,7 @@ def test_search_surfaces_http_429_instead_of_returning_empty_results():
 
 def test_rule_based_selector_accepts_bilibili_candidates_directly():
     adapter = BilibiliPlatformAdapter(
-        http_open=_fake_open(
-            _payload([_video(title="Python 自动化入门", duration="4:30")])
-        )
+        http_open=_fake_open(_payload([_video(title="Python 自动化入门", duration="4:30")]))
     )
     candidates = adapter.search("Python")
 
