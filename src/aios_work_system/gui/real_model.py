@@ -14,7 +14,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-from aios_work_system.gui.contracts import GuiAction
 
 
 BASE_URL_ENV = "AIOS_GUI_MODEL_BASE_URL"
@@ -306,6 +305,8 @@ class OpenAICompatibleDecisionModel:
 
     async def decide(self, request: Mapping[str, Any]) -> Mapping[str, Any]:
         """Send the PNG screenshot and bounded DOM/ARIA summaries, then validate one action."""
+        from aios_work_system.gui.contracts import GuiAction
+
         observation = request.get("observation")
         if not isinstance(observation, Mapping):
             raise ModelRequestError("decision request is missing an observation object")
