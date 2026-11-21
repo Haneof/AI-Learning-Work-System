@@ -368,9 +368,7 @@ class ProceduralSkillCompiler:
                 or review_record.version != version
                 or review_record.spec_hash != self.spec_fingerprint(spec)
             ):
-                raise ValueError(
-                    "skill procedure content differs from the reviewed spec hash"
-                )
+                raise ValueError("skill procedure content differs from the reviewed spec hash")
             if review_record.annotator_id != spec.annotator_id:
                 raise ValueError("skill annotator differs from the reviewed record")
         lifecycle_status = "REVIEWED" if reviewed else "DRAFT"

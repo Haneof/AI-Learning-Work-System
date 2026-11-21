@@ -127,9 +127,7 @@ class SkillVersionRepository:
         if (
             not isinstance(spec_hash, str)
             or len(spec_hash) != 64
-            or any(
-                character not in "0123456789abcdef" for character in spec_hash.lower()
-            )
+            or any(character not in "0123456789abcdef" for character in spec_hash.lower())
         ):
             raise ValueError("spec_hash must be a 64-character SHA-256 digest")
 

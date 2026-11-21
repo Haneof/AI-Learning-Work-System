@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - feature/skill-compilation-core
-    paths:
-      - ".github/workflows/_temporary-ruff-format-check-skill-migration.yml"
 
 permissions:
   contents: read
