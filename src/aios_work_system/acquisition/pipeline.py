@@ -116,9 +116,11 @@ class AcquisitionPipeline:
         self.evidence_dir.mkdir(parents=True, exist_ok=True)
 
         try:
-            staged_file = Path(
-                self.platform.download(candidate, self.staging_dir)
-            ).expanduser().resolve(strict=True)
+            staged_file = (
+                Path(self.platform.download(candidate, self.staging_dir))
+                .expanduser()
+                .resolve(strict=True)
+            )
             if not staged_file.is_file() or not staged_file.is_relative_to(self.staging_dir):
                 raise AcquisitionError(
                     "Downloader returned a file outside the configured staging directory"
@@ -164,9 +166,7 @@ class AcquisitionPipeline:
                 drive=uploaded,
             )
             evidence_payload = self.evidence_extractor.extract(work_copy, context)
-            evidence_payload = self._add_acquisition_provenance(
-                evidence_payload, candidate, record
-            )
+            evidence_payload = self._add_acquisition_provenance(evidence_payload, candidate, record)
             evidence_path = self.evidence_dir / f"{record.record_id}.json"
             temporary = evidence_path.with_name(evidence_path.name + ".tmp")
             temporary.write_text(

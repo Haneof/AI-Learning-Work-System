@@ -87,16 +87,12 @@ class GoogleDriveApiTransport:
 
         credentials = None
         if token_path.is_file():
-            credentials = Credentials.from_authorized_user_file(
-                str(token_path), cls.SCOPES
-            )
+            credentials = Credentials.from_authorized_user_file(str(token_path), cls.SCOPES)
         if not credentials or not credentials.valid:
             if credentials and credentials.expired and credentials.refresh_token:
                 credentials.refresh(Request())
             else:
-                flow = InstalledAppFlow.from_client_secrets_file(
-                    str(credentials_path), cls.SCOPES
-                )
+                flow = InstalledAppFlow.from_client_secrets_file(str(credentials_path), cls.SCOPES)
                 credentials = flow.run_local_server(port=0)
             token_path.write_text(credentials.to_json(), encoding="utf-8")
             try:
@@ -131,11 +127,7 @@ class GoogleDriveApiTransport:
         body = {"name": name, "mimeType": "application/vnd.google-apps.folder"}
         if parent_id:
             body["parents"] = [parent_id]
-        response = (
-            self.service.files()
-            .create(body=body, fields="id,name,mimeType,webViewLink")
-            .execute()
-        )
+        response = self.service.files().create(body=body, fields="id,name,mimeType,webViewLink").execute()
         return response["id"]
 
     def upload_file(self, path: Path, parent_id: str) -> DriveFileInfo:
@@ -194,9 +186,7 @@ class GoogleDriveApiTransport:
 
 
 class DriveStorage(Protocol):
-    def upload_video(
-        self, local_video: str | Path, candidate: object
-    ) -> DriveUploadResult:
+    def upload_video(self, local_video: str | Path, candidate: object) -> DriveUploadResult:
         """Store a video at AI-Learning/platform/uploader/series."""
 
     def download_file(self, file_id: str, destination: str | Path) -> Path:
@@ -226,9 +216,7 @@ class GoogleDriveStorage:
         existing = self.transport.find_folder(name, parent_id)
         return existing or self.transport.create_folder(name, parent_id)
 
-    def upload_video(
-        self, local_video: str | Path, candidate: object
-    ) -> DriveUploadResult:
+    def upload_video(self, local_video: str | Path, candidate: object) -> DriveUploadResult:
         path = Path(local_video).expanduser().resolve(strict=True)
         platform = _folder_component(getattr(candidate, "platform", None), "unknown")
         uploader = _folder_component(getattr(candidate, "uploader", None), "unknown")

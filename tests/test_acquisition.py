@@ -220,10 +220,13 @@ def test_selector_can_exclude_unlicensed_unknown_results():
         series=unknown.series,
         license_info="unknown",
     )
-    assert RuleBasedVideoSelector().select(
-        [unknown],
-        SelectionCriteria(title_keywords=("blender",), allow_unknown_license=False),
-    ) == []
+    assert (
+        RuleBasedVideoSelector().select(
+            [unknown],
+            SelectionCriteria(title_keywords=("blender",), allow_unknown_license=False),
+        )
+        == []
+    )
 
 
 def test_drive_storage_uses_creator_and_series_folder_hierarchy(tmp_path):

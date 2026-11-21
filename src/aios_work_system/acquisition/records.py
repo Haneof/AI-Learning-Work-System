@@ -24,9 +24,7 @@ class JsonlRecordStore:
             try:
                 rows.append(json.loads(line))
             except json.JSONDecodeError as exc:
-                raise ValueError(
-                    f"Invalid JSONL record at {self.path}:{line_number}"
-                ) from exc
+                raise ValueError(f"Invalid JSONL record at {self.path}:{line_number}") from exc
         return rows
 
     def upsert(self, record: AcquisitionRecord) -> None:

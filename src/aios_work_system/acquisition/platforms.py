@@ -53,8 +53,7 @@ class YtDlpDownloader:
             "no_warnings": True,
             "noplaylist": True,
             "format": (
-                "bv*[height<=720][ext=mp4]+ba[ext=m4a]/"
-                "b[height<=720][ext=mp4]/b[height<=720]"
+                "bv*[height<=720][ext=mp4]+ba[ext=m4a]/b[height<=720][ext=mp4]/b[height<=720]"
             ),
             "merge_output_format": "mp4",
             "outtmpl": str(destination / "%(id)s.%(ext)s"),
@@ -71,9 +70,7 @@ class YtDlpDownloader:
             for raw_path in returned_paths:
                 if raw_path and Path(raw_path).is_file():
                     return Path(raw_path).resolve()
-            matches = sorted(
-                path for path in destination.glob(f"{video_id}.*") if path.is_file()
-            )
+            matches = sorted(path for path in destination.glob(f"{video_id}.*") if path.is_file())
             mp4_matches = [path for path in matches if path.suffix.casefold() == ".mp4"]
             if mp4_matches:
                 return mp4_matches[0].resolve()
@@ -152,9 +149,7 @@ class YouTubePlatformAdapter:
                         float(item["duration"]) if item.get("duration") is not None else None
                     ),
                     series=(
-                        item.get("playlist_title")
-                        or item.get("playlist")
-                        or item.get("series")
+                        item.get("playlist_title") or item.get("playlist") or item.get("series")
                     ),
                     license_info=str(license_info),
                     license_source="yt-dlp metadata" if license_info != "unknown" else "unknown",
