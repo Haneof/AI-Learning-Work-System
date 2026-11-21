@@ -140,6 +140,9 @@ class FFmpegProcessor:
         source_path = Path(source).resolve(strict=True)
         frame_dir = Path(output_dir).resolve()
         frame_dir.mkdir(parents=True, exist_ok=True)
+        for previous_frame in frame_dir.glob("frame_*.jpg"):
+            if previous_frame.is_file() or previous_frame.is_symlink():
+                previous_frame.unlink()
         pattern = frame_dir / "frame_%06d.jpg"
         self._run(
             [
