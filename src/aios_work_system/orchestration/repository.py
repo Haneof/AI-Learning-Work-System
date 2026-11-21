@@ -15,6 +15,17 @@ def _now() -> str:
     return datetime.now(UTC).isoformat()
 
 
+def _timestamp(value: str, label: str) -> str:
+    text = _required_text(value, label)
+    try:
+        parsed = datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError as exc:
+        raise ValueError(f"{label} must be an ISO 8601 timestamp") from exc
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=UTC)
+    return parsed.astimezone(UTC).isoformat()
+
+
 def _required_text(value: str, label: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{label} is required")
@@ -248,9 +259,11 @@ class OrchestrationRepository:
             raise ValueError("new task runs must start in QUEUED or RUNNING")
         scope = _expert_ids(expert_scope, expert_id)
         shared = _shared_expert_ids(shared_with_experts, expert_id)
-        start_time = started_at or (_now() if status == "RUNNING" else None)
-        if start_time is not None:
-            start_time = _required_text(start_time, "started_at")
+        start_time = (
+            _timestamp(started_at, "started_at")
+            if started_at
+            else (_now() if status == "RUNNING" else None)
+        )
 
         with self._connect() as connection:
             connection.execute(
@@ -344,7 +357,7 @@ class OrchestrationRepository:
             if status == "RUNNING" and start_time is None:
                 start_time = _now()
             end_time = (
-                (_required_text(ended_at, "ended_at") if ended_at else _now())
+                (_timestamp(ended_at, "ended_at") if ended_at else _now())
                 if status in self._TERMINAL_STATES
                 else None
             )
@@ -383,7 +396,7 @@ class OrchestrationRepository:
         action = _required_text(action, "action")
         target = _required_text(target, "target")
         result = _required_text(result, "result")
-        timestamp = _required_text(occurred_at, "occurred_at") if occurred_at else _now()
+        timestamp = _timestamp(occurred_at, "occurred_at") if occurred_at else _now()
         shared = _shared_expert_ids(shared_with_experts, expert_id)
         with self._connect() as connection:
             cursor = connection.execute(
