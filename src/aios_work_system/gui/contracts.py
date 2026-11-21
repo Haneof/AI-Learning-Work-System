@@ -99,14 +99,18 @@ class ExpectedResult:
         if kind in {"text_contains", "text_equals", "value_equals", "visible", "hidden"}:
             if selector is None:
                 raise ContractError(f"{kind} requires expected_result.selector")
-        if kind in {
-            "text_contains",
-            "text_equals",
-            "value_equals",
-            "attribute_equals",
-            "url_contains",
-            "title_contains",
-        } and value is None:
+        if (
+            kind
+            in {
+                "text_contains",
+                "text_equals",
+                "value_equals",
+                "attribute_equals",
+                "url_contains",
+                "title_contains",
+            }
+            and value is None
+        ):
             raise ContractError(f"{kind} requires expected_result.value")
         if kind == "attribute_equals":
             if selector is None or attribute is None:

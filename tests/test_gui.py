@@ -332,9 +332,7 @@ def test_agent_stops_when_the_single_correction_also_fails(tmp_path: Path) -> No
                 },
             ]
         )
-        report = await BrowserAgent(page, model, str(tmp_path / "failed.jsonl")).run(
-            "press Save"
-        )
+        report = await BrowserAgent(page, model, str(tmp_path / "failed.jsonl")).run("press Save")
         assert report.status == "failed"
         assert report.steps == 2
         assert report.corrections == 1

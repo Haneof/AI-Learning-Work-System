@@ -226,9 +226,7 @@ class BrowserAgent:
                 )
                 executed_steps += 1
                 if verification.get("passed") is True:
-                    history.append(
-                        {"action": action.to_dict(), "verification": dict(verification)}
-                    )
+                    history.append({"action": action.to_dict(), "verification": dict(verification)})
                     observation = after
                     break
 
