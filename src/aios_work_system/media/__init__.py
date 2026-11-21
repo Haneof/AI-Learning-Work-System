@@ -14,6 +14,7 @@ from aios_work_system.media.download_jobs import (
     DownloadJobRepository,
     DownloadJobStatus,
 )
+from aios_work_system.media.download_progress import DownloadProgress
 from aios_work_system.media.download_runner import DownloadJobExecutor
 from aios_work_system.media.ffmpeg import (
     FFmpegProcessor,
@@ -30,6 +31,7 @@ __all__ = [
     "DownloadJobExecutor",
     "DownloadJobRepository",
     "DownloadJobStatus",
+    "DownloadProgress",
     "DownloadRequest",
     "DownloadResult",
     "DownloadService",
