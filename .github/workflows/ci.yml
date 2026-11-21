@@ -39,6 +39,7 @@ jobs:
           src/aios_work_system/phase0.py
           tests/test_bilibili_adapter.py
           tests/test_orchestration_repository.py
+          tests/test_phase0.py
           tests/test_skills.py
       - name: Test
         run: pytest
