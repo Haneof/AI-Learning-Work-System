@@ -5,7 +5,7 @@ from __future__ import annotations
 from concurrent.futures import Future, ThreadPoolExecutor
 from pathlib import Path
 from threading import Lock
-from typing import Callable
+from collections.abc import Callable
 
 from aios_work_system.media.download import (
     Aria2Adapter,
