@@ -19,7 +19,6 @@ from aios_work_system.media.download_jobs import (
     DownloadJobStatus,
 )
 
-
 AssetRegistrar = Callable[[DownloadJob, Path, str, int], str]
 
 
