@@ -30,6 +30,8 @@ class PaddleOCRAdapter:
         lang: str = "ch",
         device: str = "cpu",
         model_version: str = "PP-OCRv6",
+        text_detection_model_name: str | None = None,
+        text_recognition_model_name: str | None = None,
         engine: str | None = None,
         cpu_threads: int = 4,
         min_confidence: float = 0.0,
@@ -54,6 +56,8 @@ class PaddleOCRAdapter:
         self.lang = lang
         self.device = device
         self.model_version = model_version
+        self.text_detection_model_name = text_detection_model_name
+        self.text_recognition_model_name = text_recognition_model_name
         self.engine = engine
         self.cpu_threads = cpu_threads
         self.min_confidence = min_confidence
@@ -71,6 +75,8 @@ class PaddleOCRAdapter:
             "lang": self.lang,
             "device": self.device,
             "model_version": self.model_version,
+            "text_detection_model_name": self.text_detection_model_name,
+            "text_recognition_model_name": self.text_recognition_model_name,
             "engine": self.engine,
             "cpu_threads": self.cpu_threads,
             "min_confidence": self.min_confidence,
@@ -100,6 +106,10 @@ class PaddleOCRAdapter:
             "use_textline_orientation": False,
             "cpu_threads": self.cpu_threads,
         }
+        if self.text_detection_model_name is not None:
+            kwargs["text_detection_model_name"] = self.text_detection_model_name
+        if self.text_recognition_model_name is not None:
+            kwargs["text_recognition_model_name"] = self.text_recognition_model_name
         if self.engine is not None:
             kwargs["engine"] = self.engine
         self._pipeline = factory(**kwargs)
