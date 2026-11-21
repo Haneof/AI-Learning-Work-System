@@ -237,7 +237,7 @@ def test_new_repository_migrates_existing_segment_table(tmp_path):
         )
 
     repository = KnowledgeRepository(database)
-    repository.add_segment(_segment())
+    repository.add_segment(_segment(modality="text"))
     stored = repository.get_segment("segment-1", "expert-a")
 
     assert stored.modality == "text"
