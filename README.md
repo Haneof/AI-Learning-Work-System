@@ -132,7 +132,7 @@ aios discover-download --candidate-id <candidate-id> --engine yt-dlp
 aios media-analyze --asset-id <asset-id>
 ```
 
-`media-analyze` 会校验已登记资产的 SHA-256，提取音轨和有限数量的关键帧，并生成可重试的分析记录。当前 ASR/OCR 仍是可插拔接口而非已交付的模型实现，因此没有配置识别适配器时会明确返回 `PARTIAL`，不会伪造转录结果。详见[媒体处理文档](docs/MEDIA_INGEST.md)。
+`media-analyze` 会校验已登记资产的 SHA-256，提取音轨和有限数量的关键帧，并生成可重试的分析记录。ASR/OCR 已有可选适配器：`pip install -e ".[asr]"` 安装 faster-whisper，`pip install -e ".[ocr]"` 安装 PaddleOCR（仍需单独安装匹配的 PaddlePaddle 推理引擎）。只有显式传入 `--asr-model-size` 或 `--enable-ocr` 才会加载模型；未启用时返回明确的 `PARTIAL`，不会伪造转录结果。详见[媒体处理文档](docs/MEDIA_INGEST.md)。
 
 下载成功后命令输出任务状态、资产 ID、SHA-256 和 manifest 路径。候选未选中时下载命令会拒绝执行。下载队列与资产库参数可用 `--candidate-database`、`--jobs-database`、`--assets-database`、`--manifest-dir` 和 `--destination` 单独配置。
 
