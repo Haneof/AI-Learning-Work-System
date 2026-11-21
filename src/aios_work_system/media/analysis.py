@@ -136,6 +136,7 @@ class MediaAnalysisRepository:
                     timestamp_ms INTEGER NOT NULL,
                     text_content TEXT NOT NULL,
                     bounding_box_json TEXT,
+                    confidence REAL,
                     adapter_name TEXT NOT NULL,
                     adapter_version TEXT NOT NULL,
                     PRIMARY KEY(run_id, segment_index)
@@ -148,6 +149,16 @@ class MediaAnalysisRepository:
                     ON media_ocr_segments(run_id, timestamp_ms);
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(media_ocr_segments)"
+                ).fetchall()
+            }
+            if "confidence" not in columns:
+                connection.execute(
+                    "ALTER TABLE media_ocr_segments ADD COLUMN confidence REAL"
+                )
 
     def start_or_resume(
         self,
@@ -321,8 +332,8 @@ class MediaAnalysisRepository:
                     """
                     INSERT INTO media_ocr_segments
                     (run_id, segment_index, timestamp_ms, text_content,
-                     bounding_box_json, adapter_name, adapter_version)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                     bounding_box_json, confidence, adapter_name, adapter_version)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     [
                         (
@@ -333,6 +344,7 @@ class MediaAnalysisRepository:
                             json.dumps(item.bounding_box)
                             if item.bounding_box is not None
                             else None,
+                            item.confidence,
                             ocr_adapter.name,
                             ocr_adapter.version,
                         )
@@ -423,6 +435,7 @@ class MediaAnalysisRepository:
                 bounding_box=json.loads(row["bounding_box_json"])
                 if row["bounding_box_json"]
                 else None,
+                confidence=row["confidence"],
             )
             for row in ocr_rows
         )
@@ -527,6 +540,13 @@ class MediaAnalysisPipeline:
                 or not item.text.strip()
             ):
                 raise ValueError("OCR adapter returned an invalid OCR segment")
+            if item.confidence is not None and (
+                isinstance(item.confidence, bool)
+                or not isinstance(item.confidence, (int, float))
+                or not math.isfinite(item.confidence)
+                or not 0 <= item.confidence <= 1
+            ):
+                raise ValueError("OCR adapter returned an invalid confidence score")
             if item.bounding_box is not None and (
                 not isinstance(item.bounding_box, (list, tuple))
                 or len(item.bounding_box) != 4
@@ -574,12 +594,20 @@ class MediaAnalysisPipeline:
             "ffmpeg_binary": self.ffmpeg.ffmpeg_binary,
             "ffprobe_binary": self.ffmpeg.ffprobe_binary,
             "asr": (
-                {"name": self.asr_adapter.name, "version": self.asr_adapter.version}
+                {
+                    "name": self.asr_adapter.name,
+                    "version": self.asr_adapter.version,
+                    "config": getattr(self.asr_adapter, "config", {}),
+                }
                 if self.asr_adapter is not None
                 else None
             ),
             "ocr": (
-                {"name": self.ocr_adapter.name, "version": self.ocr_adapter.version}
+                {
+                    "name": self.ocr_adapter.name,
+                    "version": self.ocr_adapter.version,
+                    "config": getattr(self.ocr_adapter, "config", {}),
+                }
                 if self.ocr_adapter is not None
                 else None
             ),
