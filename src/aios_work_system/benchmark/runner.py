@@ -49,6 +49,7 @@ class BenchmarkRunner:
                 passed=all(checks.values()) if checks else False,
                 checks=checks,
                 resource_metrics=resource_metrics,
+                backend_metadata=generated.metadata,
             )
         except Exception as exc:
             elapsed = time.perf_counter() - started
