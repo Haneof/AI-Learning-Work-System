@@ -474,13 +474,7 @@ def test_supplier_gate_accepts_rating_of_4_5_but_blocks_a_lower_rating(
 
     wrong_package = compiled_pvd_skill_factory(
         input_overrides={"supplier_checklist": low_rating},
-        expected_overrides={
-            "supplier_checklist": {
-                "decision": "ready_for_manual_order_approval"
-            }
-        },
+        expected_overrides={"supplier_checklist": {"decision": "ready_for_manual_order_approval"}},
     )
-    _, wrong_inputs, wrong_declared = _load_step(
-        wrong_package, "supplier_checklist"
-    )
+    _, wrong_inputs, wrong_declared = _load_step(wrong_package, "supplier_checklist")
     assert wrong_declared != _supplier_decision(wrong_inputs)
