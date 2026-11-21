@@ -18,8 +18,8 @@ from urllib.parse import unquote, urlparse
 from urllib.request import Request as UrlRequest, urlopen
 
 from aios_work_system.media.download_progress import (
-    YTDLP_PROGRESS_PREFIX,
     DownloadProgress,
+    YTDLP_PROGRESS_PREFIX,
     parse_aria2_status,
     parse_ytdlp_progress_line,
 )
@@ -127,6 +127,7 @@ class YtDlpAdapter:
     """Delegate site extraction and HLS/DASH downloads to yt-dlp."""
 
     name = "yt-dlp"
+    _OUTPUT_PATH_PREFIX = "__AIOS_OUTPUT__"
     _PROGRESS_TEMPLATE = (
         f"download:{YTDLP_PROGRESS_PREFIX}"
         "%(progress.{downloaded_bytes,total_bytes,total_bytes_estimate,speed,eta})#j"
@@ -159,7 +160,11 @@ class YtDlpAdapter:
             "--concurrent-fragments",
             str(request.concurrent_fragments),
             "--print",
-            "after_move:filepath",
+            (
+                f"after_move:{self._OUTPUT_PATH_PREFIX}%(filepath)s"
+                if with_progress
+                else "after_move:filepath"
+            ),
             "--merge-output-format",
             "mp4",
         ]
@@ -241,6 +246,7 @@ class YtDlpAdapter:
 
         output_queue, reader = _start_output_reader(process)
         output_lines: list[str] = []
+        reported_paths: list[str] = []
         deadline = time.monotonic() + self.timeout_seconds
         try:
             while True:
@@ -253,6 +259,11 @@ class YtDlpAdapter:
                     continue
                 if line is None:
                     break
+                if line.startswith(self._OUTPUT_PATH_PREFIX):
+                    reported_paths.append(
+                        line[len(self._OUTPUT_PATH_PREFIX) :].strip()
+                    )
+                    continue
                 progress = parse_ytdlp_progress_line(line)
                 if progress is not None:
                     progress_callback(progress)
@@ -273,7 +284,7 @@ class YtDlpAdapter:
         if return_code != 0:
             detail = "\n".join(output_lines[-20:]).strip() or f"exit code {return_code}"
             raise DownloadError(f"yt-dlp failed: {detail}")
-        return self._resolve_output_path(output_lines, destination)
+        return self._resolve_output_path(reported_paths, destination)
 
 
 class Aria2Adapter:
