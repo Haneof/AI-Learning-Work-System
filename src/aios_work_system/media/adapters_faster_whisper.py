@@ -47,11 +47,11 @@ class FasterWhisperASRAdapter:
             raise ValueError("device must not be empty")
         if not compute_type.strip():
             raise ValueError("compute_type must not be empty")
-        if beam_size < 1 or isinstance(beam_size, bool):
+        if not isinstance(beam_size, int) or isinstance(beam_size, bool) or beam_size < 1:
             raise ValueError("beam_size must be a positive integer")
-        if cpu_threads < 1 or isinstance(cpu_threads, bool):
+        if not isinstance(cpu_threads, int) or isinstance(cpu_threads, bool) or cpu_threads < 1:
             raise ValueError("cpu_threads must be a positive integer")
-        if num_workers < 1 or isinstance(num_workers, bool):
+        if not isinstance(num_workers, int) or isinstance(num_workers, bool) or num_workers < 1:
             raise ValueError("num_workers must be a positive integer")
         if language is not None and not language.strip():
             raise ValueError("language must be None or a non-empty language code")
