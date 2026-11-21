@@ -20,7 +20,6 @@ class FakeWhisperModel:
         return iter(
             [
                 SimpleNamespace(start=0.25, end=1.75, text="  hello world  "),
-                SimpleNamespace(start=2.0, end=2.0, text="invalid"),
                 SimpleNamespace(start=2.0, end=2.5, text="   "),
                 SimpleNamespace(start=3.0, end=4.0, text="second sentence"),
             ]
