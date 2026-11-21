@@ -144,7 +144,7 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
     """Write a minimal, contract-shaped package without invoking the compiler."""
     sequence = 0
 
-    def build(input_overrides=None, expected_overrides=None):
+    def build(input_overrides=None, expected_overrides=None, include_suggested_steps=True):
         nonlocal sequence
         sequence += 1
         input_overrides = input_overrides or {}
@@ -153,9 +153,11 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
         (root / "tests").mkdir(parents=True)
         (root / "references").mkdir()
 
-        steps = []
-        step_evidence = []
+        suggested_steps = []
+        suggested_step_evidence = []
         for index, task in enumerate(TASKS, start=1):
+            if not include_suggested_steps:
+                continue
             step_id = task["step_id"]
             evidence_ref = f"pvd-pilot-segment-{index}"
             step = {
@@ -183,21 +185,55 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
                         "timestamp_seconds": float(index * 10),
                     }
                 ],
-                "recovery_strategy": (
-                    "Stop and request human review; do not perform external side effects."
-                ),
                 "ui_verification_status": "pending_frame_review",
             }
-            steps.append(step)
-            step_evidence.append({"step_id": step_id, "evidence_refs": step["evidence_refs"]})
+            suggested_steps.append(step)
+            suggested_step_evidence.append(
+                {"suggested_step_id": step_id, "evidence_refs": step["evidence_refs"]}
+            )
 
+        evidence_refs = [
+            {
+                "kind": "video_frame",
+                "ref": f"pvd-pilot-segment-{index}",
+                "timestamp_seconds": float(index * 10),
+            }
+            for index, _task in enumerate(TASKS, start=1)
+        ]
         manifest = {
             "id": "pvd.pilot.product-operations",
             "version": "1.0.0",
-            "goal": "Evaluate four PVD product-operations procedures.",
+            "purpose": (
+                "Make evidence-based PVD product-operation decisions "
+                "without bypassing safety gates."
+            ),
+            "conditions": {
+                "applicable_when": ["Product and supplier information is available for review."],
+                "not_applicable_when": [
+                    "Required facts are missing or external authorization is needed."
+                ],
+            },
+            "judgement_criteria": [
+                "All calculations match the declared fee and cost inputs.",
+                "Product images preserve actual product attributes.",
+                "Listing remains blocked until the sample is received.",
+                "Supplier eligibility requires complete facts and the rating threshold.",
+            ],
+            "experience": {
+                "success": ["Recalculate every product instead of extrapolating one example."],
+                "failure": ["A plausible total or image appearance does not prove the facts."],
+            },
+            "counterexamples": [
+                "A lifestyle image may look like a supplier photo but is not the actual product.",
+                "A 4.49 supplier rating is close to 4.5 but does not meet the threshold.",
+            ],
+            "recovery": [
+                "Stop when required facts are missing and request the missing evidence.",
+                "Keep listing and ordering blocked until human review of updated evidence.",
+            ],
             "scope": "PVD pilot tasks; declarative acceptance only.",
             "inputs": {"task_context": "object"},
-            "outputs": {"procedure_result": "object"},
+            "outputs": {"knowledge_result": "object"},
             "tools": [],
             "permissions": [],
             "risk": "LOW",
@@ -209,24 +245,41 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
             "expert_id": EXPERT_ID,
         }
         procedure = {
-            "schema_version": "1.0",
+            "schema_version": "2.0",
             "source_id": SOURCE_ID,
             "expert_id": EXPERT_ID,
             "knowledge_ids": [KNOWLEDGE_ID],
             "annotation_status": "unreviewed",
-            "steps": steps,
+            "evidence_refs": evidence_refs,
+            "suggested_steps": suggested_steps,
         }
         evidence_manifest = {
             "source_id": SOURCE_ID,
             "expert_id": EXPERT_ID,
             "knowledge_ids": [KNOWLEDGE_ID],
-            "step_evidence": step_evidence,
+            "evidence_refs": evidence_refs,
+            "suggested_step_evidence": suggested_step_evidence,
         }
 
         (root / "SKILL.md").write_text(
             "# PVD Pilot Product Operations\n\n"
-            "This is a declarative, evidence-linked procedure package.\n\n"
-            "It is SPEC_ONLY and does not execute listing, purchasing, or payments.\n",
+            "## Purpose\n\n"
+            "Make evidence-based PVD product-operation decisions "
+            "without bypassing safety gates.\n\n"
+            "## Conditions\n\n"
+            "Apply only when product and supplier facts are available; do not apply when "
+            "required facts or authorization are missing.\n\n"
+            "## Judgement criteria\n\n"
+            "Validate calculations, image integrity, sample status, and supplier evidence.\n\n"
+            "## Experience\n\n"
+            "Success: recalculate all products. Failure: do not infer facts from appearance.\n\n"
+            "## Counterexamples\n\n"
+            "A near-threshold rating or plausible-looking image can still be invalid.\n\n"
+            "## Recovery\n\n"
+            "Stop and request missing evidence or human review.\n\n"
+            "## Suggested steps\n\n"
+            "Optional reference hints only; not a mandatory execution checklist.\n\n"
+            "This package is SPEC_ONLY and does not execute listing, purchasing, or payments.\n",
             encoding="utf-8",
         )
         (root / "manifest.json").write_text(
@@ -240,16 +293,19 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
         (root / "tests" / "test_procedure_contract.py").write_text(
             "import json\n"
             "from pathlib import Path\n\n"
-            "def test_procedure_contract_is_evidence_linked():\n"
+            "def test_knowledge_package_contract_is_evidence_linked():\n"
             "    root = Path(__file__).resolve().parents[1]\n"
             "    data = json.loads((root / 'procedure.json').read_text(encoding='utf-8'))\n"
-            "    assert data['schema_version'] == '1.0'\n"
-            "    assert data['steps']\n"
-            "    assert all(step['evidence_refs'] for step in data['steps'])\n"
+            "    manifest = json.loads((root / 'manifest.json').read_text(encoding='utf-8'))\n"
+            "    assert data['schema_version'] == '2.0'\n"
+            "    assert isinstance(data['suggested_steps'], list)\n"
+            "    assert data['evidence_refs']\n"
+            "    assert manifest['purpose']\n"
+            "    assert manifest['judgement_criteria']\n"
             "    print('PVD_PROCEDURE_CONTRACT_OK')\n"
             "\n"
             "if __name__ == '__main__':\n"
-            "    test_procedure_contract_is_evidence_linked()\n",
+            "    test_knowledge_package_contract_is_evidence_linked()\n",
             encoding="utf-8",
         )
         (root / "references" / "evidence_manifest.json").write_text(

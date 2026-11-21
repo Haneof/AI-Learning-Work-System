@@ -42,13 +42,15 @@ def _load_step(package: Path, step_id: str) -> tuple[dict, dict, dict]:
     assert command[-2:] == ["python", "tests/test_procedure_contract.py"]
 
     procedure = json.loads((package / "procedure.json").read_text(encoding="utf-8"))
-    assert procedure["schema_version"] == "1.0"
+    assert procedure["schema_version"] == "2.0"
     assert procedure["source_id"] == SOURCE_ID
     assert procedure["expert_id"] == EXPERT_ID
     assert procedure["annotation_status"] == "unreviewed"
-    assert len(procedure["steps"]) == 4
+    assert procedure["evidence_refs"]
+    assert "steps" not in procedure
+    assert len(procedure["suggested_steps"]) == 4
 
-    step = next(item for item in procedure["steps"] if item["step_id"] == step_id)
+    step = next(item for item in procedure["suggested_steps"] if item["step_id"] == step_id)
     assert step["knowledge_id"] == KNOWLEDGE_ID
     assert step["evidence_refs"]
     assert step["ui_verification_status"] == "pending_frame_review"
@@ -120,6 +122,20 @@ def _supplier_decision(inputs: dict) -> dict:
     )
     decision = "ready_for_manual_order_approval" if complete_and_valid else "do_not_order"
     return {"decision": decision}
+
+
+def test_optional_suggested_steps_do_not_change_pvd_judgement_criteria(
+    compiled_pvd_skill_factory,
+):
+    package = compiled_pvd_skill_factory(include_suggested_steps=False)
+    report = validate_skill_package(package)
+    procedure = json.loads((package / "procedure.json").read_text(encoding="utf-8"))
+    manifest = json.loads((package / "manifest.json").read_text(encoding="utf-8"))
+
+    assert report.passed, report.errors
+    assert procedure["suggested_steps"] == []
+    assert procedure["evidence_refs"]
+    assert manifest["judgement_criteria"]
 
 
 def test_gross_recalculation_matches_all_three_ranges_and_rejects_wrong_result(
