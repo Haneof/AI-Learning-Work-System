@@ -63,9 +63,15 @@ class DownloadJobExecutor:
         """Schedule a queued or retryable job; duplicate submissions are rejected."""
         with self._lock:
             existing = self._futures.get(job_id)
-            if existing is not None and not existing.done():
-                raise ValueError(f"download job is already scheduled: {job_id}")
             job = self.repository.get(job_id)
+            if existing is not None and (
+                not existing.done()
+                or job.status not in {
+                    DownloadJobStatus.QUEUED,
+                    DownloadJobStatus.RETRY_WAIT,
+                }
+            ):
+                raise ValueError(f"download job is already scheduled or finished: {job_id}")
             if job.status not in {
                 DownloadJobStatus.QUEUED,
                 DownloadJobStatus.RETRY_WAIT,
