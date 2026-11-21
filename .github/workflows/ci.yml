@@ -72,7 +72,7 @@ jobs:
         shell: bash
         run: |
           BASE_IMAGE="python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b"
-          if [[ ! "$BASE_IMAGE" =~ ^.+@sha256:[0-9a-f]{64}$/ ]]; then
+          if [[ ! "$BASE_IMAGE" =~ ^.+@sha256:[0-9a-f]{64}$ ]]; then
             echo "Sandbox base image is not pinned to an immutable digest" >&2
             exit 1
           fi
@@ -80,7 +80,7 @@ jobs:
           printf 'FROM %s\nRUN python -c "print(\\\"pvd-sandbox-image\\\")"\n' "$BASE_IMAGE" > "$RUNNER_TEMP/Dockerfile"
           docker build --pull=false --network=none --tag aios-pvd-sandbox:ci --file "$RUNNER_TEMP/Dockerfile" "$RUNNER_TEMP"
           IMAGE_ID="$(docker image inspect --format='{{.Id}}' aios-pvd-sandbox:ci)"
-          if [[ ! "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$/ ]]; then
+          if [[ ! "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]; then
             echo "Built sandbox image did not have an immutable sha256 image ID" >&2
             exit 1
           fi
@@ -89,4 +89,3 @@ jobs:
           echo "Pinned base image: $BASE_IMAGE"
       - name: Execute compiled PVD contract and sandbox security regressions
         run: pytest -q tests/docker_sandbox_e2e.py
-
