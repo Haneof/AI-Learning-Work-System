@@ -154,3 +154,29 @@ aios media-analyze --asset-id <asset-id>
 
 所有功能以明确接口、状态迁移、权限要求和可重复验收测试为交付标准。未验证的能力必须明确标注，不得以模型口头声称代替实际执行结果。
 
+
+
+## 知识证据与专业 Skill 编译
+
+媒体分析结果可按专家空间建立证据索引，再以独立审核流程形成专业知识和技能草案：
+
+```powershell
+# 1. 从已完成的媒体分析运行建立 ASR/OCR/视频帧证据索引
+aios knowledge-index-media --run-id <analysis-run-id> --expert-id <specialist-id>
+
+# 2. 将结构化知识条目作为候选提交；不会自动批准
+aios knowledge-add --input-file candidate-knowledge.json
+
+# 3. 人工审核知识条目并记录审核理由
+aios knowledge-review --knowledge-id <knowledge-id> --expert-id <specialist-id> --reviewer-id <reviewer-id> --decision APPROVED --note "Checked source evidence"
+
+# 4. 将结构化过程规范送交独立审核，审核记录绑定规范内容 SHA-256
+aios skill-review --input-file procedure.json --reviewer-id <reviewer-id> --decision APPROVED --note "Inspected each cited frame"
+
+# 5. 将审核返回的 review_id 写入 procedure.json 后编译
+aios skill-compile --input-file procedure.json --output artifacts/skills/<skill-id>
+```
+
+编译器区分 ASR 口述证据与视频帧/UI 证据。只有草稿时输出 `DRAFT / SPEC_ONLY`；只有通过独立审核、逐步可视证据核验和内容哈希绑定的版本才进入版本目录。即使进入 `REVIEWED`，当前仍是声明式过程规范，不是可直接运行的 Agent 程序。详见[知识证据治理](docs/KNOWLEDGE_EVIDENCE.md)和[Skill 编译安全边界](docs/SKILL_SECURITY.md)。
+
+当前 CLI 的 reviewer_id 仍由调用者提供，并未连接登录/权限系统；视频帧是否确实被人查看也依赖审核人外部检查。该层是治理与审计工作流，不应当作生产身份认证或视觉事实证明。
