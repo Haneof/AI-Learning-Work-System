@@ -51,10 +51,10 @@ def test_state_machine_requires_valid_order_and_completion_evidence(tmp_path):
     repository.transition(job.job_id, DownloadJobStatus.PREPARING)
     repository.transition(job.job_id, DownloadJobStatus.DOWNLOADING)
 
+    repository.transition(job.job_id, DownloadJobStatus.VERIFYING)
+
     with pytest.raises(ValueError, match="asset_id and sha256"):
         repository.transition(job.job_id, DownloadJobStatus.COMPLETED)
-
-    repository.transition(job.job_id, DownloadJobStatus.VERIFYING)
     completed = repository.transition(
         job.job_id,
         DownloadJobStatus.COMPLETED,
