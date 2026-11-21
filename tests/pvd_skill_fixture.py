@@ -139,6 +139,7 @@ TASKS = (
     },
 )
 
+
 def make_compiled_pvd_skill_factory(tmp_path: Path):
     """Write a minimal, contract-shaped package without invoking the compiler."""
     sequence = 0
