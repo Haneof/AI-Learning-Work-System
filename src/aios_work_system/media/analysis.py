@@ -320,6 +320,19 @@ class MediaAnalysisRepository:
                 ),
             )
 
+    def list_for_asset(self, asset_id: str) -> list[MediaAnalysisResult]:
+        """List analysis attempts for an asset in creation order."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                """
+                SELECT run_id FROM media_analysis_runs
+                WHERE asset_id=?
+                ORDER BY created_at, run_id
+                """,
+                (asset_id,),
+            ).fetchall()
+        return [self.get(row["run_id"]) for row in rows]
+
     def get(self, run_id: str) -> MediaAnalysisResult:
         with self._connect() as connection:
             run = connection.execute(
