@@ -21,32 +21,45 @@ class DownloadProgress:
     eta_seconds: float | None = None
 
     def __post_init__(self) -> None:
-        if isinstance(self.bytes_downloaded, bool) or self.bytes_downloaded < 0:
+        if (
+            isinstance(self.bytes_downloaded, bool)
+            or not isinstance(self.bytes_downloaded, int)
+            or self.bytes_downloaded < 0
+        ):
             raise ValueError("bytes_downloaded must be a non-negative integer")
         if self.total_bytes is not None and (
-            isinstance(self.total_bytes, bool) or self.total_bytes < 0
+            isinstance(self.total_bytes, bool)
+            or not isinstance(self.total_bytes, int)
+            or self.total_bytes < 0
         ):
             raise ValueError("total_bytes must be a non-negative integer")
         for name, value in (
             ("speed_bytes_per_second", self.speed_bytes_per_second),
             ("eta_seconds", self.eta_seconds),
         ):
-            if value is not None and (not math.isfinite(value) or value < 0):
+            if value is not None and (
+                isinstance(value, bool)
+                or not isinstance(value, (int, float))
+                or not math.isfinite(value)
+                or value < 0
+            ):
                 raise ValueError(f"{name} must be finite and non-negative")
 
 
 def _optional_int(value: Any) -> int | None:
-    if value in (None, "", "NA", "N/A", "None"):
+    if value in (None, "", "NA", "N/A", "None") or isinstance(value, bool):
         return None
     try:
-        parsed = int(float(value))
+        parsed = float(value)
     except (TypeError, ValueError, OverflowError):
         return None
-    return parsed if parsed >= 0 else None
+    if not math.isfinite(parsed) or not parsed.is_integer() or parsed < 0:
+        return None
+    return int(parsed)
 
 
 def _optional_float(value: Any) -> float | None:
-    if value in (None, "", "NA", "N/A", "None"):
+    if value in (None, "", "NA", "N/A", "None") or isinstance(value, bool):
         return None
     try:
         parsed = float(value)
