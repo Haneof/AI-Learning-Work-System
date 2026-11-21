@@ -88,6 +88,22 @@ class _DOMSummaryParser(HTMLParser):
         "textarea",
     }
     _INTERESTING_ATTRIBUTES = {"id", "role", "aria-label", "name", "type", "placeholder"}
+    _VOID_TAGS = {
+        "area",
+        "base",
+        "br",
+        "col",
+        "embed",
+        "hr",
+        "img",
+        "input",
+        "link",
+        "meta",
+        "param",
+        "source",
+        "track",
+        "wbr",
+    }
 
     def __init__(self) -> None:
         super().__init__(convert_charrefs=True)
@@ -112,7 +128,8 @@ class _DOMSummaryParser(HTMLParser):
             if key in self._INTERESTING_ATTRIBUTES and value is not None
         }
         node: dict[str, Any] = {"tag": tag, "attributes": attributes, "text": ""}
-        self._stack.append(node)
+        if tag not in self._VOID_TAGS:
+            self._stack.append(node)
         if tag in self._INTERESTING_TAGS or attributes:
             self.nodes.append(node)
 
