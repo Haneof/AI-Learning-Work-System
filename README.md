@@ -90,7 +90,7 @@
 | [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
 | [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
 | [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
-| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |\n| [教程发现与采集中心](docs/ACQUISITION_DISCOVERY_DESIGN.md) | 平台关键词搜索、候选筛选、B站适配器、SQLite 候选库和 yt-dlp/aria2 下载适配器 |
+| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |\n| [教程发现与采集中心](docs/ACQUISITION_DISCOVERY_DESIGN.md) | 平台关键词搜索、候选筛选、B站适配器、SQLite 候选库和 yt-dlp/aria2 下载适配器 |\n| [下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md) | SQLite 持久化下载任务、状态机、进度契约和异常重启恢复边界 |
 | [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
 | [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
 | [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |
@@ -121,7 +121,7 @@ python -m aios_work_system serve --host 127.0.0.1 --port 8000
 aios discover-search --platform bilibili --keyword "Python 教程"
 ```
 
-如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载适配器目前通过 Python API 调用，依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。
+如果 B站返回登录或风控限制，可在当前终端设置可选的 `BILIBILI_COOKIE` 环境变量后重试。搜索命令只采集候选元数据，不会自动下载视频。下载适配器目前通过 Python API 调用，依赖本机已安装的 yt-dlp、aria2 和可选 FFmpeg/ffprobe。持久化下载任务状态与状态机已实现；进程调度、引擎进度解析和断点续传端到端验收仍在开发中，详见[下载任务生命周期](docs/DOWNLOAD_JOB_LIFECYCLE.md)。
 
 ## 当前项目状态
 
