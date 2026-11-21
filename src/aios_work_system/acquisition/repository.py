@@ -18,6 +18,8 @@ class CandidateStatus(StrEnum):
     SELECTED = "SELECTED"
     REJECTED = "REJECTED"
     QUEUED = "QUEUED"
+    DOWNLOADED = "DOWNLOADED"
+    DOWNLOAD_FAILED = "DOWNLOAD_FAILED"
 
 
 _ALLOWED_TRANSITIONS = {
@@ -35,7 +37,12 @@ _ALLOWED_TRANSITIONS = {
         CandidateStatus.REJECTED,
     },
     CandidateStatus.REJECTED: {CandidateStatus.REVIEW_PENDING},
-    CandidateStatus.QUEUED: set(),
+    CandidateStatus.QUEUED: {
+        CandidateStatus.DOWNLOADED,
+        CandidateStatus.DOWNLOAD_FAILED,
+    },
+    CandidateStatus.DOWNLOAD_FAILED: {CandidateStatus.SELECTED},
+    CandidateStatus.DOWNLOADED: set(),
 }
 
 
@@ -151,6 +158,28 @@ class CandidateRepository:
             )
             for row in rows
         ]
+
+
+    def get(
+        self, candidate_id: str
+    ) -> tuple[ResourceCandidate, CandidateStatus, str | None]:
+        """Fetch one candidate together with its curation/download status."""
+        with self._connect() as connection:
+            row = connection.execute(
+                """
+                SELECT payload_json, status, status_reason
+                FROM candidates
+                WHERE candidate_id=?
+                """,
+                (candidate_id,),
+            ).fetchone()
+        if row is None:
+            raise KeyError(f"candidate not found: {candidate_id}")
+        return (
+            ResourceCandidate(**json.loads(row["payload_json"])),
+            CandidateStatus(row["status"]),
+            row["status_reason"],
+        )
 
     def transition(
         self,
