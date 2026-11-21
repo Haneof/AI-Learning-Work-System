@@ -2,8 +2,6 @@
 
 import pytest
 
-from aios_work_system.media.download_progress import DownloadProgress
-
 from aios_work_system.acquisition import (
     CandidateRepository,
     CandidateStatus,
@@ -15,6 +13,7 @@ from aios_work_system.media.download_jobs import (
     DownloadJobRepository,
     DownloadJobStatus,
 )
+from aios_work_system.media.download_progress import DownloadProgress
 
 
 class FakeYtDlp:
