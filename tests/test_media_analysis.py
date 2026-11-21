@@ -201,11 +201,7 @@ def test_failed_asr_run_is_persisted_and_resumes_with_attempt_count(tmp_path):
     with pytest.raises(RuntimeError, match="temporary ASR service error"):
         pipeline.analyze(asset_id)
 
-    failed = repository.get(
-        repository._connect().execute(
-            "SELECT run_id FROM media_analysis_runs"
-        ).fetchone()["run_id"]
-    )
+    failed = repository.list_for_asset(asset_id)[0]
     assert failed.status == AnalysisStatus.FAILED
     assert failed.attempts == 1
 
@@ -219,7 +215,7 @@ def test_failed_asr_run_is_persisted_and_resumes_with_attempt_count(tmp_path):
 def test_pipeline_rejects_asset_modified_after_registration(tmp_path):
     assets, asset_id, source = _registered_video(tmp_path)
     repository = MediaAnalysisRepository(tmp_path / "analysis.sqlite3")
-    source.write_bytes(b"tampered tutorial content")
+    source.write_bytes(b"x" * source.stat().st_size)
     pipeline = MediaAnalysisPipeline(
         assets,
         repository,
@@ -229,7 +225,7 @@ def test_pipeline_rejects_asset_modified_after_registration(tmp_path):
         ocr_adapter=FakeOCR(),
     )
 
-    with pytest.raises(ValueError, match="size changed|SHA-256 changed"):
+    with pytest.raises(ValueError, match="SHA-256 changed"):
         pipeline.analyze(asset_id)
 
 
