@@ -8,6 +8,7 @@ import json
 import os
 import sys
 import uuid
+from pathlib import Path
 
 from aios_work_system.benchmark import BenchmarkRunner, MockBackend, ModelDescriptor
 from aios_work_system.benchmark.runner import load_jsonl, write_jsonl, write_markdown_report
@@ -135,6 +136,54 @@ def build_parser() -> argparse.ArgumentParser:
     )
     analysis_parser.add_argument("--ocr-device", default="cpu")
     analysis_parser.add_argument("--ocr-min-confidence", type=float, default=0.0)
+
+
+    index_parser = subparsers.add_parser(
+        "knowledge-index-media",
+        help="index timestamped ASR/OCR/frame evidence into one expert workspace",
+    )
+    index_parser.add_argument("--run-id", required=True)
+    index_parser.add_argument("--expert-id", required=True)
+    index_parser.add_argument(
+        "--analysis-database", default="artifacts/acquisition/analysis.sqlite3"
+    )
+    index_parser.add_argument(
+        "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
+    )
+
+    knowledge_add_parser = subparsers.add_parser(
+        "knowledge-add", help="add one candidate knowledge item from JSON"
+    )
+    knowledge_add_parser.add_argument("--input-file", required=True)
+    knowledge_add_parser.add_argument(
+        "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
+    )
+
+    knowledge_review_parser = subparsers.add_parser(
+        "knowledge-review", help="approve or reject a candidate knowledge item"
+    )
+    knowledge_review_parser.add_argument("--knowledge-id", required=True)
+    knowledge_review_parser.add_argument("--expert-id", required=True)
+    knowledge_review_parser.add_argument("--reviewer-id", required=True)
+    knowledge_review_parser.add_argument(
+        "--decision", choices=("APPROVED", "REJECTED"), required=True
+    )
+    knowledge_review_parser.add_argument("--note", required=True)
+    knowledge_review_parser.add_argument(
+        "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
+    )
+
+    skill_compile_parser = subparsers.add_parser(
+        "skill-compile", help="compile a structured procedure JSON into a skill package"
+    )
+    skill_compile_parser.add_argument("--input-file", required=True)
+    skill_compile_parser.add_argument("--output", required=True)
+    skill_compile_parser.add_argument(
+        "--knowledge-database", default="artifacts/knowledge/knowledge.sqlite3"
+    )
+    skill_compile_parser.add_argument(
+        "--versions-database", default="artifacts/skills/versions.sqlite3"
+    )
 
     demo_parser = subparsers.add_parser(
         "phase0-demo",
@@ -404,6 +453,163 @@ def _run_media_analyze(args: argparse.Namespace) -> None:
     )
 
 
+
+def _run_knowledge_index_media(args: argparse.Namespace) -> None:
+    from aios_work_system.knowledge import KnowledgeRepository, index_media_analysis
+    from aios_work_system.media import MediaAnalysisRepository
+
+    result = MediaAnalysisRepository(args.analysis_database).get(args.run_id)
+    segments = index_media_analysis(
+        KnowledgeRepository(args.knowledge_database),
+        result,
+        expert_id=args.expert_id,
+    )
+    print(
+        json.dumps(
+            {
+                "run_id": result.run_id,
+                "asset_id": result.asset_id,
+                "expert_id": args.expert_id,
+                "indexed_count": len(segments),
+                "segments": [
+                    {
+                        "segment_id": segment.segment_id,
+                        "modality": segment.modality,
+                        "locator": segment.locator,
+                        "artifact_ref": segment.artifact_ref,
+                    }
+                    for segment in segments
+                ],
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def _run_knowledge_add(args: argparse.Namespace) -> None:
+    from aios_work_system.knowledge import (
+        ConfidenceLabel,
+        EpistemicType,
+        EvidenceLink,
+        EvidenceRelation,
+        KnowledgeItem,
+        KnowledgeRepository,
+        KnowledgeType,
+    )
+
+    payload = json.loads(
+        Path(args.input_file).expanduser().resolve(strict=True).read_text(
+            encoding="utf-8"
+        )
+    )
+    if not isinstance(payload, dict):
+        raise ValueError("knowledge input JSON must be an object")
+    item = KnowledgeItem(
+        knowledge_id=payload["knowledge_id"],
+        expert_id=payload["expert_id"],
+        statement=payload["statement"],
+        knowledge_type=KnowledgeType(payload["knowledge_type"]),
+        epistemic_type=EpistemicType(payload["epistemic_type"]),
+        confidence=ConfidenceLabel(payload.get("confidence", "MEDIUM")),
+        version=int(payload.get("version", 1)),
+        conflict_key=payload.get("conflict_key"),
+        evidence=[
+            EvidenceLink(
+                source_id=evidence["source_id"],
+                segment_id=evidence["segment_id"],
+                relation=EvidenceRelation(evidence["relation"]),
+                excerpt=evidence.get("excerpt"),
+            )
+            for evidence in payload.get("evidence", [])
+        ],
+    )
+    result = KnowledgeRepository(args.knowledge_database).add_knowledge(item)
+    print(json.dumps(result, ensure_ascii=False, indent=2))
+    if not result["accepted"]:
+        raise SystemExit(2)
+
+
+def _run_knowledge_review(args: argparse.Namespace) -> None:
+    from aios_work_system.knowledge import KnowledgeRepository, KnowledgeState
+
+    item = KnowledgeRepository(args.knowledge_database).review(
+        args.knowledge_id,
+        args.expert_id,
+        reviewer_id=args.reviewer_id,
+        decision=KnowledgeState(args.decision),
+        note=args.note,
+    )
+    print(
+        json.dumps(
+            {
+                "knowledge_id": item.knowledge_id,
+                "expert_id": item.expert_id,
+                "state": item.state.value,
+                "review_history": KnowledgeRepository(
+                    args.knowledge_database
+                ).review_history(item.knowledge_id, args.expert_id),
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
+def _run_skill_compile(args: argparse.Namespace) -> None:
+    from aios_work_system.knowledge import KnowledgeRepository
+    from aios_work_system.skills import (
+        ProcedureSkillSpec,
+        ProceduralSkillCompiler,
+        SkillVersionRepository,
+    )
+
+    payload = json.loads(
+        Path(args.input_file).expanduser().resolve(strict=True).read_text(
+            encoding="utf-8"
+        )
+    )
+    if not isinstance(payload, dict):
+        raise ValueError("skill specification JSON must be an object")
+    spec = ProcedureSkillSpec(
+        expert_id=payload["expert_id"],
+        skill_id=payload["skill_id"],
+        version=payload["version"],
+        title=payload["title"],
+        goal=payload["goal"],
+        scope=payload["scope"],
+        source_id=payload["source_id"],
+        knowledge_ids=tuple(payload["knowledge_ids"]),
+        steps=tuple(payload["steps"]),
+        annotation_status=payload.get("annotation_status", "unreviewed"),
+        annotator_id=payload.get("annotator_id"),
+        reviewer_id=payload.get("reviewer_id"),
+        reviewed_at=payload.get("reviewed_at"),
+        risk=payload.get("risk", "LOW"),
+    )
+    result = ProceduralSkillCompiler(
+        KnowledgeRepository(args.knowledge_database),
+        SkillVersionRepository(args.versions_database),
+    ).compile(spec, args.output)
+    print(
+        json.dumps(
+            {
+                "package_path": result.package_path,
+                "skill_id": result.skill_id,
+                "version": result.version,
+                "expert_id": result.expert_id,
+                "package_hash": result.package_hash,
+                "annotation_status": result.annotation_status,
+                "lifecycle_status": result.lifecycle_status,
+                "registered": result.registered,
+                "execution_status": result.execution_status,
+            },
+            ensure_ascii=False,
+            indent=2,
+        )
+    )
+
+
 def main() -> None:
     args = build_parser().parse_args()
     if args.command == "serve":
@@ -420,6 +626,15 @@ def main() -> None:
         _run_discovery_download(args)
     elif args.command == "media-analyze":
         _run_media_analyze(args)
+
+    elif args.command == "knowledge-index-media":
+        _run_knowledge_index_media(args)
+    elif args.command == "knowledge-add":
+        _run_knowledge_add(args)
+    elif args.command == "knowledge-review":
+        _run_knowledge_review(args)
+    elif args.command == "skill-compile":
+        _run_skill_compile(args)
     elif args.command == "phase0-demo":
         from aios_work_system.phase0 import run_phase0_demo
 
