@@ -87,6 +87,15 @@ def test_progress_is_only_accepted_while_downloading(tmp_path):
     assert updated.speed_bytes_per_second == 5.0
     assert updated.eta_seconds == 15.0
 
+    partial = repository.update_progress(
+        job.job_id,
+        bytes_downloaded=30,
+        total_bytes=None,
+        speed_bytes_per_second=6.0,
+    )
+    assert partial.bytes_downloaded == 30
+    assert partial.total_bytes == 100
+
 
 def test_retry_wait_requires_error_and_increments_retry_count(tmp_path):
     repository = DownloadJobRepository(tmp_path / "jobs.sqlite3")
