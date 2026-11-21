@@ -598,6 +598,7 @@ class MediaAnalysisPipeline:
                     source_path,
                     run_dir / "frames",
                     interval_seconds=effective_interval,
+                    max_frames=self.max_frames,
                 )
                 for index, frame_path in enumerate(frames):
                     artifacts.append(
