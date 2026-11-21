@@ -26,14 +26,52 @@ jobs:
         run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
       - name: Lint
         run: ruff check .
-      - name: Format check for knowledge package changes
-        run: >
+      - name: Format check for PR-owned files
+        run: >-
           ruff format --check
           src/aios_work_system/skills/compiler.py
           src/aios_work_system/skills/validator.py
           src/aios_work_system/phase0.py
           tests/test_skill_compiler.py
-          tests/test_skills.py
+          src/aios_work_system/skills/sandbox.py
+          tests/conftest.py
+          tests/pvd_skill_fixture.py
           tests/test_pvd_skill_acceptance.py
+          tests/docker_sandbox_e2e.py
+          tests/test_skills.py
       - name: Test
         run: pytest
+
+  docker-sandbox:
+    name: Docker sandbox security regression
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package and development tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Pull and resolve the immutable Python base image
+        shell: bash
+        run: |
+          BASE_IMAGE="python@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b"
+          if [[ ! "$BASE_IMAGE" =~ ^.+@sha256:[0-9a-f]{64}$ ]]; then
+            echo "Sandbox base image is not pinned to an immutable digest" >&2
+            exit 1
+          fi
+          docker pull "$BASE_IMAGE"
+          printf 'FROM %s\nRUN python -c "print(\\\"pvd-sandbox-image\\\")"\n' "$BASE_IMAGE" > "$RUNNER_TEMP/Dockerfile"
+          docker build --pull=false --network=none --tag aios-pvd-sandbox:ci --file "$RUNNER_TEMP/Dockerfile" "$RUNNER_TEMP"
+          IMAGE_ID="$(docker image inspect --format='{{.Id}}' aios-pvd-sandbox:ci)"
+          if [[ ! "$IMAGE_ID" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "Built sandbox image did not have an immutable sha256 image ID" >&2
+            exit 1
+          fi
+          echo "AIOS_SANDBOX_IMAGE_DIGEST=$IMAGE_ID" >> "$GITHUB_ENV"
+          echo "Built sandbox image ID: $IMAGE_ID"
+          echo "Pinned base image: $BASE_IMAGE"
+      - name: Execute compiled PVD contract and sandbox security regressions
+        run: pytest -q tests/docker_sandbox_e2e.py
+
