@@ -326,9 +326,7 @@ class OpenAICompatibleDecisionModel:
         aria_summary = _summarize_accessibility(observation.get("accessibility_snapshot"))
         history = request.get("history", [])
         if isinstance(history, list):
-            history_summary = json.dumps(
-                history[-6:], ensure_ascii=False, default=str
-            )[:3_000]
+            history_summary = json.dumps(history[-6:], ensure_ascii=False, default=str)[:3_000]
         else:
             history_summary = "[]"
         failure_summary = json.dumps(
