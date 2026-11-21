@@ -420,6 +420,18 @@ def test_sample_gate_blocks_listing_on_day_four_until_sample_arrives(
     assert _sample_decision(inputs) == SAMPLE_EXPECTED
     assert declared == {"decision": "do_not_list"}
 
+    received_package = compiled_pvd_skill_factory(
+        input_overrides={"sample_gate": {"sample_received": True, "day": 4}},
+        expected_overrides={
+            "sample_gate": {"decision": "eligible_for_manual_listing_review"}
+        },
+    )
+    _, received_inputs, received_declared = _load_step(received_package, "sample_gate")
+    assert _sample_decision(received_inputs) == {
+        "decision": "eligible_for_manual_listing_review"
+    }
+    assert received_declared == _sample_decision(received_inputs)
+
     wrong_package = compiled_pvd_skill_factory(
         expected_overrides={"sample_gate": {"decision": "list"}}
     )
