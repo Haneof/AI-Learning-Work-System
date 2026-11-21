@@ -1,5 +1,12 @@
 """Offline media ingestion primitives."""
 
+from aios_work_system.media.analysis import (
+    AnalysisArtifact,
+    AnalysisStatus,
+    MediaAnalysisPipeline,
+    MediaAnalysisRepository,
+    MediaAnalysisResult,
+)
 from aios_work_system.media.assets import MediaAsset, MediaAssetRepository
 from aios_work_system.media.download import (
     Aria2Adapter,
@@ -26,9 +33,14 @@ from aios_work_system.media.source import SegmentRecord, SourceManifest, registe
 from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 
 __all__ = [
+    "AnalysisArtifact",
+    "AnalysisStatus",
     "Aria2Adapter",
     "MediaAsset",
     "MediaAssetRepository",
+    "MediaAnalysisPipeline",
+    "MediaAnalysisRepository",
+    "MediaAnalysisResult",
     "DownloadError",
     "DownloadJob",
     "DownloadJobExecutor",
