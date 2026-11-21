@@ -9,7 +9,7 @@ from aios_work_system.media.download import (
     DownloadVerifier,
     YtDlpAdapter,
 )
-from aios_work_system.media.download_jobs import (
+from aios_work_system.media.download_runner import DownloadJobExecutor\nfrom aios_work_system.media.download_jobs import (
     DownloadJob,
     DownloadJobRepository,
     DownloadJobStatus,
@@ -21,7 +21,7 @@ from aios_work_system.media.tasks import MediaTaskError, TaskJournal
 __all__ = [
     "Aria2Adapter",
     "DownloadError",
-    "DownloadJob",
+    "DownloadJobExecutor",\n    "DownloadJob",
     "DownloadJobRepository",
     "DownloadJobStatus",
     "DownloadRequest",
