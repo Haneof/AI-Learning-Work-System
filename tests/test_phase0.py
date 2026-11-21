@@ -14,6 +14,7 @@ def test_phase0_demo_connects_source_knowledge_skill_and_safety_gates(tmp_path):
     assert report["evidence"]["segment_id"]
     assert report["knowledge"]["state"] == "APPROVED"
     assert report["skill"]["package_hash"]
+    assert len(report["skill"]["git_commit"]) == 40
     assert report["skill"]["sandbox_execution"] == "NOT_EXECUTED"
 
     json_report = json.loads(
