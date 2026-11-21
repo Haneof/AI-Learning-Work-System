@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Local GUI Fixture</title>
+  </head>
+  <body>
+    <main>
+      <h1>Local GUI Fixture</h1>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text">
+      <button id="save" type="button">Save</button>
+      <p id="status" role="status">Idle</p>
+    </main>
+    <script>
+      document.querySelector("#save").addEventListener("click", () => {
+        const value = document.querySelector("#name").value;
+        document.querySelector("#status").textContent = value ? "Saved: " + value : "Missing name";
+      });
+    </script>
+  </body>
+</html>

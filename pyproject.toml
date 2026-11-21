@@ -20,6 +20,7 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.11,<1"]
 media = ["pypdf>=5,<7"]
+gui = ["playwright>=1.52,<2"]
 
 [project.scripts]
 aios = "aios_work_system.cli:main"
