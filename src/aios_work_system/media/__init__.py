@@ -1,5 +1,7 @@
 """Offline media ingestion primitives."""
 
+from aios_work_system.media.adapters_faster_whisper import FasterWhisperASRAdapter
+from aios_work_system.media.adapters_paddleocr import PaddleOCRAdapter
 from aios_work_system.media.analysis import (
     AnalysisArtifact,
     AnalysisStatus,
@@ -7,8 +9,6 @@ from aios_work_system.media.analysis import (
     MediaAnalysisRepository,
     MediaAnalysisResult,
 )
-from aios_work_system.media.adapters_faster_whisper import FasterWhisperASRAdapter
-from aios_work_system.media.adapters_paddleocr import PaddleOCRAdapter
 from aios_work_system.media.assets import MediaAsset, MediaAssetRepository
 from aios_work_system.media.download import (
     Aria2Adapter,
