@@ -101,6 +101,9 @@ def build_parser() -> argparse.ArgumentParser:
         "--assets-database", default="artifacts/acquisition/assets.sqlite3"
     )
     analysis_parser.add_argument(
+        "--manifest-dir", default="artifacts/acquisition/asset_manifests"
+    )
+    analysis_parser.add_argument(
         "--analysis-database", default="artifacts/acquisition/analysis.sqlite3"
     )
     analysis_parser.add_argument(
@@ -324,37 +327,34 @@ def _run_media_analyze(args: argparse.Namespace) -> None:
         timeout_seconds=args.timeout_seconds,
     )
     pipeline = MediaAnalysisPipeline(
-        MediaAssetRepository(args.assets_database, args.derived_dir + "/unused-manifests"),
+        MediaAssetRepository(args.assets_database, args.manifest_dir),
         MediaAnalysisRepository(args.analysis_database),
         args.derived_dir,
         ffmpeg=processor,
         frame_interval_seconds=args.frame_interval_seconds,
         max_frames=args.max_frames,
     )
-    try:
-        result = pipeline.analyze(args.asset_id)
-        print(
-            json.dumps(
-                {
-                    "run_id": result.run_id,
-                    "asset_id": result.asset_id,
-                    "status": result.status.value,
-                    "attempts": result.attempts,
-                    "duration_seconds": result.duration_seconds,
-                    "artifact_count": len(result.artifacts),
-                    "audio_path": str(result.audio_path) if result.audio_path else None,
-                    "frame_paths": [str(path) for path in result.frame_paths],
-                    "transcript_count": len(result.transcripts),
-                    "ocr_segment_count": len(result.ocr_segments),
-                    "warnings": list(result.warnings),
-                    "error": result.error,
-                },
-                ensure_ascii=False,
-                indent=2,
-            )
+    result = pipeline.analyze(args.asset_id)
+    print(
+        json.dumps(
+            {
+                "run_id": result.run_id,
+                "asset_id": result.asset_id,
+                "status": result.status.value,
+                "attempts": result.attempts,
+                "duration_seconds": result.duration_seconds,
+                "artifact_count": len(result.artifacts),
+                "audio_path": str(result.audio_path) if result.audio_path else None,
+                "frame_paths": [str(path) for path in result.frame_paths],
+                "transcript_count": len(result.transcripts),
+                "ocr_segment_count": len(result.ocr_segments),
+                "warnings": list(result.warnings),
+                "error": result.error,
+            },
+            ensure_ascii=False,
+            indent=2,
         )
-    finally:
-        pass
+    )
 
 
 def main() -> None:
