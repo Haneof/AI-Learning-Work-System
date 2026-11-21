@@ -332,10 +332,3 @@ def test_working_copy_is_deleted_when_evidence_extraction_fails(tmp_path):
     assert record.download_cache_deletion_status == "deleted"
     assert "extractor test failure" in record.error
     assert not extractor.seen_path.exists()
-
-
-def test_bilibili_search_is_an_explicit_extension_point():
-    from aios_work_system.acquisition.platforms import BilibiliPlatformAdapter
-
-    with pytest.raises(NotImplementedError, match="Bilibili search is not implemented"):
-        BilibiliPlatformAdapter().search("Blender")

@@ -18,6 +18,8 @@ from aios_work_system.acquisition.models import (
 )
 from aios_work_system.acquisition.pipeline import AcquisitionPipeline
 from aios_work_system.acquisition.platforms import (
+    AcquisitionDependencyError,
+    AcquisitionPlatformError,
     BilibiliPlatformAdapter,
     PlatformAdapter,
     YouTubePlatformAdapter,
@@ -30,7 +32,9 @@ from aios_work_system.acquisition.selector import (
 )
 
 __all__ = [
+    "AcquisitionDependencyError",
     "AcquisitionPipeline",
+    "AcquisitionPlatformError",
     "AcquisitionRecord",
     "BilibiliPlatformAdapter",
     "DriveFileInfo",
