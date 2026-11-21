@@ -28,9 +28,9 @@ $models = @{
         Alias = "Qwen3.5-4B"
     }
     "9B" = @{
-        Repo = "gguf/Qwen3.5-9B-GGUF"
-        File = "qwen3.5-9b-Q4_K_M.gguf"
-        Sha256 = "d784ce9eda1a5a7b51e8f705a9e6310844bf4f173654d115823c775fdea56d43"
+        Repo = "SoAIHQ/Qwen3.5-9B-GGUF"
+        File = "Qwen3.5-9B-Q4_K_M.gguf"
+        Sha256 = "ef6f244d63abcba4f8d30b7cbd9369e9e798fc33cf21109889373f59af329c93"
         Alias = "Qwen3.5-9B"
     }
 }
