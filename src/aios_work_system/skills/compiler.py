@@ -100,9 +100,7 @@ class ProceduralSkillCompiler:
             "steps": list(spec.steps),
             "risk": spec.risk,
         }
-        canonical = json.dumps(
-            payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        )
+        canonical = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
         return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
     def review_spec(
@@ -169,9 +167,7 @@ class ProceduralSkillCompiler:
                 "reviewer_id and reviewed_at are loaded from the persisted review record"
             )
 
-    def _approved_procedure_knowledge(
-        self, spec: ProcedureSkillSpec
-    ) -> dict[str, Any]:
+    def _approved_procedure_knowledge(self, spec: ProcedureSkillSpec) -> dict[str, Any]:
         if not spec.knowledge_ids:
             raise ValueError("at least one approved PROCEDURE knowledge item is required")
         items: dict[str, Any] = {}
@@ -232,14 +228,10 @@ class ProceduralSkillCompiler:
         locator = segment.locator
         if "timestamp_ms" in locator:
             if abs(timestamp_ms - locator["timestamp_ms"]) > 1:
-                raise ValueError(
-                    f"evidence timestamp does not match source segment {ref}"
-                )
+                raise ValueError(f"evidence timestamp does not match source segment {ref}")
         elif "start_ms" in locator and "end_ms" in locator:
             if not locator["start_ms"] <= timestamp_ms <= locator["end_ms"]:
-                raise ValueError(
-                    f"evidence timestamp is outside source segment {ref}"
-                )
+                raise ValueError(f"evidence timestamp is outside source segment {ref}")
         else:
             raise ValueError(f"evidence source segment {ref} has no time locator")
 
@@ -270,9 +262,7 @@ class ProceduralSkillCompiler:
                 raw.get("knowledge_id"), f"steps[{index}].knowledge_id"
             )
             if knowledge_id not in knowledge_items:
-                raise ValueError(
-                    f"step {step_id} must reference one of the approved knowledge_ids"
-                )
+                raise ValueError(f"step {step_id} must reference one of the approved knowledge_ids")
 
             evidence_refs = raw.get("evidence_refs")
             if not isinstance(evidence_refs, list) or not evidence_refs:
@@ -297,13 +287,9 @@ class ProceduralSkillCompiler:
                 )
             if spec.annotation_status == "reviewed":
                 if raw.get("ui_verification_status") != "frame_verified":
-                    raise ValueError(
-                        f"reviewed step {step_id} must be marked frame_verified"
-                    )
+                    raise ValueError(f"reviewed step {step_id} must be marked frame_verified")
                 if not any(ref["kind"] in _VISUAL_KINDS for ref in validated_refs):
-                    raise ValueError(
-                        f"reviewed step {step_id} requires visual frame/UI evidence"
-                    )
+                    raise ValueError(f"reviewed step {step_id} requires visual frame/UI evidence")
                 ui_status = "frame_verified"
             else:
                 # A caller cannot promote a draft merely by setting a field.
@@ -311,8 +297,7 @@ class ProceduralSkillCompiler:
 
             preconditions = raw.get("preconditions", [])
             if not isinstance(preconditions, list) or any(
-                not isinstance(value, str) or not value.strip()
-                for value in preconditions
+                not isinstance(value, str) or not value.strip() for value in preconditions
             ):
                 raise ValueError(f"step {step_id} preconditions must be a string array")
 
@@ -322,12 +307,8 @@ class ProceduralSkillCompiler:
                     "knowledge_id": knowledge_id,
                     "goal": self._non_empty_string(raw.get("goal"), f"{step_id}.goal"),
                     "preconditions": [value.strip() for value in preconditions],
-                    "action": self._non_empty_string(
-                        raw.get("action"), f"{step_id}.action"
-                    ),
-                    "target": self._non_empty_string(
-                        raw.get("target"), f"{step_id}.target"
-                    ),
+                    "action": self._non_empty_string(raw.get("action"), f"{step_id}.action"),
+                    "target": self._non_empty_string(raw.get("target"), f"{step_id}.target"),
                     "expected_state": self._non_empty_string(
                         raw.get("expected_state"), f"{step_id}.expected_state"
                     ),
@@ -340,8 +321,7 @@ class ProceduralSkillCompiler:
             )
         if spec.annotation_status == "reviewed" and len(normalized) < 8:
             raise ValueError(
-                "reviewed procedural skills require at least eight "
-                "visually verified steps"
+                "reviewed procedural skills require at least eight visually verified steps"
             )
         return normalized
 
@@ -396,9 +376,7 @@ class ProceduralSkillCompiler:
         lifecycle_status = "REVIEWED" if reviewed else "DRAFT"
         target = self._safe_output_path(output_path)
         target.parent.mkdir(parents=True, exist_ok=True)
-        stage = Path(
-            tempfile.mkdtemp(prefix=f".{target.name}.compile-", dir=target.parent)
-        )
+        stage = Path(tempfile.mkdtemp(prefix=f".{target.name}.compile-", dir=target.parent))
         try:
             procedure: dict[str, Any] = {
                 "schema_version": "1.0",
@@ -499,8 +477,7 @@ class ProceduralSkillCompiler:
             report = validate_skill_package(stage)
             if not report.passed or report.package_hash is None:
                 raise ValueError(
-                    "generated skill package failed static validation: "
-                    + "; ".join(report.errors)
+                    "generated skill package failed static validation: " + "; ".join(report.errors)
                 )
             stage.replace(target)
 

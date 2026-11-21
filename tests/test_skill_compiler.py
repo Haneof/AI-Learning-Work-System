@@ -133,7 +133,6 @@ def _spec(*, annotation_status="unreviewed", steps=None):
     )
 
 
-
 def _record_review(compiler, spec, *, reviewer_id="independent-reviewer"):
     from dataclasses import replace
 
@@ -183,9 +182,7 @@ def test_unreviewed_caller_cannot_promote_step_by_setting_frame_verified(tmp_pat
         _spec(steps=[_step(0, visual=True, status="frame_verified")]),
         tmp_path / "draft",
     )
-    procedure = json.loads(
-        (tmp_path / "draft" / "procedure.json").read_text(encoding="utf-8")
-    )
+    procedure = json.loads((tmp_path / "draft" / "procedure.json").read_text(encoding="utf-8"))
 
     assert result.annotation_status == "unreviewed"
     assert procedure["steps"][0]["ui_verification_status"] == "pending_frame_review"
@@ -211,10 +208,7 @@ def test_reviewed_skill_requires_eight_visually_verified_steps_and_registers(tmp
 
     assert result.lifecycle_status == "REVIEWED"
     assert result.registered is True
-    assert all(
-        step["ui_verification_status"] == "frame_verified"
-        for step in procedure["steps"]
-    )
+    assert all(step["ui_verification_status"] == "frame_verified" for step in procedure["steps"])
     assert procedure["review"]["reviewer_id"] == "independent-reviewer"
     assert stored.package_hash == result.package_hash
     assert stored.lifecycle_status == "REVIEWED"

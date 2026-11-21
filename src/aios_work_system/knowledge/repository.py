@@ -175,9 +175,7 @@ class KnowledgeRepository:
             expert_id=row["expert_id"],
             locator=json.loads(row["locator_json"]),
             text_content=row["text_content"],
-            shared_with_experts=frozenset(
-                json.loads(row["shared_with_experts_json"])
-            ),
+            shared_with_experts=frozenset(json.loads(row["shared_with_experts_json"])),
             modality=row["modality"],
             artifact_ref=row["artifact_ref"],
         )
@@ -194,13 +192,15 @@ class KnowledgeRepository:
             not isinstance(segment.expert_id, str) or not segment.expert_id.strip()
         ):
             raise ValueError("expert_id must be None or a non-empty string")
-        if (
-            not isinstance(segment.text_content, str)
-            or not segment.text_content.strip()
-        ):
+        if not isinstance(segment.text_content, str) or not segment.text_content.strip():
             raise ValueError("source segment text_content must not be empty")
         if not isinstance(segment.modality, str) or segment.modality not in {
-            "text", "asr", "ocr", "video_frame", "ui_snapshot", "subtitle"
+            "text",
+            "asr",
+            "ocr",
+            "video_frame",
+            "ui_snapshot",
+            "subtitle",
         }:
             raise ValueError(f"unsupported source evidence modality: {segment.modality}")
         if (
@@ -210,9 +210,7 @@ class KnowledgeRepository:
         ):
             raise ValueError("source segment locator must be a non-empty object")
         if any(
-            not isinstance(value, int)
-            or isinstance(value, bool)
-            or value < 0
+            not isinstance(value, int) or isinstance(value, bool) or value < 0
             for value in segment.locator.values()
         ):
             raise ValueError("source segment locator values must be non-negative integers")
@@ -228,8 +226,7 @@ class KnowledgeRepository:
         ):
             raise ValueError("shared expert IDs must be non-empty strings")
         if segment.artifact_ref is not None and (
-            not isinstance(segment.artifact_ref, str)
-            or not segment.artifact_ref.strip()
+            not isinstance(segment.artifact_ref, str) or not segment.artifact_ref.strip()
         ):
             raise ValueError("artifact_ref must be None or a non-empty string")
         payload = _segment_to_dict(segment)
@@ -240,9 +237,7 @@ class KnowledgeRepository:
             ).fetchone()
             if existing is not None:
                 if self._segment_from_row(existing) != segment:
-                    raise ValueError(
-                        "A source segment ID cannot be reused for different content"
-                    )
+                    raise ValueError("A source segment ID cannot be reused for different content")
                 return
             connection.execute(
                 """
@@ -311,9 +306,7 @@ class KnowledgeRepository:
             f"SELECT * FROM knowledge_source_segments WHERE segment_id IN ({placeholders})",
             segment_ids,
         ).fetchall()
-        segments = {
-            row["segment_id"]: self._segment_from_row(row) for row in rows
-        }
+        segments = {row["segment_id"]: self._segment_from_row(row) for row in rows}
         return segments
 
     def add_knowledge(self, item: KnowledgeItem) -> dict[str, Any]:

@@ -86,14 +86,10 @@ class SkillVersionRepository:
             )
             columns = {
                 row["name"]
-                for row in connection.execute(
-                    "PRAGMA table_info(skill_versions)"
-                ).fetchall()
+                for row in connection.execute("PRAGMA table_info(skill_versions)").fetchall()
             }
             if "review_id" not in columns:
-                connection.execute(
-                    "ALTER TABLE skill_versions ADD COLUMN review_id TEXT"
-                )
+                connection.execute("ALTER TABLE skill_versions ADD COLUMN review_id TEXT")
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self.database_path, timeout=10)
@@ -132,8 +128,7 @@ class SkillVersionRepository:
             not isinstance(spec_hash, str)
             or len(spec_hash) != 64
             or any(
-                character not in "0123456789abcdef"
-                for character in spec_hash.lower()
+                character not in "0123456789abcdef" for character in spec_hash.lower()
             )
         ):
             raise ValueError("spec_hash must be a 64-character SHA-256 digest")
@@ -220,8 +215,7 @@ class SkillVersionRepository:
         if not record.skill_id.strip() or not record.version.strip():
             raise ValueError("skill_id and version are required")
         if len(record.package_hash) != 64 or any(
-            character not in "0123456789abcdef"
-            for character in record.package_hash.lower()
+            character not in "0123456789abcdef" for character in record.package_hash.lower()
         ):
             raise ValueError("package_hash must be a 64-character SHA-256 digest")
         if lifecycle_status != "REVIEWED":
@@ -258,8 +252,7 @@ class SkillVersionRepository:
             if row is not None:
                 if row["package_hash"] != record.package_hash:
                     raise ValueError(
-                        "Skill content changed without a version increment; "
-                        "create a new version"
+                        "Skill content changed without a version increment; create a new version"
                     )
                 if row["review_id"] != review_id:
                     raise ValueError("skill version is already bound to another review")
@@ -304,9 +297,7 @@ class SkillVersionRepository:
             registered_at=row["registered_at"],
         )
 
-    def get(
-        self, expert_id: str, skill_id: str, version: str
-    ) -> StoredSkillVersion:
+    def get(self, expert_id: str, skill_id: str, version: str) -> StoredSkillVersion:
         with self._connect() as connection:
             row = connection.execute(
                 """

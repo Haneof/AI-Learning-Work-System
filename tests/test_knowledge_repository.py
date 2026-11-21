@@ -29,11 +29,7 @@ def _segment(
         segment_id=segment_id,
         source_id=source_id,
         expert_id=expert_id,
-        locator=(
-            {"start_ms": 1000, "end_ms": 2500}
-            if locator is None
-            else locator
-        ),
+        locator=({"start_ms": 1000, "end_ms": 2500} if locator is None else locator),
         text_content=text,
         shared_with_experts=shared_with_experts,
         modality=modality,
@@ -159,9 +155,7 @@ def test_cross_expert_reads_and_knowledge_links_are_denied(tmp_path):
 
 def test_explicit_segment_sharing_is_required_and_enforced(tmp_path):
     repository = KnowledgeRepository(tmp_path / "knowledge.sqlite3")
-    repository.add_segment(
-        _segment(shared_with_experts=frozenset({"expert-b"}))
-    )
+    repository.add_segment(_segment(shared_with_experts=frozenset({"expert-b"})))
 
     shared = repository.get_segment("segment-1", "expert-b")
     assert shared.segment_id == "segment-1"
@@ -184,12 +178,8 @@ def test_conflicting_items_are_retained_and_moved_to_review_required(tmp_path):
 
     assert result["accepted"] is True
     assert result["conflict_ids"] == ["knowledge-1"]
-    assert repository.get("knowledge-1", "expert-a").state == (
-        KnowledgeState.REVIEW_REQUIRED
-    )
-    assert repository.get("knowledge-2", "expert-a").state == (
-        KnowledgeState.REVIEW_REQUIRED
-    )
+    assert repository.get("knowledge-1", "expert-a").state == (KnowledgeState.REVIEW_REQUIRED)
+    assert repository.get("knowledge-2", "expert-a").state == (KnowledgeState.REVIEW_REQUIRED)
 
 
 def test_duplicate_normalized_knowledge_is_idempotent(tmp_path):
@@ -211,14 +201,10 @@ def test_duplicate_normalized_knowledge_is_idempotent(tmp_path):
 def test_segment_id_is_immutable_and_modality_is_persisted(tmp_path):
     repository = KnowledgeRepository(tmp_path / "knowledge.sqlite3")
     repository.add_segment(_segment(modality="video_frame", locator={"timestamp_ms": 1000}))
-    repository.add_segment(
-        _segment(modality="video_frame", locator={"timestamp_ms": 1000})
-    )
+    repository.add_segment(_segment(modality="video_frame", locator={"timestamp_ms": 1000}))
 
     with pytest.raises(ValueError, match="cannot be reused"):
-        repository.add_segment(
-            _segment(text="A different claim.", modality="video_frame")
-        )
+        repository.add_segment(_segment(text="A different claim.", modality="video_frame"))
 
 
 def test_new_repository_migrates_existing_segment_table(tmp_path):
@@ -248,7 +234,6 @@ def test_new_repository_migrates_existing_segment_table(tmp_path):
     assert stored.artifact_ref is None
 
 
-
 @pytest.mark.parametrize(
     ("modality", "locator", "message"),
     [
@@ -259,9 +244,7 @@ def test_new_repository_migrates_existing_segment_table(tmp_path):
         ("video_frame", {}, "non-empty object"),
     ],
 )
-def test_source_segment_rejects_invalid_modality_or_locator(
-    tmp_path, modality, locator, message
-):
+def test_source_segment_rejects_invalid_modality_or_locator(tmp_path, modality, locator, message):
     repository = KnowledgeRepository(tmp_path / "knowledge.sqlite3")
     with pytest.raises(ValueError, match=message):
         repository.add_segment(
