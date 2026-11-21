@@ -11,13 +11,6 @@ from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-from aios_work_system.gui.agent import BrowserAgent
-from aios_work_system.gui.real_model import (
-    ModelConfigurationError,
-    OpenAICompatibleDecisionModel,
-)
-
-
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_DIRECTORY = REPOSITORY_ROOT / "tests" / "fixtures" / "gui"
 DEFAULT_TRACE_PATH = REPOSITORY_ROOT / "artifacts" / "gui-real-model-demo.jsonl"
@@ -33,6 +26,11 @@ class _QuietFixtureHandler(SimpleHTTPRequestHandler):
 
 
 async def _run_demo(model: OpenAICompatibleDecisionModel, trace_path: Path):
+    from aios_work_system.gui.agent import BrowserAgent
+    from aios_work_system.gui.real_model import (
+        OpenAICompatibleDecisionModel,
+    )
+
     try:
         from playwright.async_api import async_playwright
     except ModuleNotFoundError as exc:
@@ -79,6 +77,11 @@ def main() -> int:
     args = parser.parse_args()
 
     try:
+        from aios_work_system.gui.real_model import (
+            ModelConfigurationError,
+            OpenAICompatibleDecisionModel,
+        )
+
         model = OpenAICompatibleDecisionModel.from_env()
     except ModelConfigurationError as exc:
         print(f"Model configuration error: {exc}", file=sys.stderr)
