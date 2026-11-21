@@ -10,8 +10,15 @@ from aios_work_system.media.download_jobs import DownloadJobRepository
 
 
 class FakeFFmpeg:
-    ffmpeg_binary = "fake-ffmpeg"
-    ffprobe_binary = "fake-ffprobe"
+    def __init__(
+        self,
+        ffmpeg_binary="fake-ffmpeg",
+        ffprobe_binary="fake-ffprobe",
+        timeout_seconds=1800,
+    ):
+        self.ffmpeg_binary = ffmpeg_binary
+        self.ffprobe_binary = ffprobe_binary
+        self.timeout_seconds = timeout_seconds
 
     def probe(self, source):
         return {
