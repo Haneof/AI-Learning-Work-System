@@ -16,8 +16,8 @@ from aios_work_system.knowledge.types import (
     SourceSegment,
 )
 from aios_work_system.skills.compiler import (
-    ProcedureSkillSpec,
     ProceduralSkillCompiler,
+    ProcedureSkillSpec,
 )
 from aios_work_system.skills.repository import SkillVersionRepository
 from aios_work_system.skills.validator import validate_skill_package
