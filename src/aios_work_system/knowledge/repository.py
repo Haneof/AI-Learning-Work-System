@@ -34,6 +34,8 @@ def _segment_to_dict(segment: SourceSegment) -> dict[str, Any]:
         "locator": segment.locator,
         "text_content": segment.text_content,
         "shared_with_experts": sorted(segment.shared_with_experts),
+        "modality": segment.modality,
+        "artifact_ref": segment.artifact_ref,
     }
 
 
@@ -118,6 +120,8 @@ class KnowledgeRepository:
                     locator_json TEXT NOT NULL,
                     text_content TEXT NOT NULL,
                     shared_with_experts_json TEXT NOT NULL,
+                    modality TEXT NOT NULL DEFAULT 'text',
+                    artifact_ref TEXT,
                     created_at TEXT NOT NULL
                 );
                 CREATE INDEX IF NOT EXISTS idx_knowledge_segments_source
@@ -147,6 +151,20 @@ class KnowledgeRepository:
                 );
                 """
             )
+            columns = {
+                row["name"]
+                for row in connection.execute(
+                    "PRAGMA table_info(knowledge_source_segments)"
+                ).fetchall()
+            }
+            if "modality" not in columns:
+                connection.execute(
+                    "ALTER TABLE knowledge_source_segments ADD COLUMN modality TEXT NOT NULL DEFAULT 'text'"
+                )
+            if "artifact_ref" not in columns:
+                connection.execute(
+                    "ALTER TABLE knowledge_source_segments ADD COLUMN artifact_ref TEXT"
+                )
 
     @staticmethod
     def _segment_from_row(row: sqlite3.Row) -> SourceSegment:
@@ -159,6 +177,8 @@ class KnowledgeRepository:
             shared_with_experts=frozenset(
                 json.loads(row["shared_with_experts_json"])
             ),
+            modality=row["modality"],
+            artifact_ref=row["artifact_ref"],
         )
 
     def add_segment(self, segment: SourceSegment) -> None:
@@ -182,8 +202,8 @@ class KnowledgeRepository:
                 """
                 INSERT INTO knowledge_source_segments
                 (segment_id, source_id, expert_id, locator_json, text_content,
-                 shared_with_experts_json, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                 shared_with_experts_json, modality, artifact_ref, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     payload["segment_id"],
@@ -192,6 +212,8 @@ class KnowledgeRepository:
                     json.dumps(payload["locator"], sort_keys=True),
                     payload["text_content"],
                     json.dumps(payload["shared_with_experts"], sort_keys=True),
+                    payload["modality"],
+                    payload["artifact_ref"],
                     _now(),
                 ),
             )
