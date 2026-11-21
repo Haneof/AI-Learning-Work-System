@@ -412,3 +412,36 @@ def test_pipeline_rejects_invalid_ocr_bounding_boxes(tmp_path, bounding_box):
 
     with pytest.raises(ValueError, match="invalid bounding box"):
         pipeline.analyze(asset_id)
+
+
+
+def test_analysis_repository_adds_confidence_column_to_existing_ocr_schema(tmp_path):
+    import sqlite3
+
+    database = tmp_path / "legacy-analysis.sqlite3"
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            """
+            CREATE TABLE media_ocr_segments (
+                run_id TEXT NOT NULL,
+                segment_index INTEGER NOT NULL,
+                timestamp_ms INTEGER NOT NULL,
+                text_content TEXT NOT NULL,
+                bounding_box_json TEXT,
+                adapter_name TEXT NOT NULL,
+                adapter_version TEXT NOT NULL,
+                PRIMARY KEY(run_id, segment_index)
+            )
+            """
+        )
+
+    MediaAnalysisRepository(database)
+
+    with sqlite3.connect(database) as connection:
+        columns = {
+            row[1] for row in connection.execute(
+                "PRAGMA table_info(media_ocr_segments)"
+            )
+        }
+
+    assert "confidence" in columns
