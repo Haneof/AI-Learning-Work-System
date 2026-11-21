@@ -266,7 +266,8 @@ def make_compiled_pvd_skill_factory(tmp_path: Path):
         (root / "SKILL.md").write_text(
             "# PVD Pilot Product Operations\n\n"
             "## Purpose\n\n"
-            "Make evidence-based PVD product-operation decisions without bypassing safety gates.\n\n"
+            "Make evidence-based PVD product-operation decisions "
+            "without bypassing safety gates.\n\n"
             "## Conditions\n\n"
             "Apply only when product and supplier facts are available; do not apply when "
             "required facts or authorization are missing.\n\n"
