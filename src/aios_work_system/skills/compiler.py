@@ -286,7 +286,10 @@ class ProceduralSkillCompiler:
                 }
             )
         if spec.annotation_status == "reviewed" and len(normalized) < 8:
-            raise ValueError("reviewed procedural skills require at least eight visually verified steps")
+            raise ValueError(
+                "reviewed procedural skills require at least eight "
+                "visually verified steps"
+            )
         return normalized
 
     @staticmethod
