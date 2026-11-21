@@ -153,8 +153,10 @@ def _spec(*, annotation_status="unreviewed", suggested_steps=None, evidence_refs
         suggested_steps=tuple(selected_steps),
         annotation_status=annotation_status,
         annotator_id="annotator-1" if reviewed else None,
-        reviewer_id="independent-reviewer" if reviewed else None,
-        reviewed_at="2026-11-21T10:00:00+08:00" if reviewed else None,
+        # Reviewer identity and timestamp are returned by the review repository,
+        # never supplied as part of the pre-review specification.
+        reviewer_id=None,
+        reviewed_at=None,
     )
 
 
