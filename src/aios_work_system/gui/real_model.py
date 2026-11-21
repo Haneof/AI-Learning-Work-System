@@ -14,8 +14,6 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, Request, build_opener
 
-
-
 BASE_URL_ENV = "AIOS_GUI_MODEL_BASE_URL"
 MODEL_ENV = "AIOS_GUI_MODEL_NAME"
 API_KEY_ENV = "AIOS_GUI_MODEL_API_KEY"
