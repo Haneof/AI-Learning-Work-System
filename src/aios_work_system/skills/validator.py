@@ -1,10 +1,11 @@
-"""Static skill package validation; this module never executes skill code."""
+"""Static knowledge package validation; this module never executes package code."""
 
 from __future__ import annotations
 
 import ast
 import hashlib
 import json
+import math
 import re
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -12,7 +13,12 @@ from pathlib import Path
 REQUIRED_FIELDS = {
     "id",
     "version",
-    "goal",
+    "purpose",
+    "conditions",
+    "judgement_criteria",
+    "experience",
+    "counterexamples",
+    "recovery",
     "scope",
     "inputs",
     "outputs",
@@ -22,6 +28,14 @@ REQUIRED_FIELDS = {
     "evidence",
     "tests",
 }
+REQUIRED_SKILL_SECTIONS = (
+    "## purpose",
+    "## conditions",
+    "## judgement criteria",
+    "## experience",
+    "## counterexamples",
+    "## recovery",
+)
 ALLOWED_TOOLS = {"workspace.read", "workspace.write", "json.parse", "text.extract"}
 ALLOWED_PERMISSIONS = {"workspace.read", "workspace.write"}
 BLOCKED_IMPORTS = {
@@ -56,7 +70,7 @@ def _package_hash(root: Path) -> str:
     digest = hashlib.sha256()
     for path in sorted(item for item in root.rglob("*") if item.is_file()):
         if path.is_symlink():
-            raise ValueError(f"Symlinks are not allowed in skill packages: {path}")
+            raise ValueError(f"Symlinks are not allowed in knowledge packages: {path}")
         relative = path.relative_to(root).as_posix()
         digest.update(relative.encode("utf-8"))
         digest.update(b"\0")
@@ -113,6 +127,107 @@ def _validate_relative_file(root: Path, relative_value: object, label: str) -> l
     return []
 
 
+def _validate_non_empty_string(value: object, label: str) -> list[str]:
+    if not isinstance(value, str) or not value.strip():
+        return [f"manifest {label} must be a non-empty string"]
+    return []
+
+
+def _validate_string_array(value: object, label: str) -> list[str]:
+    if not isinstance(value, list) or not value:
+        return [f"manifest {label} must be a non-empty string array"]
+    errors: list[str] = []
+    for index, item in enumerate(value):
+        if not isinstance(item, str) or not item.strip():
+            errors.append(f"manifest {label}[{index}] must be a non-empty string")
+    return errors
+
+
+def _validate_knowledge_sections(manifest: dict[str, object]) -> list[str]:
+    errors = _validate_non_empty_string(manifest.get("purpose"), "purpose")
+
+    conditions = manifest.get("conditions")
+    if not isinstance(conditions, dict):
+        errors.append("manifest conditions must be an object")
+    else:
+        errors.extend(
+            _validate_string_array(
+                conditions.get("applicable_when"),
+                "conditions.applicable_when",
+            )
+        )
+        errors.extend(
+            _validate_string_array(
+                conditions.get("not_applicable_when"),
+                "conditions.not_applicable_when",
+            )
+        )
+
+    errors.extend(_validate_string_array(manifest.get("judgement_criteria"), "judgement_criteria"))
+
+    experience = manifest.get("experience")
+    if not isinstance(experience, dict):
+        errors.append("manifest experience must be an object")
+    else:
+        errors.extend(_validate_string_array(experience.get("success"), "experience.success"))
+        errors.extend(_validate_string_array(experience.get("failure"), "experience.failure"))
+
+    errors.extend(_validate_string_array(manifest.get("counterexamples"), "counterexamples"))
+    errors.extend(_validate_string_array(manifest.get("recovery"), "recovery"))
+    return errors
+
+
+def _validate_procedure(root: Path) -> list[str]:
+    path = root / "procedure.json"
+    if not path.is_file():
+        return ["procedure.json is required"]
+    try:
+        procedure = json.loads(path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        return [f"procedure.json is invalid: {exc}"]
+    if not isinstance(procedure, dict):
+        return ["procedure.json root must be an object"]
+
+    errors: list[str] = []
+    if procedure.get("schema_version") != "2.0":
+        errors.append("procedure.json schema_version must be '2.0'")
+    if "steps" in procedure:
+        errors.append("procedure.json must use suggested_steps instead of steps")
+    suggested_steps = procedure.get("suggested_steps")
+    if not isinstance(suggested_steps, list):
+        errors.append("procedure.json suggested_steps must be an array")
+    else:
+        for index, step in enumerate(suggested_steps):
+            if not isinstance(step, dict):
+                errors.append(f"procedure.json suggested_steps[{index}] must be an object")
+
+    evidence_refs = procedure.get("evidence_refs")
+    if not isinstance(evidence_refs, list):
+        errors.append("procedure.json evidence_refs must be an array")
+    else:
+        for index, evidence in enumerate(evidence_refs):
+            if not isinstance(evidence, dict):
+                errors.append(f"procedure.json evidence_refs[{index}] must be an object")
+                continue
+            for field_name in ("kind", "ref"):
+                value = evidence.get(field_name)
+                if not isinstance(value, str) or not value.strip():
+                    errors.append(
+                        f"procedure.json evidence_refs[{index}].{field_name} must be non-empty"
+                    )
+            timestamp = evidence.get("timestamp_seconds")
+            if (
+                isinstance(timestamp, bool)
+                or not isinstance(timestamp, (int, float))
+                or not math.isfinite(timestamp)
+                or timestamp < 0
+            ):
+                errors.append(
+                    f"procedure.json evidence_refs[{index}].timestamp_seconds must be non-negative"
+                )
+    return errors
+
+
 def validate_skill_package(
     package_path: str | Path,
     dependency_allowlist: frozenset[str] = frozenset(),
@@ -120,7 +235,7 @@ def validate_skill_package(
     root = Path(package_path).expanduser().resolve(strict=True)
     errors: list[str] = []
     if not root.is_dir():
-        raise ValueError("Skill package path must be a directory")
+        raise ValueError("Knowledge package path must be a directory")
 
     for path in root.rglob("*"):
         if path.is_symlink():
@@ -158,11 +273,9 @@ def validate_skill_package(
     ):
         errors.append("manifest version must use MAJOR.MINOR.PATCH")
 
-    for field_name in ("goal", "scope"):
-        if field_name in manifest and (
-            not isinstance(manifest[field_name], str) or not manifest[field_name].strip()
-        ):
-            errors.append(f"manifest {field_name} must be a non-empty string")
+    errors.extend(_validate_knowledge_sections(manifest))
+    errors.extend(_validate_non_empty_string(manifest.get("scope"), "scope"))
+
     for field_name in ("inputs", "outputs"):
         if field_name in manifest and not isinstance(manifest[field_name], dict):
             errors.append(f"manifest {field_name} must be an object")
@@ -197,8 +310,19 @@ def validate_skill_package(
             if not isinstance(dependency, str) or dependency not in dependency_allowlist:
                 errors.append(f"dependency is not allowlisted: {dependency}")
 
-    if not (root / "SKILL.md").is_file():
+    skill_path = root / "SKILL.md"
+    if not skill_path.is_file():
         errors.append("SKILL.md is required")
+    else:
+        try:
+            skill_text = skill_path.read_text(encoding="utf-8").lower()
+            for heading in REQUIRED_SKILL_SECTIONS:
+                if heading not in skill_text:
+                    errors.append(f"SKILL.md is missing required knowledge section: {heading}")
+        except UnicodeDecodeError as exc:
+            errors.append(f"SKILL.md is not valid UTF-8: {exc}")
+
+    errors.extend(_validate_procedure(root))
 
     tests = manifest.get("tests", [])
     if isinstance(tests, list):
@@ -219,7 +343,7 @@ def validate_skill_package(
         package_hash = _package_hash(root)
     except (OSError, ValueError) as exc:
         package_hash = None
-        errors.append(f"could not hash skill package: {exc}")
+        errors.append(f"could not hash knowledge package: {exc}")
 
     return SkillValidationReport(
         package_path=str(root),
