@@ -114,6 +114,28 @@ def build_parser() -> argparse.ArgumentParser:
     analysis_parser.add_argument("--timeout-seconds", type=int, default=1800)
     analysis_parser.add_argument("--frame-interval-seconds", type=float, default=5.0)
     analysis_parser.add_argument("--max-frames", type=int, default=240)
+    analysis_parser.add_argument(
+        "--asr-model-size",
+        choices=("tiny", "base", "small", "medium", "large-v3"),
+        help="enable faster-whisper ASR with this model size; omitted means ASR disabled",
+    )
+    analysis_parser.add_argument("--asr-device", default="cpu")
+    analysis_parser.add_argument("--asr-compute-type", default="int8")
+    analysis_parser.add_argument("--asr-language", default="zh")
+    analysis_parser.add_argument(
+        "--asr-download-root", default="artifacts/models/faster-whisper"
+    )
+    analysis_parser.add_argument(
+        "--enable-ocr",
+        action="store_true",
+        help="enable PaddleOCR; requires the optional OCR and PaddlePaddle packages",
+    )
+    analysis_parser.add_argument(
+        "--ocr-model-tier", choices=("tiny", "small", "medium"), default="small"
+    )
+    analysis_parser.add_argument("--ocr-language", default="ch")
+    analysis_parser.add_argument("--ocr-device", default="cpu")
+    analysis_parser.add_argument("--ocr-min-confidence", type=float, default=0.0)
 
     demo_parser = subparsers.add_parser(
         "phase0-demo",
@@ -326,11 +348,37 @@ def _run_media_analyze(args: argparse.Namespace) -> None:
         ffprobe_binary=args.ffprobe,
         timeout_seconds=args.timeout_seconds,
     )
+    asr_adapter = None
+    ocr_adapter = None
+    if args.asr_model_size is not None:
+        from aios_work_system.media import FasterWhisperASRAdapter
+
+        asr_adapter = FasterWhisperASRAdapter(
+            model_size=args.asr_model_size,
+            device=args.asr_device,
+            compute_type=args.asr_compute_type,
+            language=args.asr_language or None,
+            download_root=args.asr_download_root,
+        )
+    if args.enable_ocr:
+        from aios_work_system.media import PaddleOCRAdapter
+
+        ocr_adapter = PaddleOCRAdapter(
+            lang=args.ocr_language,
+            device=args.ocr_device,
+            model_version="PP-OCRv6",
+            text_detection_model_name=f"PP-OCRv6_{args.ocr_model_tier}_det",
+            text_recognition_model_name=f"PP-OCRv6_{args.ocr_model_tier}_rec",
+            min_confidence=args.ocr_min_confidence,
+        )
+
     pipeline = MediaAnalysisPipeline(
         MediaAssetRepository(args.assets_database, args.manifest_dir),
         MediaAnalysisRepository(args.analysis_database),
         args.derived_dir,
         ffmpeg=processor,
+        asr_adapter=asr_adapter,
+        ocr_adapter=ocr_adapter,
         frame_interval_seconds=args.frame_interval_seconds,
         max_frames=args.max_frames,
     )
