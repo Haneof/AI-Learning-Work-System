@@ -6,13 +6,13 @@ action code and never marks unreviewed narration as verified UI behavior.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import math
 import re
 import shutil
 import tempfile
 from dataclasses import dataclass, field
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -125,13 +125,10 @@ class ProceduralSkillCompiler:
         version = self._non_empty_string(spec.version, "version")
         if not re.fullmatch(r"[a-z0-9][a-z0-9._-]{1,63}", skill_id):
             raise ValueError("skill_id must be a 2-64 character lowercase slug")
-        if not re.fullmatch(r"\\d+\\.\\d+\\.\\d+", version):
+        if not re.fullmatch(r"\d+\.\d+\.\d+", version):
             raise ValueError("version must use MAJOR.MINOR.PATCH")
-        self._approved_procedure_knowledge(spec)
-        self._normalize_steps(spec, {
-            knowledge_id: self.knowledge.get(knowledge_id, expert_id)
-            for knowledge_id in spec.knowledge_ids
-        })
+        knowledge_items = self._approved_procedure_knowledge(spec)
+        self._normalize_steps(spec, knowledge_items)
         return self.versions.record_review(
             expert_id=expert_id,
             skill_id=skill_id,
@@ -154,6 +151,8 @@ class ProceduralSkillCompiler:
         if spec.annotation_status not in {"unreviewed", "reviewed", "synthetic"}:
             raise ValueError("annotation_status must be unreviewed, reviewed, or synthetic")
         if spec.annotation_status != "reviewed":
+            if spec.review_id is not None:
+                raise ValueError("draft skill cannot carry a review_id")
             if spec.reviewer_id is not None or spec.reviewed_at is not None:
                 raise ValueError(
                     "review metadata cannot be supplied unless annotation_status is reviewed"
