@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import time
 from collections import Counter
 from pathlib import Path
 from typing import Any
@@ -150,6 +151,7 @@ class VideoExtractionPipeline:
         captions_path: str | Path | None = None,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
+        pipeline_started = time.perf_counter()
         video = Path(video_path)
         output = Path(output_dir)
         output.mkdir(parents=True, exist_ok=True)
@@ -164,6 +166,7 @@ class VideoExtractionPipeline:
         video_metadata["filename"] = video.name
 
         stages: dict[str, Any] = {}
+        stage_started = time.perf_counter()
         transcript, stages["subtitle_asr"] = load_transcript(
             video,
             captions_path,
@@ -190,7 +193,12 @@ class VideoExtractionPipeline:
             stages["subtitle_asr"]["status"] = "failed"
             stages["subtitle_asr"]["error"] = "all transcript cues were outside the video duration"
         _write_json(output / "transcript.json", transcript)
+        stages["subtitle_asr"]["latency_ms"] = round(
+            (time.perf_counter() - stage_started) * 1000,
+            2,
+        )
 
+        stage_started = time.perf_counter()
         sampled_frames = extract_sampled_frames(
             video,
             output / "frames",
@@ -208,8 +216,10 @@ class VideoExtractionPipeline:
             "changed_timestamps_ms": [frame["timestamp_ms"] for frame in change_frames],
             "change_ratio_threshold": 0.004,
             "minimum_gap_ms": 750,
+            "latency_ms": round((time.perf_counter() - stage_started) * 1000, 2),
         }
 
+        stage_started = time.perf_counter()
         try:
             ocr_records, stages["ocr"] = run_ocr(
                 analyzed_frames,
@@ -223,8 +233,13 @@ class VideoExtractionPipeline:
                 "text_regions": 0,
                 "error": f"{type(exc).__name__}: {exc}",
             }
+        stages["ocr"]["latency_ms"] = round(
+            (time.perf_counter() - stage_started) * 1000,
+            2,
+        )
         _write_json(output / "ocr.json", ocr_records)
 
+        stage_started = time.perf_counter()
         cursor_events: list[dict[str, Any]] = []
         try:
             cursor_frames = CursorTracker().track(analyzed_frames)
@@ -245,8 +260,13 @@ class VideoExtractionPipeline:
                 "inferred_click_candidates": 0,
                 "error": f"{type(exc).__name__}: {exc}",
             }
+        stages["cursor_tracking"]["latency_ms"] = round(
+            (time.perf_counter() - stage_started) * 1000,
+            2,
+        )
         _write_json(output / "cursor-and-click-inferences.json", cursor_events)
 
+        stage_started = time.perf_counter()
         grounding_results: list[dict[str, Any]] = []
         try:
             grounding_results, stages["ui_grounding"] = run_ui_grounding(
@@ -270,6 +290,10 @@ class VideoExtractionPipeline:
                 "external_inference_provider_calls": 0,
                 "error": f"{type(exc).__name__}: {exc}",
             }
+        stages["ui_grounding"]["stage_latency_ms"] = round(
+            (time.perf_counter() - stage_started) * 1000,
+            2,
+        )
         _write_json(output / "ui-grounding.json", grounding_results)
         if stages["ui_grounding"].get("selected_evaluation"):
             _write_json(
@@ -290,6 +314,7 @@ class VideoExtractionPipeline:
             }
             for frame in change_frames
         ]
+        stage_started = time.perf_counter()
         alignment = align_transcript_to_events(transcript, visual_events)
         stages["narration_alignment"] = {
             "status": "completed" if transcript else "failed",
@@ -300,9 +325,11 @@ class VideoExtractionPipeline:
             ),
             "alignment_method": "timestamp_window",
             "error": None if transcript else stages["subtitle_asr"].get("error", "no transcript"),
+            "latency_ms": round((time.perf_counter() - stage_started) * 1000, 2),
         }
         _write_json(output / "narration-alignment.json", alignment)
 
+        stage_started = time.perf_counter()
         episode = build_decision_episode(
             video_path=video,
             video_metadata=video_metadata,
@@ -313,6 +340,12 @@ class VideoExtractionPipeline:
             vlm_results=grounding_results,
             alignment=alignment,
         )
+        stages["episode_assembly"] = {
+            "status": "completed",
+            "latency_ms": round((time.perf_counter() - stage_started) * 1000, 2),
+        }
+
+        stage_started = time.perf_counter()
         episode, stages["decision_synthesis"] = synthesize_episode_decision(
             episode=episode,
             transcript=transcript,
@@ -325,11 +358,22 @@ class VideoExtractionPipeline:
             allow_download=self.allow_model_download,
             n_gpu_layers=self.llama_gpu_layers,
         )
+        stages["decision_synthesis"]["stage_latency_ms"] = round(
+            (time.perf_counter() - stage_started) * 1000,
+            2,
+        )
         _write_json(output / "decision-synthesis.json", stages["decision_synthesis"])
 
         from contracts.validate import validate_episode
 
+        stage_started = time.perf_counter()
         validation_errors = validate_episode(episode)
+        stages["contract_validation"] = {
+            "status": "passed" if not validation_errors else "failed",
+            "validator": "contracts.validate.validate_episode",
+            "error_count": len(validation_errors),
+            "latency_ms": round((time.perf_counter() - stage_started) * 1000, 2),
+        }
         validation = {
             "valid": not validation_errors,
             "errors": validation_errors,
@@ -347,6 +391,12 @@ class VideoExtractionPipeline:
             "video_file": str(video),
             "video_metadata": video_metadata,
             "part_breakdown": stages,
+            "timings_ms": {
+                name: stage.get("stage_latency_ms", stage.get("latency_ms"))
+                for name, stage in stages.items()
+                if stage.get("stage_latency_ms", stage.get("latency_ms")) is not None
+            },
+            "total_pipeline_ms": round((time.perf_counter() - pipeline_started) * 1000, 2),
             "model_policy": {
                 "inference_mode": "local_open_weights_only",
                 "local_only_inference": True,
