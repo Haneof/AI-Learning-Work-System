@@ -64,7 +64,9 @@ def _meta(
     }
 
 
-def _write_split(directory, name: str, samples: list[dict], metadata: list[dict]) -> tuple[str, str]:
+def _write_split(
+    directory, name: str, samples: list[dict], metadata: list[dict]
+) -> tuple[str, str]:
     model_path = directory / f"{name}.jsonl"
     sidecar_path = directory / f"{name}.training_meta.jsonl"
     model_path.write_text(
@@ -231,8 +233,20 @@ def test_weighted_materialization_keeps_every_sample_and_repeats_high_weight(tmp
         "train",
         [_sample(), _sample()],
         [
-            _meta("low", observations=["unknown"], rationales=["unknown"], confidence=0.1, rationale_loss_weight=0.1),
-            _meta("high", observations=["direct_capture"], rationales=["instructor_explicit"], confidence=1.0, rationale_loss_weight=1.0),
+            _meta(
+            "low",
+            observations=["unknown"],
+            rationales=["unknown"],
+            confidence=0.1,
+            rationale_loss_weight=0.1,
+        ),
+            _meta(
+            "high",
+            observations=["direct_capture"],
+            rationales=["instructor_explicit"],
+            confidence=1.0,
+            rationale_loss_weight=1.0,
+        ),
         ],
     )
     loaded = load_weighted_split(model_path, sidecar_path, expected_partition="train")
@@ -288,7 +302,10 @@ def test_pr40_style_synthetic_fixture_pipeline_tokenizes_train_and_test_without_
     # These are synthetic fixtures with the same approved DecisionEpisode shape
     # used by the PR #40 compiler contract tests; no real tutorial data is present.
     compilation = compile_episodes(
-        [_bundle("synthetic-episode-a", "synthetic-tutorial-a"), _bundle("synthetic-episode-b", "synthetic-tutorial-b")],
+        [
+            _bundle("synthetic-episode-a", "synthetic-tutorial-a"),
+            _bundle("synthetic-episode-b", "synthetic-tutorial-b"),
+        ],
         seed=42,
         train_fraction=0.5,
     )
@@ -306,7 +323,6 @@ def test_pr40_style_synthetic_fixture_pipeline_tokenizes_train_and_test_without_
         max_repeat_factor=3,
     )
 
-    from aios_work_system.training_data.lora import tokenize_dataset
 
     train_rows = [
         json.loads(line)
