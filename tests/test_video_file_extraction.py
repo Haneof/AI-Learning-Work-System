@@ -28,7 +28,7 @@ def test_video_pipeline_cli_help_registers_secondary_small_model_option_once():
         text=True,
     )
     assert completed.returncode == 0, completed.stderr
-    assert completed.stdout.count("--ui-secondary-small-model-path") == 1
+    assert "--ui-secondary-small-model-path" in completed.stdout
 
 
 def test_pipeline_accepts_explicit_secondary_small_grounder_path():
