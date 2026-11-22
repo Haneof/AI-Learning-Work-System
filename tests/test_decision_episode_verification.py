@@ -180,9 +180,9 @@ def test_model_cannot_pass_a_level_while_reporting_unresolved_unknowns():
     response["levels"]["decision_validity"]["unknowns"] = [
         "The relevant application state is not fully visible."
     ]
-    report = LocalDecisionEpisodeVerifier(
-        completion_client=FakeLocalModel(response)
-    ).verify(_episode(), _source_evidence())
+    report = LocalDecisionEpisodeVerifier(completion_client=FakeLocalModel(response)).verify(
+        _episode(), _source_evidence()
+    )
 
     assert report["levels"]["decision_validity"]["status"] == "unknown"
     assert report["overall_status"] == "unknown"
