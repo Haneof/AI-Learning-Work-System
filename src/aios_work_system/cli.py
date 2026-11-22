@@ -37,6 +37,30 @@ def build_parser() -> argparse.ArgumentParser:
         help="run the deterministic Phase 0 source-to-skill integration fixture",
     )
     demo_parser.add_argument("--output-dir", default="artifacts/phase0-demo")
+
+    loop_parser = subparsers.add_parser(
+        "run-loop",
+        help="run a validated Brain/Hands workflow",
+    )
+    loop_parser.add_argument("--workflow", required=True, help="WorkflowDefinition v0.1 JSON")
+    loop_parser.add_argument("--inputs", help="JSON file with initial_state and workflow_inputs")
+    loop_parser.add_argument("--hands", choices=("simulated", "browser"), default="simulated")
+    loop_parser.add_argument(
+        "--brain",
+        choices=("workflow",),
+        default="workflow",
+        help="deterministic WorkflowBrain stand-in (only supported Brain)",
+    )
+    loop_parser.add_argument("--max-decisions", type=int, default=30)
+    loop_parser.add_argument("--output-dir", default="artifacts/brain-hands/run")
+    loop_parser.add_argument(
+        "--url",
+        help="loopback application URL (required with --hands browser)",
+    )
+    loop_parser.add_argument(
+        "--trace-dir",
+        help="browser Hands trace directory (default: <output-dir>/traces)",
+    )
     return parser
 
 
@@ -68,7 +92,7 @@ def _run_benchmark(args: argparse.Namespace) -> None:
     print(f"Report: {args.output_report}")
 
 
-def main() -> None:
+def main() -> int:
     args = build_parser().parse_args()
     if args.command == "serve":
         serve(host=args.host, port=args.port)
@@ -81,8 +105,22 @@ def main() -> None:
         print(f"Phase 0 demo: {report['overall_status']}")
         print(f"Report: {args.output_dir}/phase0-report.md")
         if report["overall_status"] != "PASS":
-            raise SystemExit(1)
+            return 1
+    elif args.command == "run-loop":
+        from aios_work_system.brain_hands.runner import run_loop_command
+
+        return run_loop_command(
+            workflow_path=args.workflow,
+            inputs_path=args.inputs,
+            hands=args.hands,
+            brain=args.brain,
+            max_decisions=args.max_decisions,
+            output_dir=args.output_dir,
+            url=args.url,
+            trace_dir=args.trace_dir,
+        )
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
