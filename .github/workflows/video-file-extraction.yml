@@ -8,6 +8,7 @@ on:
       - "scripts/download_tutorial_video.py"
       - "scripts/run_video_file_pipeline.py"
       - "tests/test_video_file_extraction.py"
+      - "docs/VIDEO_FILE_EXTRACTION_PIPELINE.md"
       - "contracts/decision-episode.schema.json"
       - "pyproject.toml"
       - ".github/workflows/video-file-extraction.yml"
