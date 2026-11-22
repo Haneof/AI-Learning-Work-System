@@ -51,6 +51,19 @@ def main() -> int:
         default=Path("artifacts/models/deepseek-v4-pro-9b-q4.gguf"),
     )
     parser.add_argument(
+        "--decision-verifier-model-path",
+        type=Path,
+        help="Local open-weight verifier GGUF; defaults to the primary 4B episode model.",
+    )
+    parser.add_argument(
+        "--decision-verifier-endpoint",
+        help="Optional local loopback llama-server /v1/chat/completions URL.",
+    )
+    parser.add_argument("--decision-verifier-model-name", default="local-open-model")
+    parser.add_argument("--decision-verifier-server-binary", default="llama-server")
+    parser.add_argument("--decision-verifier-port", type=int, default=8089)
+    parser.add_argument("--decision-verifier-gpu-layers", type=int)
+    parser.add_argument(
         "--allow-model-download",
         action="store_true",
         help="Allow Hugging Face to download model WEIGHTS only; all inference remains local.",
@@ -86,6 +99,19 @@ def main() -> int:
             maximum_vlm_frames=args.maximum_vlm_frames,
             minimum_grounding_accuracy=args.minimum_grounding_accuracy,
             llama_gpu_layers=args.llama_gpu_layers,
+            decision_verifier_model_path=(
+                args.decision_verifier_model_path
+                or (None if args.decision_verifier_endpoint else args.episode_model_path)
+            ),
+            decision_verifier_endpoint=args.decision_verifier_endpoint,
+            decision_verifier_model_name=args.decision_verifier_model_name,
+            decision_verifier_server_binary=args.decision_verifier_server_binary,
+            decision_verifier_port=args.decision_verifier_port,
+            decision_verifier_gpu_layers=(
+                args.llama_gpu_layers
+                if args.decision_verifier_gpu_layers is None
+                else args.decision_verifier_gpu_layers
+            ),
         )
         metadata = {
             "video_id": args.source_id or args.input.stem,
@@ -110,6 +136,10 @@ def main() -> int:
     print(json.dumps(result["episode"], ensure_ascii=False, indent=2))
     print("=== CONTRACT VALIDATION ===")
     print(json.dumps(result["validation"], ensure_ascii=False, indent=2))
+    print("=== LOCAL DECISION VERIFICATION ===")
+    print(json.dumps(result["local_verification"], ensure_ascii=False, indent=2))
+    print("=== TRAINING DATASET ADMISSION ===")
+    print(json.dumps(result["training_admission"], ensure_ascii=False, indent=2))
     return 0 if result["validation"]["valid"] else 2
 
 

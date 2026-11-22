@@ -201,11 +201,31 @@ def test_pipeline_runs_on_a_real_video_file_and_emits_contract_valid_episode(tmp
         "1\n00:00:00,300 --> 00:00:01,700\nI open the Start menu.\n",
         encoding="utf-8",
     )
-    pipeline = VideoExtractionPipeline(sample_fps=2.0, vlm_model=None)
-    result = pipeline.run(video, tmp_path / "output", captions_path=captions)
+    output = tmp_path / "output"
+    pipeline = VideoExtractionPipeline(
+        sample_fps=2.0,
+        vlm_model=None,
+        decision_verifier_model_path=tmp_path / "missing-verifier.gguf",
+    )
+    result = pipeline.run(video, output, captions_path=captions)
     assert result["validation"]["valid"] is True
     assert validate_episode(result["episode"]) == []
     assert result["summary"]["counts"]["sampled_frames"] >= 2
     assert result["summary"]["part_breakdown"]["subtitle_asr"]["method"] == "existing_subtitles"
     assert result["summary"]["part_breakdown"]["frame_change"]["changed_frames"] >= 1
     assert result["summary"]["part_breakdown"]["ocr"]["frames_processed"] >= 1
+    assert result["local_verification"]["overall_status"] == "unknown"
+    assert result["training_admission"]["eligible_for_dataset"] is False
+    assert (output / "decision-source-evidence.json").is_file()
+    assert (output / "decision-verification.json").is_file()
+    assert (output / "training-admission.json").is_file()
+
+
+def test_pipeline_endpoint_configuration_does_not_require_a_model_file():
+    from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline
+
+    pipeline = VideoExtractionPipeline(
+        decision_verifier_endpoint="http://127.0.0.1:8089/v1/chat/completions"
+    )
+    assert pipeline.decision_verifier_endpoint == "http://127.0.0.1:8089/v1/chat/completions"
+    assert pipeline.decision_verifier_model_path is None
