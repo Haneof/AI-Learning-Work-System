@@ -10,8 +10,9 @@ import argparse
 import json
 import sys
 from collections import defaultdict
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 from jsonschema import Draft202012Validator, FormatChecker
 
@@ -138,7 +139,8 @@ def validate_episode(data: dict[str, Any]) -> list[str]:
             for word in segment.get("words", []):
                 if word["start_ms"] < segment["start_ms"] or word["end_ms"] > segment["end_ms"]:
                     errors.append(
-                        f"narration {segment['segment_id']}: word timestamp falls outside its segment"
+                        f"narration {segment['segment_id']}: word timestamp falls outside "
+                        "its segment"
                     )
 
     decision = data["decision"]
@@ -229,7 +231,9 @@ def _has_cycle(adjacency: dict[str, set[str]]) -> bool:
     return any(visit(node) for node in adjacency if node not in visited)
 
 
-def validate_workflow(data: dict[str, Any]) -> list[str]:
+def validate_workflow(
+    data: dict[str, Any], available_evidence_refs: Iterable[str] | None = None
+) -> list[str]:
     """Validate WorkflowDefinition structure and its HTN/graph invariants."""
     errors = _schema_errors("workflow", data)
     if errors:
@@ -345,6 +349,14 @@ def validate_workflow(data: dict[str, Any]) -> list[str]:
         if next_task is not None and next_task not in task_id_set:
             errors.append(f"recovery rule {recovery['rule_id']}: unknown next_task_id {next_task}")
 
+    workflow_evidence_refs = set(_collect_evidence_refs(data))
+    if workflow_evidence_refs:
+        if available_evidence_refs is None:
+            errors.append("an evidence registry is required to validate WorkflowDefinition references")
+        else:
+            unresolved = workflow_evidence_refs - set(available_evidence_refs)
+            errors.extend(f"workflow has unresolved evidence reference: {ref}" for ref in sorted(unresolved))
+
     return errors
 
 
@@ -422,7 +434,10 @@ def validate_training_jsonl(
                 errors.append(f"training line {line_number}: missing training_example_id")
                 continue
             if example_id in examples:
-                errors.append(f"training line {line_number}: duplicate training_example_id {example_id}")
+                errors.append(
+                    f"training line {line_number}: duplicate training_example_id "
+                    f"{example_id}"
+                )
                 continue
             examples[example_id] = record
 
@@ -457,7 +472,8 @@ def validate_training_jsonl(
                 continue
             if not isinstance(user_payload, dict) or not isinstance(assistant_payload, dict):
                 errors.append(
-                    f"training line {line_number}: user and assistant content must decode to objects"
+                    f"training line {line_number}: user and assistant content must decode "
+                    "to objects"
                 )
                 continue
 
@@ -512,7 +528,8 @@ def validate_training_jsonl(
                 isinstance(weight, bool) or not isinstance(weight, (int, float)) or weight < 0
             ):
                 errors.append(
-                    f"sidecar line {line_number}: rationale_loss_weight must be null or non-negative"
+                    f"sidecar line {line_number}: rationale_loss_weight must be null "
+                    "or non-negative"
                 )
 
     for example_id, record in examples.items():
@@ -558,6 +575,7 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("path", type=Path)
     parser.add_argument("--capability-registry", type=Path)
+    parser.add_argument("--evidence-registry", type=Path)
     parser.add_argument("--sidecar", type=Path)
     args = parser.parse_args(argv)
 
@@ -569,7 +587,16 @@ def main(argv: list[str] | None = None) -> int:
             if args.kind == "episode":
                 errors = validate_episode(data)
             elif args.kind == "workflow":
-                errors = validate_workflow(data)
+                evidence_ids = None
+                if args.evidence_registry is not None:
+                    registry = _read_json(args.evidence_registry)
+                    if "evidence" in registry:
+                        evidence_ids = [
+                            item["evidence_id"] for item in registry["evidence"]
+                        ]
+                    else:
+                        evidence_ids = registry.get("evidence_ids", [])
+                errors = validate_workflow(data, evidence_ids)
             else:
                 capabilities = None
                 if args.capability_registry is not None:

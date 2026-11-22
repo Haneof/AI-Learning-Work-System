@@ -236,7 +236,7 @@ Install the existing development extras (the contracts validator uses jsonschema
 Validate one document:
 
     python -m contracts.validate --kind episode contracts/examples/shop-list-product.episode.json
-    python -m contracts.validate --kind workflow contracts/examples/shop-list-product.workflow.json
+    python -m contracts.validate --kind workflow contracts/examples/shop-list-product.workflow.json --evidence-registry contracts/examples/shop-list-product.episode.json
     python -m contracts.validate --kind protocol path/to/delegation.json --capability-registry path/to/capabilities.json
     python -m contracts.validate --kind training-jsonl path/to/train.jsonl --sidecar path/to/training_meta.jsonl
 
@@ -248,7 +248,7 @@ The validator performs two layers:
 - additional fields are rejected where the contract is closed.
 
 **Layer 2 — semantic checks**
-- evidence references resolve to evidence IDs in the same Episode;
+- Episode evidence references resolve within the Episode; Workflow evidence references resolve through the supplied evidence registry;
 - timestamp ranges are ordered and remain within the source duration when known;
 - a decision has evidence references or explicitly declares unknown as a decision basis;
 - a successful outcome has a passed postcondition backed by directly captured verification evidence;

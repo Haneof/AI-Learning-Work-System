@@ -81,8 +81,10 @@ def test_auto_extracted_episode_cannot_be_trainable():
 
 def test_shop_workflow_example_passes():
     workflow = load_example("shop-list-product.workflow.json")
+    episode = load_example("shop-list-product.episode.json")
+    evidence_ids = {item["evidence_id"] for item in episode["evidence"]}
 
-    assert validate_workflow(workflow) == []
+    assert validate_workflow(workflow, evidence_ids) == []
 
 
 def test_workflow_rejects_hard_dependency_cycle():
@@ -96,7 +98,9 @@ def test_workflow_rejects_hard_dependency_cycle():
         }
     )
 
-    errors = validate_workflow(workflow)
+    episode = load_example("shop-list-product.episode.json")
+    evidence_ids = {item["evidence_id"] for item in episode["evidence"]}
+    errors = validate_workflow(workflow, evidence_ids)
 
     assert any("contain a cycle" in error for error in errors)
 
@@ -109,7 +113,9 @@ def test_workflow_rejects_primitive_task_without_registered_capability():
         if item["capability_id"] != "shop.listing.set_price"
     ]
 
-    errors = validate_workflow(workflow)
+    episode = load_example("shop-list-product.episode.json")
+    evidence_ids = {item["evidence_id"] for item in episode["evidence"]}
+    errors = validate_workflow(workflow, evidence_ids)
 
     assert any("unregistered capability" in error for error in errors)
 
@@ -119,7 +125,9 @@ def test_workflow_rejects_invariant_precondition_bypass():
     set_price = next(task for task in workflow["tasks"] if task["task_id"] == "set_price")
     set_price["preconditions"] = []
 
-    errors = validate_workflow(workflow)
+    episode = load_example("shop-list-product.episode.json")
+    evidence_ids = {item["evidence_id"] for item in episode["evidence"]}
+    errors = validate_workflow(workflow, evidence_ids)
 
     assert any("invariant" in error and "could be bypassed" in error for error in errors)
 

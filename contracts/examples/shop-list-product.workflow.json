@@ -113,7 +113,7 @@
           "after_task_id": "set_price"
         }
       ],
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     },
     {
       "method_id": "title.missing",
@@ -132,7 +132,7 @@
           "after_task_id": "verify_title"
         }
       ],
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     },
     {
       "method_id": "title.saved",
@@ -146,7 +146,7 @@
       ],
       "subtasks": ["verify_title"],
       "ordering_constraints": [],
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     }
   ],
   "edges": [
@@ -161,7 +161,7 @@
       "to_task_id": "set_price",
       "relation": "hard_dependency",
       "rationale": "The project-owner-provided rule requires the title to be written and verified before setting the price.",
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     }
   ],
   "ordering_constraints": [
@@ -169,7 +169,7 @@
       "before_task_id": "verify_title",
       "after_task_id": "set_price",
       "rationale": "The title must be written and verified before setting the price.",
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     }
   ],
   "invariants": [
@@ -182,7 +182,7 @@
         "value": "verified"
       },
       "must_hold_before_task_ids": ["set_price"],
-      "evidence_refs": ["ev-project-owner-ordering-rule"]
+      "evidence_refs": ["ev-project-owner-scenario"]
     }
   ],
   "transitions": [
@@ -214,6 +214,6 @@
       "rationale": "Do not continue to price configuration while the required title condition is unmet."
     }
   ],
-  "evidence_refs": ["ev-project-owner-ordering-rule"],
+  "evidence_refs": ["ev-project-owner-scenario"],
   "lifecycle_status": "draft"
 }
