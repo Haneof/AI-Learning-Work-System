@@ -65,7 +65,7 @@ The earlier Qwen3-VL-4B/Mage-VL-4B Colab T4 comparison was stopped on 2026-11-21
 ## Compute and storage assumptions
 
 - Initial Brain base model: 4B.
-- Planning assumption: 4B BF16 LoRA on T4 16GB; 9B needs a 24GB+ GPU. Confirm actual fit and performance with a fixed model revision and recorded run configuration.
+- T4 16GB planning profile: 4B FP16 LoRA; 9B needs a 24GB+ GPU. The merged PR #41 configuration disables BF16 on T4; confirm actual fit and performance with a fixed model revision and recorded run configuration.
 - Local RTX 3070 8GB: development and light validation, not assumed as the BF16 LoRA training device.
 - Google Drive: original tutorial archive.
 - SQLite: source/event metadata, narration alignment, Decision Episodes, workflow versions, reviews, dataset snapshots, and training lineage.
