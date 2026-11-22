@@ -1,132 +1,101 @@
 # AI Learning & Work System
 
-**通用型 AI 自主学习与工作系统**：把专业资料转化为可追溯的知识、可执行的技能和经过真实任务验证的经验，持续培养能够独立承担专业工作的 AI 专家。
+**A general-purpose AI learning and work system:** turn professional tutorials and verified operational evidence into training data for domain experts, then use LoRA to teach a language model how to plan and direct work.
 
-> 项目目标不是再做一个“能回答问题的聊天机器人”，而是建设一套可重复使用的专业 AI 培养底座。
+> The product is not a subtitle archive, video summary, button detector, or fixed click script. The product is a domain expert that understands a business goal, chooses an appropriate workflow, handles conditions and exceptions, and directs an existing operation model to execute page interactions.
 
-## 项目愿景
+## Product objective: train the brain, reuse the hands
 
-将数百 GB 的教学视频、操作录屏、文档、网页和真实任务记录，经过处理、学习、技能编译、实战评估，转化为专业 AI 的工作能力。
+The system has two deliberately separate roles:
 
-每个专业 AI 对应一个岗位或专业领域，例如跨境电商选品、广告投放、店铺运营、客服等。不同专家可以协作，但各自的专业知识、技能、长期记忆、工作经验和评估标准相互隔离。
-
-## 核心原则
-
-1. **通用底座，专业隔离**：基础模型、媒体处理和执行框架共享；专业知识、技能、记忆、经验及评估标准按专家隔离。
-2. **从资料到能力**：资料只是输入，知识、技能和经验才是核心资产。
-3. **实战验收**：不能以复述教程认定学会，必须通过独立任务测试。
-4. **学习与工作闭环**：工作中发现能力缺口，触发补充学习；新能力通过测试后才进入正式技能库。
-5. **证据可追溯**：知识和技能保留来源文件、页码/时间戳、版本及适用条件。
-6. **安全优先**：外部资料视为不可信输入；技能先在隔离环境测试；支付、删除、发布、账号授权等高风险操作必须经过人工审批。
-
-## 系统能力规划
-
-- **资料接入**：视频、录屏、PDF、Office 文档、图片、网页、操作日志和任务记录。
-- **知识学习**：OCR、ASR、关键帧提取、内容理解、知识抽取、来源定位和冲突识别。
-- **技能编译**：把知识和示范流程整理成有输入输出契约、执行步骤、异常处理和测试用例的技能包。
-- **技能评估**：静态检查、沙箱测试、综合任务和未见任务评估；未达标不发布、不晋级。
-- **专业记忆**：沉淀知识、技能索引、任务轨迹、成功经验、失败原因和决策依据。
-- **自主执行**：按权限调用 API、浏览器、桌面、脚本和其他工具，并验证实际结果。
-- **持续进化**：在工作中发现缺口，生成学习任务，验证新技能并进行版本化发布。
-- **多专家协作**：专家之间通过受控接口调用能力，不直接读取彼此的私有记忆。
-
-## 培养阶段
-
-| 阶段 | 培养目标 | 核心门槛 |
+| Role | Responsibility | Project scope |
 |---|---|---|
-| P1 知识学习 | 掌握领域概念、事实、规则和证据 | 抽样问答准确，引用可定位 |
-| P2 技能训练 | 将专业流程转化为可执行技能 | 技能测试通过，异常路径有覆盖 |
-| P3 综合实战 | 组合技能完成复杂任务 | 未见任务达到预设标准 |
-| P4 独立工作 | 在授权范围内独立承担工作 | 连续任务稳定，风险控制有效 |
+| **Brain — language model + domain LoRA** | Understand business goals, plan workflow steps, check preconditions, choose branches, explain decisions, delegate capabilities, verify outcomes, recover from failures | This is the primary learning and training target |
+| **Hands — existing GUI operation model** | Perceive the live page, find controls, click, type, scroll, and perform low-level UI interaction | Reuse an available open-source operation model, such as UI-TARS, through an adapter; do not build a replacement UI perception/action model |
 
-**不达标不进入下一阶段。** 评估标准由具体岗位定义，不能用模型自我评价代替真实测试。
+The Brain decides **what should happen next and why**. The Hands execute the delegated task and return structured observations. The Brain checks the result and chooses the next step.
 
-## 当前模型与设备基线
+The system must teach the Brain a transferable workflow policy, not make it replay one instructor's mouse path.
 
-- 主模型方向：本地无审查 Qwen 3.5。
-- 候选规模：4B 与 9B，采用同一测试集和运行条件比较后确定。
-- 原型设备：Windows、NVIDIA 8GB VRAM、16GB RAM。
-- 主模型通过适配层切换；OCR、ASR、视觉和视频处理作为专用模块。
-- 精确模型 ID、量化格式、视觉输入能力和部署后端仍需实测确认。
-- 当前不以训练通用基础模型为首期目标，优先建设知识、技能、经验和评估资产。
+## Learning pipeline
 
-## 技术路线
+1. **Acquire and archive tutorials.** Search for tutorials in the target vertical. Use a cloud downloader to store them directly in the 5TB Google Drive, grouped by creator and series/course. Keep a per-video record containing at least the original source link and platform, plus available creator, course, hash, and license metadata.
 
-优先采用开源项目和可替换组件，关键依赖先做 PoC，再决定是否进入正式架构。候选技术和项目状态见 [技术选型文档](docs/TECH_STACK.md)。
+2. **Capture or recover the operation event stream, and align narration.**
+   - For newly recorded tutorials, capture semantic UI events directly during recording. For web applications, use an event recorder such as rrweb to record DOM changes, interactions, focus, scrolling, input changes, and timestamps. For Windows desktop applications, use Windows UI Automation events and element state information. Synchronize the event stream with the instructor's audio.
+   - Prefer existing subtitles. If usable subtitles are absent, run ASR and obtain word-level or segment-level timestamps through alignment. The narration provides the instructor's goals, reasons, constraints, and explanations.
+   - For legacy MP4 tutorials that have no event log, reconstruct only the events that can be supported by the recording. These records must be labelled as inferred from video; they must never be represented as directly captured DOM, Accessibility, mouse, or keyboard events.
+   - Frame-based extraction is **not** the primary learning route. Do not feed sparse or dense frame collections to a video model as the main way to teach operational workflows.
 
-当前重点验证：
-1. 主模型 4B/9B 的部署与能力基准。
-2. 视频/录屏的切片、转录、关键帧和时间戳证据链。
-3. 知识抽取、来源追溯和冲突处理。
-4. 技能包生成、静态检查和隔离沙箱执行。
-5. 电脑操作、权限拦截、结果验证和人工接管。
-6. 多专家数据隔离与受控协作。
+3. **Build decision episodes and workflow knowledge.** Align the event stream with the narration. Extract decision episodes containing the goal at the time, known business state, instructor's explicit explanation, inferred rationale where appropriate, chosen operation, observed result, and next decision. Preserve source evidence and confidence. Compose these episodes into hierarchical task networks (HTN) with conditional branches, hard dependencies, soft preferences, preconditions, postconditions, and recovery paths. Conflicts from different tutorials, software versions, or conditions coexist; they do not overwrite one another.
 
-## 研发路线
+4. **Train and validate the Brain.** Turn approved decision episodes into conversational supervised-training examples. The Brain learns task decomposition, sequence and branch selection, business constraints, capability choice, state verification, and error recovery. At runtime, provide the relevant local HTN workflow slice in the prompt so volatile business rules can be updated without retraining the LoRA. The Brain sends a high-level delegation JSON to the Hands adapter; Hands returns an execution-result JSON; the Brain verifies the postconditions and chooses what happens next.
 
-- **阶段 0：项目基线与技术验证**
-- **阶段 1：自主学习 MVP**
-- **阶段 2：自主工作 MVP**
-- **阶段 3：持续学习与进化**
-- **阶段 4：多专家协作与规模化培养**
+Only approved, source-grounded training examples should enter a LoRA dataset. A fluent transcript, UI event dump, or click replay is not by itself a successful learning result.
 
-详细范围和退出条件见 [研发路线图](docs/ROADMAP.md)。
+## Evidence and learning principles
 
-## 项目文档
+1. **Quality first, efficiency second.** A decision that cannot be supported by the event stream, narration, or clearly labelled inference must not become a training fact.
+2. **Teach why and when.** The instructor's words and demonstrated behavior must be aligned so the Brain can learn goals, reasons, preconditions, conditions, and alternative paths.
+3. **Separate evidence channels.** Directly captured UI events, reconstructed legacy-video events, instructor-explicit rationale, behavioral inference, project-owner-provided rules, and unknown information remain distinguishable.
+4. **Verify outcomes.** A successful click or tool call is not proof of a successful business result. Record postcondition checks and their evidence.
+5. **Preserve conflicts.** Keep competing workflows with their sources, application/software versions, and applicability conditions. Never silently overwrite a conflicting rule.
+6. **Generalize, do not replay.** Test different starting states, alternative valid paths, missing information, failures, and recovery. The Brain must adapt its plan rather than repeat a tutorial verbatim.
+7. **Reuse the Hands.** Do not spend the learning project rebuilding page perception or button-clicking capabilities already provided by an operation model.
 
-| 文档 | 说明 |
+## Model and experiment status
+
+The earlier Colab T4 blind comparison of Qwen3-VL-4B and Mage-VL-4B was **stopped on 2026-11-21 at approximately 19:51 PST**, after Qwen3-VL-4B scored **4.0/25**. The comparison was not completed as a valid winner-selection benchmark. No winner is claimed, and the frame-based video-understanding route was rejected as the primary way to learn UI workflows.
+
+The primary training target is now the Brain language model. The existing Hands operation model remains a separate execution component. ASR and word/segment alignment support the narration channel; rrweb and Windows UI Automation provide direct event capture for new tutorials.
+
+## Compute and storage planning assumptions
+
+- Initial Brain base-model target: 4B, with one LoRA adapter per vertical expert.
+- Planning assumption: a 16GB T4 may accommodate 4B BF16 LoRA; 9B LoRA planning requires 24GB or more. These are capacity assumptions until measured with a fixed model revision, sequence length, batch size, optimizer, and checkpointing configuration.
+- Existing local GPU: RTX 3070 8GB; useful for development, event/data processing, and lightweight validation, not assumed to be the primary BF16 LoRA trainer.
+- Tutorial archive target: 5TB Google Drive.
+- SQLite stores structured source, event, narration, workflow, review, and training lineage metadata.
+
+## Current implementation boundary
+
+The repository contains acquisition/storage components, FFmpeg media utilities, ASR/OCR interfaces and static fixtures, knowledge/evidence components, a skill compiler, a sandbox, and a GUI Agent with a model adapter. These components do not yet constitute the complete event-stream capture, narration alignment, decision-episode extraction, Brain LoRA training, or Brain-to-Hands production loop. The static ASR/OCR adapters are test fixtures, not real model inference. The GUI operation adapter is downstream Hands infrastructure, not the Brain's workflow-learning system.
+
+## Project documentation
+
+| Document | Purpose |
 |---|---|
-| [产品立项与总体计划](docs/PROJECT_PLAN.md) | 产品定位、目标边界、培养阶段和成功标准 |
-| [系统架构](docs/ARCHITECTURE.md) | 分层架构、模块职责、数据流和状态机 |
-| [技术选型与验证策略](docs/TECH_STACK.md) | 模型、开源组件、存储和 PoC 计划 |
-| [研发路线图](docs/ROADMAP.md) | 阶段目标、交付物和退出条件 |
-| [验收标准](docs/ACCEPTANCE.md) | 资料、知识、技能和自主工作的验收要求 |
-| [安全与权限模型](docs/SECURITY.md) | 不可信输入、沙箱、权限分级和人工审批 |
-| [开发规范](docs/DEVELOPMENT_RULES.md) | 模块边界、测试、Git 和 Agent 开发约束 |
-| [阶段 0 技术验证计划](docs/PHASE_0_TECHNICAL_VALIDATION.md) | 第一阶段工作包、交付物、资源策略和退出条件 |
-| [核心数据模型](docs/DATA_MODEL.md) | 专家、资料、证据、知识、技能、任务与审计实体 |
-| [API 契约](docs/API_CONTRACTS.md) | MVP 核心接口、请求响应与访问控制约定 |
-| [状态机定义](docs/STATE_MACHINES.md) | 资料、知识、技能、任务和专家状态迁移 |
-| [测试计划](docs/TEST_PLAN.md) | 测试层级、固定样本、质量门禁和缺陷分级 |
-| [模型 Benchmark 框架](docs/MODEL_BENCHMARK.md) | 4B/9B 统一评测接口、数据集、报告格式和指标边界 |
-| [离线媒体处理 PoC](docs/MEDIA_INGEST.md) | 来源哈希、FFmpeg、PDF 页码证据、任务重试与续跑 |
-| [视频采集管线](docs/ACQUISITION_PIPELINE.md) | YouTube 搜索、选片、下载、Drive 归档与证据提取接口 |
-| [Google Drive 授权配置](docs/GOOGLE_DRIVE_SETUP.md) | 官方 Drive API 的一次性 OAuth 授权与凭证管理 |
-| [知识与证据契约](docs/KNOWLEDGE_EVIDENCE.md) | 知识类型、证据定位、专家隔离、去重和冲突处理 |
-| [程序化技能编译](docs/SKILL_COMPILATION.md) | 从已审核知识与时间戳证据生成结构化技能包 |
-| [技能包安全 PoC](docs/SKILL_SECURITY.md) | 技能清单、静态校验、版本不可变和 Docker 隔离策略 |
-| [阶段 0 端到端样例](docs/PHASE0_E2E.md) | 一条命令贯通来源、证据、知识、技能和安全门禁 |
+| [Project plan](docs/PROJECT_PLAN.md) | Product definition, brain/hands split, and learning pipeline |
+| [System architecture](docs/ARCHITECTURE.md) | Layers, data flow, workflow learning, and runtime delegation |
+| [Technology stack](docs/TECH_STACK.md) | Event capture, narration alignment, Brain LoRA, and Hands reuse |
+| [Roadmap](docs/ROADMAP.md) | Stages, deliverables, and exit criteria |
+| [Acquisition pipeline](docs/ACQUISITION_PIPELINE.md) | Tutorial archive, event stream, narration, review, and training |
+| [Media ingestion](docs/MEDIA_INGEST.md) | Existing media utilities and target event-based ingestion |
+| [Knowledge and evidence](docs/KNOWLEDGE_EVIDENCE.md) | Provenance, observation channels, rationale sources, and uncertainty |
+| [Core data model](docs/DATA_MODEL.md) | Sources, UI events, narration, decision episodes, workflows, and experts |
+| [Acceptance criteria](docs/ACCEPTANCE.md) | Evidence quality and Brain/Hands validation |
+| [Model benchmark harness](docs/MODEL_BENCHMARK.md) | Existing benchmark interface and its limits |
+| [Phase 0 technical validation](docs/PHASE_0_TECHNICAL_VALIDATION.md) | First end-to-end Brain learning validation |
+| [Skill compilation](docs/SKILL_COMPILATION.md) | Structure/evidence validation and test-material compilation |
+| [Skill security PoC](docs/SKILL_SECURITY.md) | Static checks and sandbox isolation |
+| [Test plan](docs/TEST_PLAN.md) | Workflow decisions, recovery, transfer, and safe execution |
 
-## 本地开发（工程底座）
+## Local development
 
-要求 Python 3.11 或 3.12。首次运行请阅读 [本地开发指南](DEVELOPMENT.md)。
+Requires Python 3.11 or 3.12. Read the [development guide](DEVELOPMENT.md) before running the project.
 
-```powershell
+~~~powershell
 py -3.11 -m venv .venv
-.\.venv\Scripts\Activate.ps1
+.\\.venv\\Scripts\\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[dev]"
 ruff check .
 pytest
 python -m aios_work_system serve --host 127.0.0.1 --port 8000
-```
+~~~
 
-健康检查地址：`http://127.0.0.1:8000/health`。
+## Current project status
 
-当前已集成 Python 工程底座、CLI、健康检查、模型 Benchmark 框架、离线媒体处理 PoC、知识证据契约、技能包静态校验与 Docker 沙箱命令构建，以及阶段 0 合成端到端验收样例。尚未完成真实媒体样本、真实模型推理、真实 Docker 隔离执行、数据库/向量库和生产级 Agent 执行器验收。仓库许可证尚待所有者确认，不应自行假定授权方式。
+**Current focus: define and validate the event-stream-to-decision-episode path and the Brain-to-Hands contract.** The prior Qwen3-VL-4B/Mage-VL-4B blind test was stopped as noted above. Direct event capture for new tutorials, legacy-video reconstruction, narration alignment, Brain LoRA training, and the full Brain-to-Hands loop are not yet claimed as implemented end-to-end.
 
-## 当前项目状态
-
-**当前阶段：立项与技术验证。**
-
-上述技术组件均为候选或待验证项，不应将文档规划误认为已经集成或通过生产验收。首个试点岗位尚需冻结；确定后先完成一个低风险、可客观验收的端到端闭环，再扩展到其他专业领域。
-
-## 参与开发
-
-开发前请先阅读：
-1. [系统架构](docs/ARCHITECTURE.md)
-2. [开发规范](docs/DEVELOPMENT_RULES.md)
-3. [验收标准](docs/ACCEPTANCE.md)
-4. [安全与权限模型](docs/SECURITY.md)
-
-所有功能以明确接口、状态迁移、权限要求和可重复验收测试为交付标准。未验证的能力必须明确标注，不得以模型口头声称代替实际执行结果。
+All work requires explicit scope, evidence, interfaces, quality gates, and reproducible tests. Do not merge pull requests without authorization. Do not describe unimplemented or unvalidated capabilities as complete.

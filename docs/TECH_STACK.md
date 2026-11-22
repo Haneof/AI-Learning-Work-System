@@ -1,36 +1,101 @@
-# 技术选型与验证策略
+# Technology Stack and Validation Strategy
 
-版本：V1.0。开源优先、按需引入、先验证再定案。以下均为候选而非生产依赖。
+**Version:** 0.1 design update  
+**Policy:** reuse existing operation models; focus new learning effort on Brain workflow competence. Quality first, efficiency second. This document describes the target design, not a claim that every adapter is already integrated.
 
-## 模型策略
-主模型方向固定为本地无审查 Qwen 3.5，4B 与 9B 两个候选。需确认精确模型仓库与 revision、是否具备视觉输入、权重许可、量化格式、推理后端、上下文长度和实际资源占用。4B/9B 使用同一测试集和一致提示模板比较，不预设参数更大就一定更好。业务逻辑不得绑定单一模型 API。
+## 1. System roles
 
-## 开源候选
-| 领域 | 项目 | 用途 | 当前定位 |
+| Layer | Candidate/tooling | Responsibility | Project status |
 |---|---|---|---|
-| 视频转技能 | [Video-to-Skill](https://github.com/brenoepics/video-to-skill) | 视频转录、关键帧、步骤提取、技能草案 | 优先小样本实验 |
-| 电脑操作 | [OpenGCUA](https://github.com/Tongyi-MAI/OpenGCUA) | GUI、代码执行、电脑使用 Agent | 候选，需测成熟度 |
-| 电脑操作研究 | [Agent S](https://github.com/simular-ai/Agent-S) | 操作经验与评测方法参考 | 研究参考 |
-| GUI 视觉 | [UI-Venus](https://github.com/inclusionAI/UI-Venus) | GUI 屏幕理解 | 资源需求待实测 |
-| 视频理解 | [InternVideo](https://github.com/OpenGVLab/InternVideo) | 视频表征与长视频理解 | 后续评估 |
-| 视频理解 | [MOSS-VL](https://github.com/OpenMOSS/MOSS-VL) | 多模态/视频理解研究 | 后续评估 |
-| 技能格式 | [Agent Skills](https://github.com/anthropics/skills) | 可移植技能目录参考 | 借鉴格式 |
-| 浏览器自动化 | [Playwright](https://github.com/microsoft/playwright) | 浏览器控制与测试 | 优先评估 |
-| 浏览器 Agent | [Browser Use](https://github.com/browser-use/browser-use) | 浏览器任务自动化 | 候选 |
-| 桌面自动化 | [CUA](https://github.com/trycua/cua) | 桌面环境控制 | 候选 |
-| ASR | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | 本地语音识别 | 优先评估 |
-| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | 文档与屏幕 OCR | 优先评估 |
-| 媒体处理 | [FFmpeg](https://ffmpeg.org/) | 转码、抽帧、音轨处理 | 基础工具 |
-| 向量检索 | [Qdrant](https://github.com/qdrant/qdrant) | 语义检索 | MVP 评估 |
-| 工作流编排 | [LangGraph](https://github.com/langchain-ai/langgraph) | 状态化 Agent 工作流 | 候选 |
+| Brain base model | A selected 4B language model | Business reasoning, task decomposition, conditional planning, capability delegation, verification, recovery | Primary LoRA training target; exact base revision is selected through separate model validation |
+| Brain vertical adapter | LoRA | Learn reusable workflow decision behavior for a domain | Target training output |
+| Web event capture | rrweb | Directly capture timestamped DOM changes, interactions, focus, scrolling, and input changes while recording a new tutorial | Target capture integration |
+| Windows desktop event capture | Windows UI Automation | Capture control identities, property/state changes, focus and UIA events with timestamps | Target capture integration |
+| Narration processing | Existing subtitles first; ASR fallback and timestamp alignment | Preserve instructor words, reasons, constraints, and timing | Real ASR/alignment integration and language validation required |
+| Workflow representation | HTN plus conditional graph | Store task hierarchy, methods, preconditions, hard dependencies, soft preferences, postconditions, and recovery rules | Target data contract |
+| Hands operation layer | Existing open-source GUI operation model, e.g. UI-TARS | Live page recognition and low-level execution | Reuse; do not rebuild as part of the Brain learning project |
+| Hands adapter | Project-owned capability adapter | Translate Brain capability delegation into the existing Hands model's request format and normalize its execution result | Interface/integration work |
+| Validation | Simulated Hands executor, Docker sandbox, live GUI loop | Isolate Brain decisions, then validate the complete Brain + Hands pair | Target evaluation harness |
 
-代码许可、模型权重许可和数据集许可必须分别核查。代码开源不代表权重或数据可自由商用。
+The Brain is not trained to find buttons. It is trained to decide which business task should be done, why, under which conditions, and how to react to the Hands result.
 
-## 本地资源策略
-原型设备为 8GB VRAM / 16GB RAM。先单模型低并发；视频离线分段、代理分辨率、抽帧和转录；OCR/ASR 按需加载；任务队列支持断点续跑和缓存。9B 是否可用必须实测，不以参数量推断。
+## 2. Tutorial input and narration alignment
 
-## 统一基准测试
-比较知识提取与证据引用、视频步骤理解、技能生成完整性、多步骤推理、电脑操作成功率、异常处理、未见任务迁移、延迟/吞吐、显存/内存和长任务稳定性。若主模型不支持视觉输入，则评估其对视觉模块解析结果的理解能力。
+### New recordings — primary path
 
-## 技术准入
-候选依赖进入主干前，完成许可证与维护状态检查、可重复安装、Windows 兼容性、资源测量、最小功能测试、安全边界和替代方案比较。未通过者留在实验区。
+- Web tutorials: record semantic event streams with rrweb from the start of the session. Retain event type, stable target/node references where available, event timestamp, relevant DOM mutation, focus/scroll/input changes, and page/session identity.
+- Windows desktop tutorials: subscribe to supported Windows UI Automation events and preserve element identity, control type/name, property changes, focus, structure changes, and timestamps. Record provider limitations; not every app exposes every event.
+- Voice: preserve original audio. Extract supplied subtitles first. When unavailable, run ASR and align words or utterance segments to the audio. Preserve language, time range, ASR/alignment method, and uncertainty.
+- Clock alignment: record enough session timing metadata to place UI events and narration segments on one timeline. Do not guess alignment when clocks cannot be reconciled.
+
+### Legacy MP4 — fallback path only
+
+A prerecorded MP4 normally has no original DOM, UI Automation, mouse, or keyboard event log. Where needed, reconstruct a limited event stream from the recording and narration. Mark all reconstructed UI actions as inferred_from_video; hidden clicks, key presses, or unobservable state changes remain unknown. This is a legacy-data compatibility path, not the default learning method.
+
+Sparse and dense frame extraction were rejected as the primary route. FFmpeg may still be used for file probing and audio extraction; it is not a substitute for direct semantic event capture.
+
+## 3. Decision Episode and Workflow data
+
+The smallest learning unit is a Decision Episode, not a plain UI step list. It joins:
+- business goal and success criteria at the time;
+- current state and relevant facts;
+- instructor-explicit narration and behavioral inference as separate sources;
+- selected strategy, conditions, and alternatives;
+- delegated operation capability and arguments;
+- returned operation status and verified postconditions;
+- next decision, recovery, question, approval request, or stop;
+- evidence references, timestamps, observation channel, rationale source, and confidence.
+
+Workflow data uses HTN tasks and methods plus a conditional graph:
+- compound and primitive tasks;
+- applicable conditions and method selection;
+- hard_dependency and soft_preference edges;
+- explicit ordering constraints and invariants;
+- capability registry mappings;
+- postconditions, transitions, and recovery rules;
+- source/tutorial, software version, and applicability scope.
+
+Conflicting source workflows must coexist rather than overwrite one another.
+
+## 4. Brain LoRA training data
+
+- Conversational JSONL uses system/user/assistant messages, compatible with the data adapters used by TRL, Axolotl, and LLaMA-Factory after their chat-template mapping is configured.
+- Normal-decision examples train selection of the next decision from goal, state, local workflow slice, and available capabilities.
+- Error-recovery examples put the previous Hands return in the user input as last_execution_result; the assistant target predicts the Brain's next action.
+- Training targets stop before the future execution outcome. Do not leak the Hands response that follows the action being predicted.
+- Keep evidence_tier and rationale_loss_weight in a separate training_meta sidecar; never feed these fields to the model.
+- Split train/test by tutorial/course/source group to prevent near-duplicate fragments from crossing partitions.
+
+## 5. Historical Qwen/Mage experiment status
+
+The Qwen3-VL-4B vs Mage-VL-4B blind test on Colab T4 was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. This was not a completed winner-selection benchmark. No winner is declared, and neither video model is the primary event-stream workflow extractor in the current architecture.
+
+## 6. Training resources
+
+- First Brain LoRA base: 4B.
+- Planning assumption: T4 16GB for 4B BF16 LoRA; 24GB+ for 9B LoRA.
+- Local RTX 3070 8GB: development, event processing, and lightweight validation; not the default 4B BF16 training environment.
+- For every run, record base revision, dataset snapshot hash, context length, batch, gradient accumulation, optimizer, precision, checkpointing, GPU model/VRAM, peak memory, wall time, and adapter hash.
+- Planning estimates must not be reported as measured capacity.
+
+## 7. Existing components: retain but do not overstate
+
+| Component | Keep for | Do not claim it does |
+|---|---|---|
+| FFmpeg | Probe media and extract audio where necessary | Capture DOM/UIA events or infer business workflow |
+| ASR/OCR protocols | Adapter boundaries and selected legacy compatibility | Provide real inference when only static fixtures are installed |
+| StaticASRAdapter/StaticOCRAdapter | Deterministic tests | Transcribe or read real tutorial content |
+| GUI Agent and operation adapter | Hands execution and live expert validation | Train the Brain's workflow decision policy |
+| Skill package compiler | Compile/validate supporting knowledge and test material | Replace HTN workflow decision training |
+| Docker sandbox | Isolate execution and validate behavior | Prove business competence without workflow tests |
+| SQLite | Structured event, episode, workflow, review, and training lineage metadata | Store bulk source video objects |
+
+## 8. Quality gates
+
+Evaluate the Brain independently with a simulated Hands executor, then evaluate Brain + real Hands end-to-end.
+
+**Brain-only:** task decomposition, order/dependency reasoning, guard checks, branch choice, business rationale provenance, capability selection, missing-information handling, Hands-result interpretation, recovery, replan, and stop decisions.
+
+**Brain + Hands:** achieved business postconditions, safe operation, no unauthorized side effects, resilience to state variations, alternative paths, partial successes, and unseen tasks.
+
+A correct button click is not a successful workflow decision unless the business postcondition is verified. Do not use generic video-QA scores or GUI perception scores as a proxy for Brain competence.

@@ -1,97 +1,119 @@
-# 核心状态机
+# Core State Machines
 
-版本：V1.0  
-状态：逻辑定义，实施时必须以代码枚举、迁移校验和测试固化。
+**Version:** 0.1 design update  
+**Status:** target logical definitions; implementation must enforce transitions in code and tests.
 
-## 1. 资料导入与解析
+## 1. Acquisition and download
 
-```text
-REGISTERED -> QUEUED -> PROCESSING -> COMPLETED
-                              |-> PARTIAL
-                              |-> FAILED
-QUEUED -> CANCELLED
-```
+~~~text
+DISCOVERED -> SELECTED -> DOWNLOADING -> DOWNLOADED -> ARCHIVED
+                  |             |
+                  |             +-> FAILED
+                  +-> REJECTED
+~~~
 
-- REGISTERED：元数据登记完成，原文件只读。
-- QUEUED：等待处理。
-- PROCESSING：解析器正在执行。
-- COMPLETED：所有必需处理步骤成功。
-- PARTIAL：部分产物成功，存在可恢复警告。
-- FAILED：不可恢复错误或重试耗尽。
-- CANCELLED：用户/系统取消。
+- DISCOVERED: tutorial candidate found with source URL and platform.
+- SELECTED: selected for download.
+- DOWNLOADING: cloud download to Google Drive is active.
+- DOWNLOADED / ARCHIVED: file is present in the creator/series course folder and the per-video download record is persisted.
+- REJECTED: not selected for acquisition.
+- FAILED: download or archive operation failed; retry is bounded and logged.
 
-重试规则：仅对可重试错误执行；重试次数有上限；每次尝试独立记录 parser_version、attempt 和错误。
+Every video record retains its original URL and platform, including videos later rejected by the pre-filter.
 
-## 2. 知识生命周期
+## 2. Direct event capture
 
-```text
-CANDIDATE -> REVIEW_REQUIRED -> APPROVED
-     |              |             |
-     |              +-> REJECTED  +-> SUPERSEDED
-     +-> REJECTED
-```
+~~~text
+SESSION_CREATED -> CAPTURE_READY -> CAPTURING_EVENTS -> EVENT_STREAM_CLOSED
+                         |                  |
+                         +-> CAPTURE_BLOCKED +-> PARTIAL / CAPTURE_FAILED
+~~~
 
-- 自动抽取结果默认 CANDIDATE。
-- 缺证据、来源冲突或高影响知识进入 REVIEW_REQUIRED。
-- APPROVED 只能由有权限的审核事件触发。
-- 旧知识被新版本取代时标记 SUPERSEDED，保留历史和证据。
-- 不允许模型直接写入 APPROVED 状态。
+- SESSION_CREATED: source asset and recording session are registered.
+- CAPTURE_READY: rrweb or Windows UI Automation is configured and the session clock is available.
+- CAPTURING_EVENTS: semantic UI events are persisted with timestamps and source/session identity.
+- EVENT_STREAM_CLOSED: recording ended and the event stream is finalized.
+- PARTIAL: some event providers or controls were unsupported, or a capture gap occurred; the limitations are recorded.
+- CAPTURE_FAILED: event capture did not produce a usable stream.
 
-## 3. 技能生命周期
+For legacy MP4 sources without event telemetry, a separate reconstruction path creates inferred_from_video event candidates. It must not enter the direct-capture state.
 
-```text
-DRAFT -> VALIDATING -> APPROVED -> DEPRECATED
-  |          |
-  |          +-> DRAFT (修订新版本)
-  +-> SUSPENDED
-APPROVED -> SUSPENDED
-```
+## 3. Narration transcription and alignment
 
-- DRAFT：候选技能。
-- VALIDATING：静态检查和沙箱测试中。
-- APPROVED：满足策略和测试门槛的特定不可变版本。
-- DEPRECATED：不再推荐新任务使用。
-- SUSPENDED：发现安全问题或回归失败，立即停止调度。
-- 任何内容变更创建新 skill_version；旧版本保留。
-- APPROVED 不等于获得 L3 权限。
+~~~text
+AUDIO_REGISTERED -> SUBTITLE_CHECK -> TRANSCRIPT_READY -> ALIGNING -> ALIGNED
+                         |                |                 |
+                         +-> ASR_FALLBACK +-> ALIGNMENT_FAILED
+~~~
 
-## 4. 任务生命周期
+- AUDIO_REGISTERED: original instructor audio and synchronization metadata are stored.
+- SUBTITLE_CHECK: inspect embedded and sidecar subtitles.
+- TRANSCRIPT_READY: usable subtitles are selected, or ASR output is created only when no usable source subtitle exists.
+- ALIGNING: word/segment timestamps are aligned to the audio and recording timeline.
+- ALIGNED: text segments can be correlated with UI events.
+- ALIGNMENT_FAILED: timing confidence is insufficient; keep uncertainty and do not invent event/rationale links.
 
-```text
-QUEUED -> RUNNING -> SUCCEEDED
-            |-----> FAILED
-            |-----> WAITING_APPROVAL -> RUNNING
-            |-----> CANCELLED
-```
+## 4. Decision Episode extraction and workflow construction
 
-- WAITING_APPROVAL 时暂停外部副作用，不得在后台继续执行该动作。
-- 审批通过只对已绑定 action_hash 生效；参数变化须重新审批。
-- 终态 SUCCEEDED / FAILED / CANCELLED 不允许直接回到 RUNNING。
-- 重试创建新 attempt 或新 task，并关联 parent_task_id。
+~~~text
+EVENTS_AND_NARRATION_READY -> EPISODE_EXTRACTION -> EPISODES_DRAFT
+                                      |                  |
+                                      +-> NEEDS_EVIDENCE +-> WORKFLOW_DRAFT
+~~~
 
-## 5. 专家生命周期
+The extraction stage aligns event and narration records to produce Decision Episodes. It distinguishes instructor-explicit statements from behavioral inference and keeps unknown facts explicit.
 
-```text
-CREATED -> INGESTING -> LEARNING -> TRAINING -> EVALUATING -> READY
-                                                        |        |
-                                                        +-> BLOCKED
-READY -> WORKING -> READY
-  |         |
-  +-> SUSPENDED <-+
-  +-> DEGRADED
-```
+Workflow construction groups episodes into HTN task/method structures and conditional branches. Hard dependencies, soft preferences, invariants, and recovery paths remain explicit. A tutorial's demonstrated order is not automatically the only valid workflow.
 
-实际状态按能力阶段与运行状态分离实现，避免单一枚举混合“培养阶段”和“是否正在执行”。建议字段：
-- capability_stage：P1 / P2 / P3 / P4
-- operational_state：IDLE / BUSY / BLOCKED / SUSPENDED / DEGRADED
+## 5. Deduplication and review
 
-阶段晋级必须由评估服务基于冻结测试集、阈值和人工批准（如策略要求）产生事件。
+~~~text
+WORKFLOW_DRAFT -> HASH_DEDUPED -> FIRST_REVIEW_PASSED -> PM_VERIFIED -> APPROVED
+                       |                  |                 |
+                       +-> DUPLICATE      +-> REJECTED      +-> REJECTED
+                       +-> CONFLICTS_RETAINED
+~~~
 
-## 6. 状态机实现要求
+- Exact duplicate source content is linked by SHA-256 and not redundantly reprocessed.
+- Conflicting workflows coexist with their source/software-version/applicability scope.
+- First review checks event/narration evidence, decision logic, conditions, workflow consistency, and uncertainty.
+- PM Sangou independently checks the source tutorial and relevant tests.
+- Only items passing both review gates and the separate quality/trainable gate become APPROVED and enter SQLite verified storage/training snapshots.
 
-- 所有状态迁移走统一 transition 函数或领域服务。
-- 每条迁移定义允许的 source state、target state、actor、guard、side effects。
-- 非法迁移返回稳定错误码并写审计。
-- 事件写入与状态更新需保证一致性；MVP 可使用数据库事务与 outbox 模式。
-- 并发更新使用版本号/乐观锁。
-- 每个状态机必须覆盖合法路径、非法路径、重复事件、重试、取消和崩溃恢复测试。
+## 6. Brain dataset and training
+
+~~~text
+APPROVED -> DATASET_SNAPSHOTTED -> TRAINING_QUEUED -> TRAINING -> BRAIN_ADAPTER_READY
+                                                        |                |
+                                                        +-> FAILED       +-> EVALUATING
+~~~
+
+A dataset snapshot is immutable, grouped by tutorial/course/source, and contains only eligible decision examples. The assistant target ends at the Brain's next decision; future execution outcomes are excluded. Record the base-model revision, dataset hash, training parameters, GPU, peak resource use, and adapter hash.
+
+## 7. Brain-to-Hands operation and expert evaluation
+
+~~~text
+BRAIN_PLANNED -> DELEGATION_SENT -> HANDS_EXECUTING -> HANDS_RESULT_RECEIVED -> BRAIN_VERIFIES
+                                                                                   |
+                                        +------------------------------------------+
+                                        |
+             CONTINUE / BRANCH / RECOVER / REPLAN / ASK / APPROVAL / FINISH / STOP
+~~~
+
+The Brain supplies a high-level capability request. The Hands adapter calls the existing operation model and returns status, observed state, postcondition checks, error details, and evidence references. The Brain then makes the next decision.
+
+A successful tool call or click alone does not establish a successful business result. Evaluation must cover changed initial states, alternative methods, partial failures, and unseen tasks.
+
+## 8. State transition requirements
+
+- All state changes use a controlled transition function/domain service.
+- Each transition records source state, target state, actor/model, guard, input hashes, output references, and failure reason.
+- Illegal transitions are rejected and audited.
+- Retries are bounded and idempotent; source hash and operation configuration form part of task identity.
+- Review decisions and dataset membership are immutable once snapshotted.
+- Pending, rejected, or quality-excluded items cannot enter an approved Brain training dataset.
+- Expert release requires both Brain decision evaluation and Brain-to-Hands sandbox/GUI validation.
+
+## Historical experiment status
+
+The Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected. The frame-based extraction route was rejected as the primary tutorial-learning method.

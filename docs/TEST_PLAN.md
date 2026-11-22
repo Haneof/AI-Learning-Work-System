@@ -1,68 +1,107 @@
-# 测试计划与质量门禁
+# Test Plan and Quality Gates
 
-版本：V1.0  
-适用：阶段 0 技术验证与后续 MVP。
+**Version:** 0.1 design update  
+Applies to tutorial acquisition, event capture, narration alignment, Decision Episode extraction, workflow learning, Brain LoRA training, and Brain-to-Hands validation.
 
-## 1. 测试层级
+## 1. Test layers
 
-- 单元测试：schema、状态迁移、权限判定、哈希、幂等和解析器适配。
-- 契约测试：API 请求/响应、错误码、版本兼容和权限拒绝。
-- 集成测试：数据库、文件存储、队列、模型适配和媒体处理。
-- 端到端测试：资料到知识、技能、沙箱报告的完整闭环。
-- 安全测试：提示注入、路径穿越、越权、网络外联、密钥泄露和审批重放。
-- 性能/资源测试：VRAM、RAM、CPU、吞吐、延迟、长任务和断点续跑。
-- 回归测试：固定数据集、固定期望结果和版本化评分。
+- Unit/contract tests: schemas, references, timestamp ranges, provenance labels, semantic conditions, state transitions, and adapter boundaries.
+- Acquisition integration: cloud download to Drive, creator/series grouping, source record completeness, content hashing, and resume behavior.
+- Event-capture integration: rrweb web events, Windows UI Automation events, capture gaps, timestamps, target identity, and before/after state changes.
+- Narration tests: subtitle extraction, ASR fallback only when subtitles are absent, transcript provenance, word/segment alignment, language support, and uncertain timing.
+- Decision Episode tests: event/narration correlation, decision-time state, instructor-explicit rationale, behavioral inference, selected next decision, outcome evidence, and no future-information leakage.
+- Workflow tests: HTN decomposition, method applicability, hard dependencies, soft preferences, ordering constraints, invariants, conditional branches, and recovery paths.
+- Brain training-data tests: conversational JSONL, separate training_meta sidecar, normal-decision and error-recovery cases, review/quality gates, and source-grouped train/test split.
+- Brain-only evaluation: task decomposition, sequence selection, guard checks, strategy choice, capability selection, ask/approval/stop decisions, and interpretation of simulated Hands responses.
+- Brain-to-Hands integration: delegation schema, registered capability IDs, execution-result schema, postcondition verification, retry/idempotency, and error/recovery handling.
+- Expert evaluation: sandbox execution, live GUI operation loop, unseen tasks, alternative workflows, changed initial states, and safe stop behavior.
+- Performance/resource tests: event capture overhead, alignment cost, extraction/review latency, LoRA GPU/VRAM, queue utilization, and runtime delegation reliability after quality passes.
 
-## 2. 固定测试样本
+## 2. Labeled evaluation corpus
 
-阶段 0 建立小型、可公开或合成的样本集：
-- 中文/英文混合录屏，含旁白和屏幕文字。
-- 有滚动、弹窗、小字体的操作视频。
-- 含表格、图片、页码的 PDF。
-- 同一资料的重复副本和改名副本。
-- 互相矛盾、过期和缺少来源的知识样本。
-- 合法技能包、缺字段包、路径穿越包、超时脚本和请求网络的脚本。
+Build representative tutorials with PM-verified labels for:
+- business goal and success criteria;
+- UI event sequence and page/control state changes;
+- narration segments and explicitly spoken reasons;
+- task ordering, preconditions, branches, and constraints;
+- selected operation capability and expected postconditions;
+- Hands execution feedback, failure category, and recovery choice;
+- direct-capture versus inferred-from-video observation channel;
+- instructor-explicit versus behavioral-inference rationale source;
+- applicable software version and task conditions.
 
-样本需记录来源、许可、SHA-256、预期解析结果和人工标注。不得把用户私密资料提交到公开测试集。
+Include duplicate downloads, conflicting tutorials, outdated application versions, missing subtitles, subtitle timing errors, missing/partial event streams, unsupported Windows UIA providers, non-tutorial content, and tutorials outside the selected vertical.
 
-## 3. 关键验收指标
+Keep source links, platform, license/attribution, SHA-256, course/tutorial grouping, recorder version, and software version with every sample.
 
-指标阈值在首轮基线测试后冻结，禁止看完结果再随意调整门槛。至少记录：
-- 媒体解析成功率、任务恢复率、时间戳定位误差。
-- OCR/ASR 人工抽样准确性。
-- 知识证据覆盖率、错误引用率、事实/推断分类正确率。
-- 技能 schema 通过率、沙箱测试通过率、未授权动作拦截率。
-- 端到端成功率、人工介入次数、失败可诊断率。
-- 模型首 token 延迟、总耗时、tokens/s、峰值 VRAM/RAM。
-- 任务超时、崩溃和重复执行率。
+For legacy MP4 material, any reconstructed interaction is labelled inferred_from_video. It must not be used as a direct-capture event ground truth.
 
-安全门槛中，越权和未审批高风险动作的允许发生率为 0。
+## 3. Separate model evaluations
 
-## 4. 发布门禁
+### Brain decision model
 
-必须同时满足：
-1. 所有单元与契约测试通过。
-2. 核心集成/端到端测试通过，已知失败有明确阻断或降级策略。
-3. 安全测试无未处理 Critical/High 问题。
-4. 依赖许可与模型权重许可有记录。
-5. 关键操作具备审计，敏感字段已脱敏。
-6. 可从干净环境按文档复现。
-7. 变更包含测试证据、资源数据和回滚说明。
+Evaluate the Brain with a simulated Hands executor first. Measure:
+- task decomposition and subgoal coverage;
+- hard dependency and ordering correctness;
+- method/branch selection under changed state;
+- rationale fidelity and provenance attribution;
+- precondition/invariant enforcement;
+- capability choice and delegation scope;
+- postcondition verification decisions;
+- handling of success, failure, partial success, blocked, and ambiguous Hands results;
+- ask_user, request_approval, replan, finish, and stop decisions;
+- transfer to alternative valid workflows and unseen conditions.
 
-## 5. 缺陷分级
+### Existing Hands operation model
 
-- P0：越权、凭据泄露、数据破坏、不可控外部副作用；立即阻断发布。
-- P1：核心流程不可用、证据链错误、技能误执行；阻断相关模块发布。
-- P2：非核心功能缺陷或性能退化；评估后排期。
-- P3：体验、文档和低影响问题；进入常规迭代。
+Evaluate the existing Hands model separately for:
+- page observation and control interaction;
+- completion of the delegated capability;
+- returned status and observed state accuracy;
+- evidence-backed postcondition checks;
+- safe handling of permission, validation, timeout, and ambiguous-state errors.
 
-## 6. 测试报告模板
+This project reuses the Hands operation model. It does not train a new button detector or low-level mouse-control model as the Brain learning target.
 
-每次测试保存：
-- commit_sha、branch、测试日期、OS/硬件。
-- Python/依赖/模型/解析器/沙箱版本。
-- 测试集版本、命令、环境变量（不含秘密）。
-- 总数、通过、失败、跳过、耗时。
-- 资源峰值、日志和报告位置。
-- 失败复现步骤、风险等级、责任 Issue。
-- 是否满足发布门禁及签字/批准记录。
+## 4. Historical Qwen/Mage experiment status
+
+The earlier Qwen3-VL-4B vs Mage-VL-4B blind test on Colab T4 was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It was not completed as a validated winner-selection benchmark. No winner is declared. Frame-based extraction is not the selected workflow-learning route.
+
+## 5. Review quality
+
+The first review checks evidence resolution, event/narration alignment, decision-time information, conditions, workflow consistency, uncertainty, and provenance labels.
+
+PM Sangou independently verifies against the original tutorial/event evidence and relevant tests. No additional external manual-reviewer role or queue is required. Record both decisions and reasons. Only double-pass examples with quality/trainable approval are eligible for SQLite approved storage and Brain LoRA dataset snapshots.
+
+## 6. Brain LoRA and behavior tests
+
+- Training snapshot contains only approved Decision Episodes and eligible training examples; it is immutable.
+- Base model revision, workflow versions, dataset hash, training parameters, GPU, and adapter hash are recorded.
+- Test adapter loading on the designated Brain base.
+- Supply the local HTN workflow slice at runtime and test that a workflow rule can be updated without changing LoRA weights.
+- Use normal-decision examples and error-recovery examples. A prior Hands result appears in the user input for recovery; it must not leak into an earlier decision target.
+- Test changed initial states, alternative menus/routes, missing information, unexpected results, partial failures, and recovery.
+- Include unseen tasks that require applying learned workflow principles rather than repeating a memorized path.
+- Confirm unsafe or unsupported actions are rejected, escalated, or safely stopped.
+
+## 7. Quality-before-throughput metrics
+
+Freeze acceptance thresholds before held-out evaluation. Record:
+- decision correctness by decision type;
+- task decomposition and dependency/order correctness;
+- branch and method selection accuracy;
+- instructor-rationale fidelity and evidence attribution;
+- precondition/postcondition verification accuracy;
+- capability delegation correctness;
+- Hands result interpretation;
+- recovery and replan quality;
+- held-out business-goal completion and transfer to new conditions;
+- evidence coverage and unsupported-claim rate;
+- direct-capture/inferred-from-video and instructor-explicit/behavioral-inference label accuracy;
+- safety violations (must be zero).
+
+After quality gates pass, record processing time, event volume, ASR/alignment cost, GPU-hours, peak VRAM/RAM, per-tutorial cost, queue wait, retries, and failure rate. Do not claim throughput without the hardware, model revision, input duration, capture source, and quality level used.
+
+## 8. Reports
+
+Every test report records commit SHA, branch, test date, OS/hardware, model/adapter revision, workflow versions, dataset snapshot, tool versions, configuration, commands, total/pass/fail/skip, duration, measured resource use, artifacts, failure examples, and gate decision.

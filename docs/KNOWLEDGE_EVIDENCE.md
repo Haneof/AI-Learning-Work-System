@@ -1,41 +1,76 @@
-# Knowledge and Evidence Contract
+# Knowledge, Workflow, and Evidence Contract
 
 ## Purpose
 
-Represent extracted knowledge separately from its source evidence. Knowledge statements are typed as direct quote, extracted fact, inference, or recommendation. Evidence links identify the source segment and whether it supports, contradicts, or contextualizes the statement.
+Represent tutorial-derived workflow knowledge separately from its source evidence and from model interpretation. The useful output is a verified Decision Episode and reusable workflow definition—not a transcript or a list of clicks.
 
-## Rules
+The system learns how an instructor pursued a business goal, what was known at each decision point, why a path was selected, what operation was delegated, what state changed, and what should happen next.
 
-- Every knowledge item belongs to one expert scope.
-- Source segments retain source ID and a page/time/frame locator.
-- APPROVED items require at least one valid SUPPORTS link.
-- DIRECT_QUOTE items require an excerpt that exactly occurs in the referenced segment text.
-- An evidence link must reference an existing segment and matching source ID.
-- Cross-expert evidence is denied unless the source segment explicitly lists the target expert in its sharing allowlist.
-- Duplicate statements are identified by normalized SHA-256 within the same expert and epistemic type.
-- Different statements with the same conflict key coexist; both move to REVIEW_REQUIRED instead of overwriting each other.
+## Provenance path
 
-## Video evidence provenance
+1. **Download record:** original tutorial URL and platform, creator, series/course, Drive location, content hash, and license status.
+2. **Event capture:** rrweb or Windows UI Automation event records for new tutorials, including event type, target/element identity, state changes, and timestamps.
+3. **Narration:** original audio and transcript segments. Prefer supplied subtitles; use ASR only when needed. Preserve alignment method, source language, and word/segment timestamps.
+4. **Decision extraction:** Decision Episodes link current state, conditions, instructor explanations, selected decisions, delegated operations, outcomes, and next decisions to event and narration evidence.
+5. **Workflow and training lineage:** HTN workflow version, review decisions, approved SQLite storage, training-example JSONL, separate metadata sidecar, and immutable LoRA dataset snapshot.
 
-The video-ingestion path creates one CANDIDATE direct-quote item per non-empty timestamp window.
-Each item has a SUPPORTS link whose excerpt exactly matches the stored source-segment text.
-Its provenance record includes:
+## Evidence dimensions
 
-- Original source filename, file URI and SHA-256 digest.
-- Source version (capture date/release supplied by the caller).
-- Source segment ID and start_ms / end_ms locator.
-- Knowledge version and explicit applicability scope.
-- Expert scope plus ASR, OCR, chunker and extractor identities/versions.
+Each evidence item records two independent dimensions:
 
-The current schema adds optional provenance fields to SourceSegment and an optional
-applicability_scope to KnowledgeItem. Existing document/PDF callers remain compatible.
-Evidence remains CANDIDATE until reviewed; the pipeline never auto-approves instructions
-or claims old screencast UI instructions apply to current software.
+- **observation_channel:** direct_capture, inferred_from_video, not_applicable, or unknown.
+- **rationale_source:** instructor_explicit, behavioral_inference, hybrid, not_applicable, or unknown.
 
-## Current implementation boundary
+Each evidence item also has a confidence value from 0 to 1. This is an annotator/model confidence score, not a calibrated probability unless calibration is separately established.
 
-The current registry is an in-memory PoC. It validates contracts and access scope but is not a database, authentication system, or production authorization service. The API layer must derive expert identity from authenticated context rather than trusting caller-supplied IDs. The JSON evidence file is a portable export, not a transactional database or immutable audit store.
+The optional user_provided label is reserved for rules, constraints, or scenario facts supplied by the project owner/user. Do not relabel such requirements as instructor words or behavioral inference.
 
-## Test coverage
+### How to interpret evidence
 
-Tests cover missing support evidence, incorrect quotes, cross-expert access, explicit sharing, duplicate normalization, and conflicting source statements. Video tests additionally verify timestamp grouping, source file/hash/version provenance, knowledge version, applicability scope, and exact quote linkage. Source storage, database transactions, reviewer workflows, and durable audit events remain subsequent integration work.
+- Directly captured rrweb or Windows UI Automation event: observation_channel is direct_capture. It proves the event was recorded by the capture tool; it does not automatically prove business success.
+- Instructor's actual spoken explanation: observation_channel is direct_capture for the recorded audio/transcript and rationale_source is instructor_explicit.
+- Historical MP4 reconstruction: observation_channel is inferred_from_video. It is not a direct DOM, UIA, mouse, or keyboard event.
+- Purpose inferred from demonstrated behavior: rationale_source is behavioral_inference.
+- Both an explicit explanation and behavior support a reason: rationale_source is hybrid, with the two supports separately referenced.
+- Project-owner-provided workflow rule: labels includes user_provided; both axes are normally not_applicable unless a distinct observation is also attached.
+- Insufficient source information: use unknown. Do not invent a click, reason, or business result.
+
+An instructor's words record what the instructor said; they do not automatically prove the statement is a correct universal business rule. A directly captured click is an observed interaction; it does not prove that the intended business postcondition passed.
+
+## Decision Episode evidence requirements
+
+Every important Decision Episode claim must reference one or more source evidence IDs. Preserve:
+- source video/session ID and content hash;
+- event IDs and timestamp ranges;
+- narration segment IDs and transcript method;
+- pre-decision state and post-operation state evidence;
+- instructor-explicit rationale separately from inferred rationale;
+- applicable workflow, software version, and conditions;
+- confidence, uncertainty, and conflicting interpretations.
+
+Do not use a future execution result to justify an earlier Brain decision. The training example for an earlier decision point must contain only information available at that time.
+
+## Workflow evidence and conflicts
+
+- Exact duplicate source content is identified by SHA-256.
+- Different tutorials and software versions may demonstrate different valid workflows.
+- Conflicting claims, workflow methods, and applicability scopes coexist with their original sources.
+- A later claim does not overwrite an older claim merely because it was extracted later.
+- Workflow rules are reviewed before becoming approved training knowledge.
+- Volatile business rules are stored in the local HTN workflow data so they can be updated at runtime without retraining the Brain.
+
+## Review and training gates
+
+The first review checks evidence resolution, event/narration alignment, decision correctness, condition and branch consistency, observed/inferred separation, and uncertainty. PM Sangou independently verifies the source tutorial and relevant tests.
+
+A Decision Episode is trainable only when both conditions pass:
+1. review.status is approved and approved_for_training is true;
+2. annotation quality is human_reviewed or gold, trainable is true, and exclusion_reasons is empty.
+
+Auto-extracted, rejected, unresolved, or contradictory examples do not become training data automatically.
+
+## Storage and implementation boundary
+
+SQLite is the selected structured store for download records, semantic UI events, narration segments, Decision Episodes, workflow versions, evidence links, review events, and training-dataset membership. Original tutorial videos remain in Google Drive.
+
+The current repository does not yet implement the complete direct event capture, narration alignment, Decision Episode extraction, dual review, and Brain LoRA path end-to-end. Existing timestamped quote extraction or legacy video inspection must not be described as full workflow learning.

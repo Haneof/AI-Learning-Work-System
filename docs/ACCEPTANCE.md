@@ -1,55 +1,77 @@
-# 验收标准
+# Acceptance Criteria
 
-版本：V1.0。具体数值阈值由试点基线测试确定并版本化。
+**Version:** 0.1 design update  
+The pipeline is accepted on evidence quality, Brain workflow competence, and verified business outcomes—not transcript volume, screenshot count, or raw throughput.
 
-## 端到端闭环
-1. 导入真实专业资料并生成唯一 source_id。
-2. 完成解析，保留页码、时间戳或片段定位。
-3. 提取知识条目并回溯原始证据。
-4. 编译技能草案并通过结构和依赖检查。
-5. 在隔离沙箱执行技能测试。
-6. 输出结构化测试报告。
-7. 诊断失败并生成新技能版本。
-8. 使用未见任务验证，而非只重复原样例。
-9. 记录成功/失败经验并在后续任务中正确检索应用。
+## Step 1 — Download and archive
 
-## 知识验收
-- 关键结论带来源定位。
-- 区分原文事实、模型推断和建议。
-- 不确定内容明确标记，不伪造证据。
-- 多来源冲突保留双方证据、时间和版本。
-- 过期信息可标记并阻止无条件使用。
-- 抽样人工核验准确性与遗漏。
+- Every selected tutorial has a download record with source link and platform.
+- Creator/series/course grouping is preserved in the 5TB Google Drive archive.
+- Original metadata and license uncertainty are not fabricated.
+- SHA-256 is recorded to identify exact duplicate content.
 
-## 技能验收
-- 具备目标、范围、前置条件、输入输出。
-- 关键步骤有成功判据。
-- 包含条件分支、异常处理和终止条件。
-- 明确工具、权限和外部副作用。
-- 有正向、负向、边界和异常测试。
-- 版本变更触发回归测试。
-- 不以模型自评作为唯一通过依据。
+## Step 2 — Capture semantic UI events and narration
 
-## 执行验收
-- 执行前进行权限判定，参数经过 schema 校验。
-- 关键步骤保留证据，结果由独立检查器或可观察状态验证。
-- 超时、失败和部分成功有明确状态。
-- 高风险操作暂停等待人工批准。
-- 不把点击成功误报为业务结果成功。
+- New web tutorials capture rrweb events directly from recording start.
+- New Windows desktop tutorials capture supported Windows UI Automation events and record provider limitations.
+- Event timestamps, application/page/window identity, target references, and before/after state changes are retained where available.
+- Instructor audio is preserved and synchronized with the event stream.
+- Existing subtitles are used first; ASR runs only when usable subtitles are unavailable.
+- Narration is aligned at word or segment granularity, with method and uncertainty recorded.
+- Legacy MP4 reconstruction is explicitly labelled inferred_from_video; it is not treated as direct telemetry.
+- Sparse/dense frame extraction is not used as the primary tutorial-learning input.
 
-## 学习进化验收
-- 从失败轨迹提取明确能力缺口。
-- 学习任务关联原始失败任务。
-- 新技能隔离验证后才发布。
-- 失败不污染正式技能库。
-- 新版本运行回归集并可撤销回滚。
+## Step 3 — Decision Episodes and workflows
 
-## 专家隔离验收
-- 专家 A 默认不能检索专家 B 的私有记忆。
-- 跨专家调用显式授权。
-- 任务、技能、日志和评估结果带 expert_id。
-- 专家停用时按策略处理数据。
-- 专家不能自行提升资源配额或权限。
+- Each Decision Episode records goal, decision-time state, rationale source, chosen strategy, operation, result, and next decision.
+- Instructor-explicit statements are separated from behavioral inference and project-owner-provided rules.
+- Every decision-driving fact and rationale has evidence or is explicitly unknown.
+- HTN workflows include compound/primitive tasks, methods, conditions, dependencies, preferences, ordering constraints, invariants, transitions, and recovery rules.
+- Conflicting workflows from different tutorials, application versions, or applicability conditions coexist; no overwrite.
+- A single tutorial's path is not assumed to be the only valid path.
 
-## 发布阻断
-关键知识无证据、技能高危步骤未处理、回归失败、权限可绕过、结果验证缺失、审计缺失或依赖许可未确认，均阻止发布。
+## Step 4 — Review and training data
+
+- Exact duplicate source content is identified by SHA-256.
+- The first review checks evidence resolution, event/narration alignment, workflow consistency, and uncertainty.
+- PM Sangou independently verifies source evidence and relevant tests.
+- Both review.status=approved/approved_for_training and quality.trainable gates must pass.
+- Conversational JSONL examples and the separate training_meta sidecar are consistent.
+- Normal-decision and error-recovery examples use only information available at that decision point.
+- Future Hands execution outcomes do not leak into the assistant target.
+- Train/test split is grouped by tutorial/course/source.
+- Only eligible examples enter the immutable training dataset snapshot.
+
+## Step 5 — Brain LoRA and Brain-to-Hands validation
+
+- Every dataset snapshot and training run records example/source hashes, base revision, configuration, compute/GPU, and adapter hash.
+- The 4B BF16 LoRA path is planned for a T4 16GB cloud GPU; the 9B path requires 24GB+ planning capacity. Actual usage must be measured.
+- Runtime prompts include the applicable local HTN workflow slice.
+- Brain decisions are first evaluated with a simulated Hands executor.
+- The real existing Hands model is connected through a capability adapter; no new button-recognition or low-level operation model is required.
+- Hands returns structured status, observed state, postcondition results, errors, and evidence references.
+- Passing requires business postcondition verification, branch handling, and safe recovery—not a successful click alone.
+- The Brain handles success, failure, partial success, blocked, and ambiguous operation results.
+- Evaluation includes unseen tasks, changed initial states, alternative valid routes, missing information, and error recovery.
+
+## Quality metrics
+
+Freeze thresholds before held-out evaluation. At minimum measure:
+- decision accuracy at each decision point;
+- task decomposition and dependency/order correctness;
+- conditional branch selection;
+- business rationale and evidence provenance correctness;
+- precondition and postcondition verification;
+- capability selection and safe delegation;
+- Hands result interpretation;
+- recovery/replan/stop decision quality;
+- held-out business-goal completion and transfer to alternative routes;
+- evidence coverage and unsupported-claim rate;
+- direct-capture versus inferred-from-video classification accuracy;
+- safety violations (must be zero).
+
+Throughput and cost are optimized only after the quality gates pass.
+
+## Release blocking
+
+Any fabricated instructor reason, unsupported business rule, false direct-capture claim, unresolved critical evidence, material workflow inconsistency, future-outcome leakage, unreviewed training example, unregistered capability call, or critical sandbox/Hands safety failure blocks release.

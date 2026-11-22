@@ -1,50 +1,88 @@
-# 系统架构
+# System Architecture
 
-版本：V1.0
+## Product architecture: Brain and Hands
 
-## 分层结构
-1. 资料接入：视频、录屏、PDF、Office、图片、网页、操作日志和历史任务。
-2. 资料处理：识别、去重、切分、OCR、ASR、关键帧、时间戳和元数据。
-3. 知识学习：提取事实、概念、流程、条件、例外和风险；保留证据并识别冲突。
-4. 技能编译：将知识转成包含步骤、判断、异常处理、输出和验证的技能。
-5. 专业记忆：知识、技能、任务、决策、成功经验和失败经验分开管理。
-6. 执行层：通过 API、浏览器 DOM、Accessibility Tree、GUI、Shell/Python 等执行。
-7. 评估进化：评估知识、技能、技能组合、迁移能力、异常处理和真实任务表现。
-8. 调度治理：管理专家生命周期、任务队列、权限、人工审批、审计和资源调度。
+The system's primary product is a set of domain experts: a shared language-model base with different vertical LoRA adapters. Each adapter trains the **Brain** to reason about a business workflow. The **Hands** are an existing GUI operation model that performs live page perception and low-level interaction.
 
-## 核心数据流
-资料导入 → 原始文件登记 → 多模态解析 → 带证据知识条目 → 冲突处理/审核 → 技能候选 → 沙箱测试 → 技能版本发布 → 任务执行 → 结果验证 → 经验沉淀 → 能力缺口识别 → 新学习任务。
+- **Brain:** understands the business goal, current state, rules and constraints; decomposes tasks; chooses methods and branches; delegates high-level capabilities; verifies results; and recovers from errors.
+- **Hands:** identifies live page controls and performs concrete UI operations such as click, type, scroll, and navigation. Reuse a ready-made operation model (for example, UI-TARS) through an adapter. Do not build a new page-recognition or low-level action model as the Brain training project.
+- **Tutorial event recorder:** supplies the behavior evidence from which the Brain learns.
+- **Narration aligner:** provides the instructor's explicit goals, reasons, and constraints on the same timeline as the UI events.
 
-每个阶段记录状态、输入输出、模型与工具版本、耗时、错误和重试信息。
+A transcript, summary, or fixed click sequence is not the product. The target is a Brain that can select a suitable workflow path and direct the Hands to accomplish the business objective.
 
-## 技能数据契约
-每项技能至少包含：唯一 ID、名称、版本、状态、目标、适用范围、前置条件、输入输出结构、执行步骤、成功判据、条件分支、异常恢复、工具与权限、风险说明、来源定位、测试用例、测试结果、创建和变更记录。
+## Four-step data flow
 
-建议技能包采用目录结构：SKILL.md、scripts、references、assets、tests 和 metadata。具体 schema 后续独立版本化。
+1. **Acquire:** web-search target-vertical tutorials; use a cloud downloader to store them directly in the 5TB Google Drive; group by creator and series/course; retain a source-link/platform record per video.
+2. **Capture and align:**
+   - for new web tutorials, record semantic rrweb events from session start: DOM mutations, interactions, focus, scrolling, input changes, navigation and timestamps;
+   - for new Windows desktop tutorials, record supported Windows UI Automation events, element identities, property/state changes and timestamps;
+   - preserve the instructor's voice and align supplied subtitles or ASR fallback to word/segment timestamps;
+   - for legacy MP4 files without event telemetry, reconstruct only supportable events from the recording and mark them inferred_from_video.
+3. **Build and review workflow knowledge:** align events and narration into Decision Episodes; construct HTN workflows with methods, conditions, hard dependencies, soft preferences, explicit ordering constraints, invariants, transitions and recovery rules; preserve source conflicts and require both review gates.
+4. **Train and operate:** train the Brain LoRA from approved conversational decision samples. At runtime, supply the applicable local HTN workflow slice, let the Brain delegate a high-level capability to the existing Hands adapter, receive a structured execution result, and decide the next action.
 
-## 专家状态机
-CREATED → INGESTING → LEARNING → TRAINING → EVALUATING → READY → WORKING。
-异常状态包括 BLOCKED、NEEDS_REVIEW、SUSPENDED、DEGRADED。状态变化必须由明确事件触发并记录原因，不得由模型自行宣称晋级。
+Frame extraction is not the primary tutorial-learning route. A legacy MP4 reconstruction may use recording inspection as a fallback, but reconstructed interactions remain inferred rather than direct telemetry.
 
-## 服务边界
-- Model Gateway：统一模型调用、版本、上下文和能力声明。
-- Ingestion Worker：文件登记、拆分和解析队列。
-- Media Pipeline：FFmpeg、ASR、OCR、抽帧和时间轴对齐。
-- Knowledge Service：知识、证据、冲突、版本和审核。
-- Skill Compiler：技能生成、静态检查和依赖清单。
-- Sandbox Runner：隔离运行脚本与工具调用。
-- Evaluation Service：测试集、评分、回归和晋级决策。
-- Memory Service：专家隔离的记忆读写与检索。
-- Agent Runtime：计划、工具路由、执行、观察和恢复。
-- Orchestrator / Audit：专家调度、权限审批和审计。
+## Runtime Brain-to-Hands loop
 
-MVP 可先采用模块化单体，避免过早拆分微服务。
+1. The user or calling system supplies a business goal and current known state.
+2. The Brain loads the relevant local HTN workflow slice and available operation capabilities.
+3. The Brain checks preconditions and selects the next business subtask or asks for missing information/approval.
+4. For an executable operation, the Brain emits a high-level delegation containing objective, capability ID, arguments, constraints, expected postconditions and observation requirements.
+5. The Hands adapter maps the capability to the existing operation model and performs page interaction.
+6. Hands returns status, observed state, postcondition results, error category and evidence references.
+7. The Brain verifies the result and chooses continue, branch, recover, replan, ask, request approval, finish, or stop.
 
-## 存储建议
-原始媒体使用文件/对象存储；结构化元数据优先 PostgreSQL，原型可用 SQLite；向量检索评估 Qdrant；技能和配置用 Git 版本管理；任务状态和审计以关系型数据库为准。
+A successful low-level tool call is not proof that the business task succeeded. The Brain advances only when the relevant postconditions are supported.
 
-## 模型与资源
-主模型候选为本地无审查 Qwen 3.5 4B/9B，统一测试后定默认版本。必须登记精确模型 ID、权重来源、量化、上下文、视觉能力、后端和许可。视觉、OCR、ASR、视频理解作为专用模块按需加载或异步处理。8GB VRAM / 16GB RAM 下必须限制并发、分辨率和缓存。
+## Workflow representation
 
-## 可观测性
-任务记录 trace_id、expert_id、task_id、source_id、skill_id/version、模型与工具版本、权限判定、结果验证、耗时、资源占用和错误码。敏感数据按策略脱敏。
+Use a hierarchical task network (HTN) for compound/primitive task decomposition and a conditional graph for branches and transitions. Distinguish hard dependencies from soft preferences. Explicit ordering constraints and invariants represent non-bypassable requirements. Primitive tasks map to registered capability IDs. Recovery rules describe diagnosis, retry conditions, replan, approval, and safe stop.
+
+Volatile business rules remain in versioned workflow data and are supplied locally at runtime. The LoRA learns how to reason over workflow data; it should not have to memorize every changing business rule in its weights.
+
+## Evidence and provenance
+
+For every decision-driving fact, retain:
+- source tutorial/session identity and content hash;
+- event ID/type, timestamp, target/element reference, and captured before/after state where available;
+- narration segment and word/utterance timestamps;
+- observation channel (direct capture or inferred from legacy video);
+- rationale source (instructor explicit, behavioral inference, hybrid, not applicable, or unknown);
+- confidence and explicit unknowns;
+- workflow source, software version, and applicability.
+
+Do not label a reconstructed MP4 interaction as a direct rrweb/Windows UIA event. An instructor quote records what was said, not an automatically verified universal business rule. Preserve conflicting workflows rather than silently normalizing them.
+
+## Layered services
+
+- **Acquisition:** web discovery, platform adapters, cloud download, course grouping, download records, Drive archive.
+- **Event capture:** rrweb for web tutorials; Windows UI Automation for Windows desktop tutorials.
+- **Narration:** subtitle discovery, ASR fallback, audio alignment, transcript provenance.
+- **Decision extraction:** event/narration alignment, Decision Episodes, conditions, reasons, operation choices, results, and next decisions.
+- **Workflow service:** HTN tasks/methods, conditional transitions, invariants, capabilities, recovery rules, and versions.
+- **Review and knowledge:** source verification, deduplication, conflicts, evidence validation, GPT/PM review, SQLite persistence.
+- **Brain training/runtime:** conversational JSONL dataset, LoRA jobs, runtime HTN context, decision generation.
+- **Hands adapter:** maps high-level capability delegations to the existing GUI operation model and normalizes return messages.
+- **Validation harness:** simulated Hands executor, skill package compiler, static checks, Docker sandbox, and live GUI operation loop.
+- **Orchestrator/audit:** task state, resource scheduling, authorization, retries, logs, and provenance.
+
+MVP may remain a modular monolith with separate worker processes; do not turn every logical boundary into a microservice prematurely.
+
+## Storage
+
+- Google Drive: original tutorials organized by platform/creator/series, plus large media assets.
+- SQLite: download metadata, semantic UI events, narration segments, Decision Episodes, workflow versions, evidence links, conflicts, reviews, training-dataset membership, and lineage.
+- Training artifacts: versioned cloud outputs, base-model revision, adapter weights, run configuration, and benchmark reports.
+- Git: documentation, contracts, validation rules, and code; never commit source videos, secrets, or model weights.
+
+## Compute and experiment status
+
+- Initial Brain LoRA planning target: 4B. Planning assumption: 4B BF16 LoRA on T4 16GB; 9B requires 24GB+ GPU. Actual fit and peak VRAM must be measured.
+- Existing local RTX 3070 8GB supports development and lightweight processing; it is not assumed to be the primary 4B BF16 trainer.
+- The previous Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It was not a completed winner-selection benchmark. The frame-based route was rejected as the primary learning method; the current input design is semantic UI events plus instructor narration.
+
+## Existing implementation boundary
+
+The repository has real FFmpeg media operations, ASR/OCR Protocols with static test adapters, a basic video-learning provenance path, SQLite-backed knowledge/skill components, a GUI Agent, and an OpenAI-compatible GUI decision adapter. It does not yet contain the complete event-capture/narration-alignment/Decision Episode/HTN/Brain LoRA/Brain-to-Hands pipeline. Do not describe interface stubs or supplied-caption integration tests as completed direct event capture or Brain workflow learning.

@@ -1,142 +1,82 @@
-# Offline Media Ingestion PoC
+# Media Ingestion and Tutorial Event Learning
 
-## Scope
+## Current implementation boundary
 
-This package provides source hashing, page-aware PDF text extraction, FFmpeg wrappers,
-ASR/OCR adapter contracts, timestamped video chunking, and a JSON task journal with
-bounded retry and resume. It does not include production queues, model downloads,
-model inference adapters, or full resource telemetry.
+The repository currently provides:
+- source registration and SHA-256 hashing;
+- FFmpeg probing, audio extraction, proxy transcoding, and utility frame extraction;
+- ASRAdapter and OCRAdapter Protocol interfaces;
+- StaticASRAdapter and StaticOCRAdapter deterministic fixtures;
+- a basic VideoLearningPipeline that invokes injected adapters and writes timestamped evidence artifacts.
 
-## Install
+The static adapters are supplied-text stand-ins, not real ASR or OCR inference. The current knowledge extractor interface is too narrow to represent business decisions and conditional workflows. A prior end-to-end test used an externally supplied SRT file; it proved orchestration and provenance, not real transcription or workflow understanding.
 
-1. Install FFmpeg and ensure both ffmpeg and ffprobe are available on PATH.
-2. Install the optional PDF dependency:
+## Selected target ingestion path
 
-~~~powershell
-python -m pip install -e ".[media,dev]"
-ffmpeg -version
-ffprobe -version
-pytest
-~~~
+The primary input to tutorial learning is a **semantic UI operation event stream plus instructor narration**.
 
-The base package does not require FFmpeg or pypdf. PDF text extraction raises a clear
-optional-dependency error when pypdf is missing. Image-only/scanned PDF pages are
-preserved as empty page segments and require a later OCR pass.
+### New recordings
 
-## Video to knowledge evidence
+- Web applications: capture rrweb snapshots and incremental events from the start of the tutorial. Keep DOM changes, interaction events, focus, scroll, input changes, event timestamps, page/session identity, and available element references.
+- Windows desktop applications: capture supported Windows UI Automation events and relevant AutomationElement properties/state changes with timestamps and window/application identity.
+- Audio: preserve the instructor's original voice recording and synchronization metadata.
+- Text: extract usable subtitles first. Use ASR only when subtitles are unavailable, then align the transcript to the audio with word- or segment-level timestamps.
 
-**VideoLearningPipeline** is the smallest end-to-end video path. It probes the source,
-extracts mono 16 kHz audio and sampled frames with FFmpeg, invokes injected ASR/OCR
-adapters, groups timestamped text into fixed windows, and writes a source manifest plus
-candidate knowledge-evidence JSON.
+### Legacy MP4 recordings
 
-~~~python
-from aios_work_system.media.adapters import TranscriptSegment
-from aios_work_system.video_learning import (
-    StaticASRAdapter,
-    StaticOCRAdapter,
-    VideoLearningPipeline,
-)
+An old MP4 does not contain the original DOM or UI Automation event log. If these recordings are retained, reconstruct only what can be supported by reviewing the recording and narration. Mark reconstructed UI actions and state changes as inferred_from_video. Hidden clicks and uncertain actions remain unknown.
 
-pipeline = VideoLearningPipeline(
-    asr=StaticASRAdapter(
-        name="asr-fixture",
-        version="1",
-        segments=[TranscriptSegment(1000, 5000, "Open the settings menu.")],
-    ),
-    ocr=StaticOCRAdapter(
-        name="ocr-fixture",
-        version="1",
-        text_by_timestamp={0: "Settings"},
-    ),
-)
-result = pipeline.ingest(
-    "samples/lesson.webm",
-    "artifacts/lesson",
-    expert_id="software-learning",
-    applicability_scope="Application/version and workflow where this instruction applies",
-    source_version="source-release-or-capture-date",
-)
-~~~
+Frame extraction is not the primary event-generation or Brain-training approach. Existing FFmpeg frame utilities may support legacy inspection or component tests, but a sampled frame sequence is not a substitute for direct event capture.
 
-The static adapters are deterministic fixtures, not speech recognition or image
-recognition. They test orchestration and provenance before adding optional real
-inference engines. The default verbatim extractor only creates CANDIDATE direct quotes;
-it does not claim that the tutorial procedure is correct, current, or independently
-learned. A reviewer must approve extracted facts or procedural knowledge separately.
+## From event stream and voice to workflow knowledge
 
-The evidence record retains source filename/URI/SHA-256, source version, segment ID,
-start/end milliseconds, expert scope, applicability scope, knowledge version, and
-adapter/parser identities/versions. Manifest segments also retain the extracted audio
-and frame artifact URIs. The original video is never overwritten.
+Normalize the recorded events into page changes, control changes, mouse/input interactions, focus, navigation, and state transitions. Align them with transcript segments and, where reliable, word timestamps.
 
-## Licensed screencast smoke run (CI)
+A Decision Episode must explain:
+- the task goal and current situation;
+- what the instructor said and why, if explicitly stated;
+- what behavior was directly captured or reconstructed;
+- the strategy or decision demonstrated;
+- the resulting UI/business state and whether it was verified;
+- what should happen next, including conditional branches and recovery.
 
-The repository reuses Wikimedia's **Content Translation Screencast (English)** by Pau
-Giner (2015-01-13), licensed CC BY-SA 4.0. Source and attribution are documented in
-[SOFTWARE_TUTORIAL_BENCHMARK.md](SOFTWARE_TUTORIAL_BENCHMARK.md). The integration job
-downloads that sample, runs real FFmpeg audio/frame extraction, uses published English
-timed text as a deterministic ASR stand-in, and curated procedural landmarks as an OCR
-stand-in. The generated report labels both adapters as stubs. This is a plumbing and
-provenance test, not ASR/OCR accuracy evidence or a live software replay.
+The output is a source-linked Decision Episode and workflow knowledge, not a screenshot sequence or transcript-only summary.
 
-Run locally after downloading the video and its English SRT captions:
+## Brain and Hands separation
 
-~~~powershell
-python -m pip install -e .
-python scripts/run_video_learning_sample.py --input artifacts/content-translation/tutorial.webm --captions artifacts/content-translation/tutorial.en.srt --output-dir artifacts/content-translation/output
-~~~
+The language-model Brain learns workflow planning, preconditions, conditions, business reasoning, capability choice, verification, and recovery. Existing Hands models handle page perception and concrete UI actions. The Brain delegates high-level capability tasks; Hands returns execution status and observed state; the Brain chooses the next decision.
 
-## Existing Python API: source and PDF
+Do not train the Brain to reproduce mouse coordinates or button-recognition behavior that belongs to the Hands layer.
+
+## Existing FFmpeg API and legacy utilities
+
+The current processor remains useful for metadata probing, audio extraction, proxy generation, and legacy video inspection:
 
 ~~~python
 from aios_work_system.media import FFmpegProcessor, register_source
-from aios_work_system.media.pdf import extract_pdf_pages
 
 processor = FFmpegProcessor()
 source = register_source("samples/lesson.mp4", "VIDEO")
 metadata = processor.probe("samples/lesson.mp4")
 audio = processor.extract_audio("samples/lesson.mp4", "artifacts/lesson.wav")
 proxy = processor.create_proxy("samples/lesson.mp4", "artifacts/lesson-proxy.mp4")
-frames = processor.extract_frames("samples/lesson.mp4", "artifacts/frames", 5)
-
-pdf_source = register_source("samples/tables.pdf", "PDF")
-pdf_segments = extract_pdf_pages("samples/tables.pdf", pdf_source.source_id)
-for segment in pdf_segments:
-    pdf_source.add_segment(segment)
-pdf_source.save("artifacts/tables.manifest.json")
+source.save("artifacts/lesson.manifest.json")
 ~~~
 
-The source manifest records original filename, file URI, SHA-256, MIME type, size,
-parser identity, and page/time/frame locator segments. Derived artifacts never
-overwrite the source.
+The existing extract_frames helper remains available for legacy MP4 inspection and component-level experiments. Its output must not be treated as the primary operational trajectory input or direct event telemetry.
 
-## Retry and resume
+The FFmpeg layer is a media preparation utility. It does not capture rrweb/Windows UIA events, infer business intent, or recover hidden input logs from an MP4.
 
-~~~python
-from aios_work_system.media.tasks import TaskJournal
+TaskJournal remains useful for bounded retry/resume. Task IDs should include source content hash and operation configuration so retries cannot reuse stale outputs.
 
-journal = TaskJournal("artifacts/task-journal.json")
-journal.run(
-    task_id="sha256-of-source-plus-operation-config",
-    operation="extract_audio",
-    action=lambda: processor.extract_audio("samples/lesson.mp4", "artifacts/lesson.wav"),
-    max_attempts=2,
-)
-~~~
+## Acceptance boundary
 
-A successful task ID is skipped on later runs. Failed tasks retry within the remaining
-attempt budget. A task found in RUNNING state after a process interruption retries the
-interrupted attempt. Keep task IDs stable and include source hash plus operation
-parameters to avoid incorrectly reusing an old result.
+A component-level media smoke test proves only that media can be read and artifacts can be produced. It does not prove that the workflow has been understood. Acceptance requires:
+- timestamped semantic event records for direct recordings, or explicitly inferred historical-video reconstructions;
+- narration aligned to the event timeline;
+- Decision Episodes with goals, states, reasons, decisions, outcomes, and next steps;
+- HTN workflow definitions with conditional branches and recovery paths;
+- provenance and uncertainty labels;
+- Brain decision tests and Brain-to-Hands execution tests.
 
-## Evidence and known limits
-
-- PDF segments use 1-based page numbers; blank text is retained so scanned pages are not silently discarded.
-- FFmpeg probe, audio, proxy, and frame outputs are derived artifacts; the original is read-only.
-- Frame extraction uses a fixed interval and returns files in filename order; callers record timestamps as interval multiples.
-- ASR/OCR are injectable interfaces; this change includes only deterministic stubs, not inference engines.
-- Video chunks are fixed-duration windows, not semantic chapter boundaries.
-- Knowledge output is CANDIDATE evidence and requires review; source version and applicability scope must be supplied by the caller.
-- Elapsed task time is recorded. RAM/VRAM peaks are not measured and must remain unknown, not estimated.
-- Unit tests mock FFmpeg boundaries; the licensed screencast CI job exercises actual FFmpeg while keeping ASR/OCR inference stubbed.
+The full direct event recorder, narration alignment, Decision Episode extraction, workflow learning, Brain LoRA training, and runtime delegation pipeline are not yet implied by the existing media interfaces.

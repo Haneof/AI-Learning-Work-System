@@ -1,48 +1,97 @@
-# 产品立项与总体计划
+# Product Charter and Project Plan
 
-版本：V1.0（立项初稿）
+**Version:** 0.1 design update
 
-## 产品定义
-建设通用型 AI 自主学习与工作系统，把视频、录屏、文档、网页和真实任务轨迹转化为结构化知识、可执行技能、工作经验和评估能力，培养能够独立承担具体岗位任务的专业 AI。
+## Product definition
 
-这不是单一行业 Agent，也不是简单的 RAG 问答库，而是一个专业 AI 培养底座。上层可培养选品、广告、运营、客服等不同岗位专家。
+Build a general-purpose AI learning and work system that turns professional tutorials into evidence-grounded workflow knowledge and trains domain-specific language-model experts with LoRA.
 
-## 核心问题
-1. 大量专业资料分散在视频、录屏和文档中，难以系统吸收。
-2. 能检索和回答不等于掌握操作技能。
-3. 教程包含前提、例外、版本差异和隐含判断，摘要容易丢失条件。
-4. 真实任务会遇到教程未覆盖的问题，需要发现缺口并主动补课。
-5. 缺少客观测试、版本管理和回滚机制，无法判断是否真正学会。
+The core product is a trained **Brain**: a language model that understands a business objective, decomposes the work, selects a path under current conditions, explains its decision, delegates operations, verifies results, and recovers from errors. Existing GUI operation models are the **Hands**. They perceive the live page and perform concrete UI interactions; this project reuses them rather than building a replacement.
 
-## 产品目标
-- 批量接入多类型专业资料。
-- 知识、技能均保留来源证据和适用范围。
-- 将知识编译为可执行、可测试、可版本化的技能包。
-- 支持隔离沙箱训练、测试和受控执行。
-- 建立知识、技能、任务、决策、成功与失败经验记忆。
-- 工作中发现能力缺口，生成学习任务并验证。
-- 支持多个专家独立培养、独立评估和受控协作。
+The product is not a subtitle archive, video summary, knowledge package, or fixed action script. The same base model can host different vertical LoRA adapters, with each expert supported by versioned workflow data and evidence.
 
-## 当前非目标
-- 不从零预训练基础大模型。
-- 第一阶段不同时建设多个行业专家。
-- 不以教程摘要、向量检索或模型自评作为学会的证明。
-- 不承诺在 8GB 显存设备上高效并发处理数百 GB 视频。
-- 不未经验证将实验性开源项目作为生产核心依赖。
+## Target learning pipeline
 
-## 专家隔离
-每个专家拥有独立的专业知识空间、技能版本、长期记忆、任务历史、经验和评估基准。共享主模型服务、媒体处理基础服务、技能运行时、沙箱和调度设施。跨专家调用必须走显式能力接口，默认不开放对方完整记忆。
+### Step 1 — Acquire and archive
 
-## 四阶段培养
-1. 知识学习：准确提取概念、流程、条件、例外、风险和来源。
-2. 技能训练：能执行步骤，识别前置条件、异常和完成状态。
-3. 综合实战：处理多步骤任务、变化条件和未见案例。
-4. 独立工作：能规划、执行、检查结果、处理异常并在授权范围内完成工作。
+Search for tutorials in the target vertical and use a cloud downloader to store them directly in the 5TB Google Drive. Preserve creator and series/course grouping. Every video keeps an acquisition record with the original source link and platform, plus content hash, Drive location, source metadata, and license status when available.
 
-晋级由测试结果触发；未达标不得晋级。技能过期或出现严重错误时可暂停、降级或撤销。
+### Step 2 — Capture semantic operation events and narration
 
-## 第一试点
-只选一个岗位或一条边界清晰的工作流。试点需有可获得资料、明确输入输出、可构造测试任务、可验证执行结果和可控制的外部副作用。
+For newly recorded tutorials, collect the semantic UI event stream at recording time:
+- Web applications: rrweb events for DOM mutations, interaction events, focus, scroll, input changes, and timestamps.
+- Windows desktop applications: Windows UI Automation events, element identities, property/state changes, and timestamps.
+- Voice: original instructor audio plus subtitles where available; when subtitles are unavailable, use ASR and time alignment.
 
-## 核心资产与指标
-核心资产包括知识、技能、经验、评估基准和培养流程。指标包括资料解析覆盖率、知识准确率、来源可追溯率、技能测试通过率、真实任务成功率、人工接管率、回归缺陷率、越权调用次数和单位任务成本。具体阈值需通过试点建立基线，不预设未经测量的承诺。
+The event stream describes what changed and when. The instructor's narration describes the goal, reason, constraint, and business context. Neither channel is sufficient alone; they must be aligned to produce decision demonstrations.
+
+Legacy MP4 tutorials may be used when no event telemetry exists. Reconstruct events only when supported by the recording and label them as inferred from video. Frame extraction is not the primary extraction or training route.
+
+### Step 3 — Build and review workflow knowledge
+
+Create Decision Episodes rather than plain step lists. Each episode records:
+- the task goal and known state at the decision point;
+- conditions and business constraints;
+- instructor-explicit rationale and separately labelled behavioral inference;
+- the selected strategy and delegated capability;
+- operation result and verified postconditions;
+- the next step, branch, recovery, question, approval request, or stop decision;
+- source references, timestamps, evidence channel, and confidence.
+
+Compose episodes into HTN workflows with compound/primitive tasks, methods, hard dependencies, soft preferences, explicit ordering constraints, conditional transitions, invariants, and recovery rules.
+
+Deduplicate by content hash. Conflicting workflows from different tutorials, software versions, or applicability conditions coexist and retain their sources. Only examples passing both the review approval gate and the quality/trainable gate enter the formal Brain training set.
+
+### Step 4 — Train the Brain and validate Brain-to-Hands
+
+Generate conversational training samples for the Brain. The LoRA learns task decomposition, sequencing, branch decisions, business constraints, capability selection, postcondition checks, error interpretation, recovery, and safe stopping.
+
+Keep volatile rules in versioned workflow data. At runtime, give the Brain the relevant local HTN slice so workflow rules can change without retraining the LoRA. The Brain emits a high-level delegation request; the existing Hands model performs page operations and returns observed results; the Brain then chooses the next decision.
+
+Validate first with a simulated Hands executor, then with the real existing operation model in a sandbox and GUI loop. Passing requires success on changed states and unseen variations—not replay of one tutorial.
+
+## Architecture and model status
+
+- **Brain:** language model plus vertical LoRA; the primary training target.
+- **Hands:** existing GUI operation model and adapter (for example, UI-TARS); reuse as the execution layer.
+- **Event capture:** rrweb for web tutorials; Windows UI Automation for Windows desktop tutorials.
+- **Narration:** supplied subtitles first; ASR fallback and timestamp alignment when needed.
+- **Workflow representation:** HTN plus conditional-branch graph and registered operation capabilities.
+- **Training:** conversational JSONL with a separate training-metadata sidecar; no future execution-outcome leakage in assistant targets.
+
+The earlier Qwen3-VL-4B/Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected. The frame-based extraction route was rejected as the primary learning method; event streams plus instructor narration are the current input design.
+
+## Compute and storage assumptions
+
+- Initial Brain base model: 4B.
+- Planning assumption: 4B BF16 LoRA on T4 16GB; 9B needs a 24GB+ GPU. Confirm actual fit and performance with a fixed model revision and recorded run configuration.
+- Local RTX 3070 8GB: development and light validation, not assumed as the BF16 LoRA training device.
+- Google Drive: original tutorial archive.
+- SQLite: source/event metadata, narration alignment, Decision Episodes, workflow versions, reviews, dataset snapshots, and training lineage.
+
+## Project objectives
+
+- Build repeatable direct event capture for new tutorials.
+- Align semantic UI event streams with instructor narration.
+- Create source-grounded Decision Episodes and conditional HTN workflows.
+- Train a Brain LoRA that can adapt to different states and valid workflow paths.
+- Integrate with existing Hands through a clear delegation/result interface.
+- Verify business postconditions, failure recovery, safe stop, and unseen-task transfer.
+- Preserve provenance, conflicts, software versions, and review decisions.
+
+## Non-goals
+
+- Rebuilding a GUI page-recognition or low-level operation model.
+- Using sparse or dense frame extraction as the primary tutorial learning input.
+- Treating ASR, OCR, video summaries, or click replay as learned workflow competence.
+- Training a universal foundation model from scratch.
+- Training on evidence that has not passed both review gates.
+- Optimizing throughput before decision quality is measured.
+
+## Core assets and metrics
+
+The core assets are vertical Brain LoRA experts, their reviewed Decision Episode datasets, versioned HTN workflows, and measured Brain-to-Hands task results.
+
+Quality metrics include decision correctness, task decomposition, dependency/order correctness, branch accuracy, rationale provenance, precondition/postcondition verification, capability selection, recovery/stop quality, held-out goal completion, evidence coverage, and safety. Operational metrics include training cost, runtime delegation reliability, time/cost per verified training example, queue throughput, and recovery from infrastructure failure.
+
+Quality gates are frozen before held-out evaluation. A high completion rate on memorized tutorial paths is not evidence of generalization.

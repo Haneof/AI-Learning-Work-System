@@ -1,129 +1,251 @@
-# 核心数据模型（MVP）
+# Core Data Model for Tutorial Workflow Learning and LoRA Experts
 
-版本：V1.0  
-状态：逻辑模型，具体 ORM / SQL 类型由实现任务确定。
+**Version:** 0.1 design update  
+**Status:** target logical model; implementation and migrations must be versioned separately.
 
-## 1. 设计原则
+## 1. Design rules
 
-- 所有业务数据显式归属 expert；平台级数据使用明确的 system/platform scope。
-- 原始资料不可被解析结果覆盖；解析结果、知识、技能均版本化。
-- 证据定位必须指向原始 source 与 segment。
-- 状态字段使用受控枚举；状态变更写入事件/审计。
-- 文件字节存文件系统或对象存储，数据库保存 URI、哈希和元数据。
-- 不把向量数据库作为事实主库；关系型数据库保存权威记录。
+- Every acquired tutorial has a download record with original source link and platform.
+- Original videos are grouped by creator and series/course in Google Drive.
+- SHA-256 identifies exact duplicate source content. A duplicate links to the canonical source but does not erase its acquisition record.
+- New tutorials capture semantic UI events directly; legacy MP4 reconstructions are explicitly inferred.
+- Instructor narration is preserved and aligned to the same timeline as UI events.
+- Each Decision Episode records the business decision point, not just a UI click.
+- HTN workflows retain conditions, dependencies, branches, alternatives, and recovery paths.
+- Conflicting workflows and different applicability/software versions coexist; never overwrite one another.
+- Only records passing both review gates and the quality/trainable gate enter the approved Brain training corpus.
+- Dataset snapshots, base revisions, LoRA runs, and adapter artifacts are immutable/versioned lineage.
 
-## 2. 实体
+## 2. Core entities
+
+### download_record
+
+- id (UUID, PK)
+- source_url, platform (required)
+- creator, series_or_course, title
+- discovered_at, downloaded_at
+- drive_file_id, drive_web_link, drive_path
+- sha256, size_bytes, duration_ms
+- license_value, license_source, license_status
+- download_status, failure_reason
+- duplicate_of_download_id (nullable FK)
+- course_group_id (nullable)
+- metadata_json
+
+Every downloaded video gets a record, including items later rejected by the text pre-filter.
+
+### source_asset
+
+- id (UUID, PK)
+- download_record_id (FK)
+- content_sha256
+- storage_uri (Google Drive)
+- creator, series_or_course, platform
+- source_kind (NEW_EVENT_RECORDING / LEGACY_VIDEO / LIVE_TASK_TRACE)
+- software_name, software_version
+- session_id, session_clock_metadata_json
+- lifecycle_state (DOWNLOADED / PREFILTERED / REJECTED / EVENT_CAPTURED / DECISIONS_EXTRACTED)
+
+### ui_event
+
+- id (UUID, PK)
+- source_asset_id (FK)
+- event_sequence_no
+- timestamp_ms, end_timestamp_ms (when an interval is available)
+- event_type (DOM_MUTATION / CLICK / POINTER_MOVE / INPUT / FOCUS / BLUR / SCROLL / NAVIGATION / UIA_PROPERTY_CHANGE / UIA_STRUCTURE_CHANGE / UIA_FOCUS / OTHER)
+- observation_channel (DIRECT_CAPTURE / INFERRED_FROM_VIDEO / UNKNOWN)
+- application_id, page_or_window_id
+- target_element_ref, parent_element_ref
+- control_type, accessible_name
+- before_value_json, after_value_json
+- event_payload_json
+- capture_tool, capture_tool_version
+- confidence, source_locator_json
+- raw_event_ref
+
+New tutorial recordings should populate directly captured events through rrweb or Windows UI Automation. Legacy MP4 reconstruction must use INFERRED_FROM_VIDEO and retain the source time range and reconstruction evidence.
+
+### narration_segment
+
+- id (UUID, PK)
+- source_asset_id (FK)
+- speaker_role
+- text, language
+- start_ms, end_ms
+- transcript_origin (EMBEDDED_SUBTITLE / SIDECAR_SUBTITLE / ASR / HUMAN_TRANSCRIPT)
+- alignment_method, alignment_model, alignment_version
+- word_timestamps_json (nullable)
+- alignment_confidence, quality_status
+- raw_audio_ref, transcript_ref
+
+Prefer usable existing subtitles; use ASR only when subtitle sources are unavailable. Preserve whether the timing is word-level or segment-level.
+
+### decision_episode
+
+- id (UUID, PK)
+- expert_id, workflow_id, workflow_version
+- source_asset_id (FK)
+- task_goal, success_criteria_json
+- state_before_json, state_after_json
+- narration_segment_ids_json
+- relevant_ui_event_ids_json
+- decision_type
+- selected_strategy, rationale_summary
+- decision_basis_json, applicable_conditions_json
+- selected_next_step_json
+- operation_capability_id, operation_arguments_json
+- operation_status
+- postcondition_checks_json
+- outcome_status, next_action, next_step_reason
+- evidence_refs_json, uncertainties_json
+- review_status, approved_for_training
+- annotation_status, trainable, exclusion_reasons_json
+- created_at, reviewed_at
+
+A Decision Episode must describe the goal/state/reason/decision/operation/result/next-decision relationship. A plain click list is not a Decision Episode.
+
+### workflow_definition
+
+- id (UUID, PK)
+- expert_id, workflow_id, version
+- name, domain, goal
+- applicability_json (software versions, business context, conditions)
+- success_conditions_json
+- tasks_json (compound and primitive HTN tasks)
+- methods_json (applicability conditions and subtask decomposition)
+- edges_json (HARD_DEPENDENCY / SOFT_PREFERENCE)
+- ordering_constraints_json
+- invariants_json
+- transitions_json
+- recovery_rules_json
+- capability_registry_version
+- evidence_refs_json
+- lifecycle_status
+- created_at
+
+A workflow is scoped by source, software version, and applicability conditions. Conflicting variants coexist.
+
+### operation_capability
+
+- capability_id (PK)
+- version
+- description
+- hands_adapter_id
+- argument_schema_json
+- preconditions_json
+- expected_postconditions_json
+- risk_level
+- idempotent
+- availability_status
+
+Primitive HTN tasks map to registered capabilities. The capability registry is an integration contract with the existing Hands model, not a new low-level GUI agent.
+
+### review_event
+
+- id (UUID, PK)
+- decision_episode_id or workflow_definition_id
+- gate (FIRST_REVIEW / PM_INDEPENDENT_VERIFICATION)
+- decision (PASS / REJECT / NEEDS_EVIDENCE)
+- reviewer_identity and model/version where applicable
+- checks_json (evidence resolution, event/narration alignment, decision/condition logic, uncertainty, test results)
+- comments, created_at
+
+There is no additional external manual-reviewer queue. Both required gates must pass.
+
+### training_example
+
+- id (UUID, PK)
+- decision_episode_id (FK)
+- sample_type (NORMAL_DECISION / ERROR_RECOVERY)
+- messages_json (system/user/assistant)
+- source_decision_point_ref
+- split_group_id (tutorial/course/source grouping key)
+- train_or_test_partition
+- created_at
+
+Assistant targets contain the Brain's next decision only. They must not contain future Hands execution outcomes.
+
+### training_meta
+
+- training_example_id (FK)
+- evidence_tier
+- rationale_loss_weight (nullable)
+- sidecar_version
+
+This sidecar is not fed to the model. It is stored separately from the conversational messages.
+
+### training_dataset_snapshot
+
+- id (UUID, PK)
+- expert_id, dataset_version, dataset_hash
+- approved_decision_episode_ids_json
+- training_example_ids_json
+- included_source_hashes_json
+- split_manifest_json (grouped by tutorial/course/source)
+- exclusions_json
+- created_at, created_by
+
+### lora_training_run
+
+- id (UUID, PK)
+- expert_id, training_dataset_snapshot_id (FK)
+- base_model_id, base_model_revision
+- adapter_id, adapter_revision
+- training_config_json
+- compute_provider, GPU_model, VRAM_GB
+- status, started_at, finished_at
+- peak_vram_gb, metrics_json, artifact_uri, adapter_sha256
 
 ### expert
-- id（UUID，PK）
-- name、domain、description
-- lifecycle_state（CREATED / LEARNING / TRAINING / READY / SUSPENDED / ARCHIVED）
-- config_json、created_at、updated_at
 
-### source
-- id（UUID，PK）
-- expert_id（FK，可空仅限显式共享资料）
-- source_type（VIDEO / AUDIO / PDF / DOCUMENT / IMAGE / WEB / LOG / OTHER）
-- original_name、storage_uri、sha256、mime_type、size_bytes
-- ingest_state、trust_level、metadata_json
-- created_at、created_by
+- id (UUID, PK)
+- name, vertical_id, description
+- brain_base_model_id, base_model_revision
+- active_lora_adapter_id, adapter_revision
+- hands_adapter_id, capability_registry_version
+- lifecycle_state (DATASET_READY / TRAINING / EVALUATING / READY / SUSPENDED)
+- created_at, updated_at
 
-### source_segment
-- id（UUID，PK）
-- source_id（FK）
-- segment_type（PAGE / TIME_RANGE / PARAGRAPH / FRAME / REGION / OTHER）
-- locator_json（例如 page、start_ms/end_ms、frame_timestamp_ms）
-- text_content、media_uri、content_hash
-- parser_name、parser_version、created_at
+An expert is the Brain base-plus-LoRA paired with a configured Hands integration. Decision Episodes and WorkflowDefinitions are training and runtime knowledge assets.
 
-### knowledge_item
-- id（UUID，PK）
-- expert_id（FK）
-- knowledge_type（FACT / CONCEPT / PROCEDURE / RULE / EXCEPTION / RISK）
-- statement、content_json
-- epistemic_type（DIRECT_QUOTE / EXTRACTED_FACT / INFERENCE / RECOMMENDATION）
-- lifecycle_state（CANDIDATE / REVIEW_REQUIRED / APPROVED / SUPERSEDED / REJECTED）
-- confidence_label（LOW / MEDIUM / HIGH；非概率保证）
-- version、created_at、updated_at
+## 3. Relationships
 
-### evidence_link
-- id（UUID，PK）
-- knowledge_item_id（FK）
-- source_segment_id（FK）
-- relation（SUPPORTS / CONTRADICTS / CONTEXT）
-- quote_or_excerpt、review_state、created_at
+- download_record 1:1 source_asset; duplicate acquisition records may refer to a canonical source_asset.
+- source_asset 1:N ui_event and narration_segment.
+- source_asset 1:N decision_episode.
+- decision_episode N:M ui_event and narration_segment through evidence references.
+- decision_episode N:1 workflow_definition version.
+- workflow_definition N:M operation_capability through primitive task mappings.
+- decision_episode/workflow_definition 1:N review_event.
+- training_example N:1 decision_episode; training_meta 1:1 training_example.
+- training_dataset_snapshot N:M approved training_example and decision_episode.
+- training_dataset_snapshot 1:N lora_training_run.
+- lora_training_run produces a versioned Brain adapter.
+- expert references one Brain base, one active vertical adapter, and one Hands adapter/capability registry.
 
-### skill
-- id（UUID，PK）
-- expert_id（FK）
-- slug、name、description
-- current_version_id（FK，可空）
-- lifecycle_state（DRAFT / VALIDATING / APPROVED / DEPRECATED / SUSPENDED）
-- created_at、updated_at
+## 4. Required constraints
 
-### skill_version
-- id（UUID，PK）
-- skill_id（FK）
-- version、package_uri、package_hash
-- manifest_json（输入输出、工具、权限、风险、依赖）
-- source_evidence_json
-- validation_state、created_at、created_by
+1. Every referenced evidence ID resolves to a source event, narration segment, or other declared evidence record.
+2. Timestamps are ordered and remain within the source duration when known.
+3. Directly captured UI events and legacy-video inferences remain distinguishable.
+4. Instructor-explicit rationale, behavioral inference, project-owner-provided rules, and unknown information remain distinguishable.
+5. A successful operation outcome requires evidence-backed postcondition verification.
+6. Hard dependencies and hard ordering constraints must not contain cycles.
+7. Every primitive workflow task maps to a registered operation capability.
+8. Invariants must be present in the guarded tasks' preconditions and cannot be bypassed.
+9. Training samples contain only information available at their decision point. Future execution outcomes are excluded from the assistant target.
+10. Train/test splitting is grouped by tutorial/course/source so near-duplicate fragments cannot cross partitions.
+11. Only examples passing both review gates and the quality/trainable gate may be included in an approved dataset snapshot.
+12. A Hands capability call must resolve against the configured capability registry.
+13. SQLite is the selected store for structured pipeline records and lineage metadata. Large original tutorial files remain in Google Drive.
+14. Secrets, personal credentials, and private tokens are excluded from records and logs.
 
-### skill_test_run
-- id（UUID，PK）
-- skill_version_id（FK）
-- test_suite_version、status（QUEUED / RUNNING / PASSED / FAILED / BLOCKED / TIMED_OUT）
-- input_ref、report_uri、metrics_json、environment_json
-- started_at、finished_at
+## 5. Deferred
 
-### task
-- id（UUID，PK）
-- expert_id（FK）
-- task_type、goal、input_json
-- state（QUEUED / RUNNING / WAITING_APPROVAL / SUCCEEDED / FAILED / CANCELLED）
-- requested_permissions_json、result_json、trace_id
-- created_at、started_at、finished_at
+- Distributed multi-region storage.
+- Automated workflow conflict resolution across all software versions.
+- Large-scale vector-index sharding.
+- Automatic cross-expert workflow sharing.
+- A replacement page-perception/action model.
 
-### task_event
-- id（UUID，PK）
-- task_id（FK）
-- sequence_no、event_type、payload_json、created_at
-- UNIQUE(task_id, sequence_no)
-
-### audit_event
-- id（UUID，PK）
-- actor_type、actor_id、expert_id、task_id
-- action、resource_type、resource_id
-- decision（ALLOW / DENY / REQUIRE_APPROVAL）
-- reason_code、details_redacted_json、created_at
-
-## 3. 关系
-
-- expert 1:N source / knowledge_item / skill / task。
-- source 1:N source_segment。
-- knowledge_item N:M source_segment，通过 evidence_link 关联。
-- skill 1:N skill_version。
-- skill_version 1:N skill_test_run。
-- task 1:N task_event。
-- audit_event 可关联 expert/task/resource，但审计记录不得依赖业务对象仍然存在。
-
-## 4. 必须实现的约束
-
-1. 同一 expert 内 source.sha256 可用于重复导入识别；不得跨 expert 自动暴露资料。
-2. evidence_link 指向的 source_segment 必须与 knowledge_item 的 expert scope 匹配，除非显式共享授权。
-3. APPROVED 知识必须至少有一条有效支持证据；纯推断应显式标记且走独立审核策略。
-4. APPROVED 技能版本必须存在通过的测试报告，并且测试报告对应同一 package_hash。
-5. skill_version 不可原地修改；变更必须创建新版本。
-6. task_event sequence_no 单调递增；任务终态不可无审计地回退。
-7. L3 操作审批记录需绑定动作参数摘要；参数变化后审批失效。
-8. 日志与审计不得存储明文密钥、访问令牌或不必要的个人数据。
-
-## 5. MVP 暂缓
-
-- 完整组织/租户计费。
-- 复杂知识图谱和跨专家自动共享。
-- 自动遗忘/合规保留策略引擎。
-- 大规模向量索引分片。
-- 多区域分布式事务。
-
-这些不属于阶段 0 的准入条件。
+These are not prerequisites for the first Brain LoRA expert.
