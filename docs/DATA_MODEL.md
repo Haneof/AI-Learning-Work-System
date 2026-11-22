@@ -41,7 +41,7 @@ Every downloaded video gets a record, including items later rejected by the text
 - content_sha256
 - storage_uri (Google Drive or local processing reference)
 - creator, series_or_course, platform
-- source_kind (DOWNLOADED_VIDEO / LIVE_TASK_TRACE)
+- source_kind (DOWNLOADED_TUTORIAL_VIDEO / LIVE_TASK_TRACE)
 - software_name, software_version (when known from source)
 - media_duration_ms, subtitle_asset_refs_json
 - lifecycle_state (DOWNLOADED / PROBED / EVIDENCE_EXTRACTED / EPISODES_DRAFTED / LOCALLY_VERIFIED / PM_APPROVED / REJECTED)
@@ -56,7 +56,7 @@ The primary tutorial source is the downloaded file. A runtime Hands trace is a s
 - event_sequence_no
 - timestamp_ms, end_timestamp_ms (when an interval is available)
 - observation_type (INITIAL_FRAME / SCREEN_CHANGE / OCR_REGION / CURSOR_CANDIDATE / CLICK_HYPOTHESIS / UI_TARGET_GROUNDING / OTHER)
-- observation_channel (OBSERVED_FROM_VIDEO / INFERRED_FROM_VIDEO / UNKNOWN)
+- observation_channel (observed_from_video / inferred_from_video / unknown)
 - frame_index, frame_ref, source_time_range_json
 - visible_text, target_box_json, cursor_candidate_json
 - before_visual_state_json, after_visual_state_json
