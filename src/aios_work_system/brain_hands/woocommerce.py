@@ -69,9 +69,15 @@ async def woocommerce_product_state(page: Any) -> dict[str, Any]:
                     && style.display !== "none"
                     && style.visibility !== "hidden";
             };
-            const publishVisible = Array.from(document.querySelectorAll(
-                "#publish, .editor-post-publish-button, button[aria-label='Publish'], button[data-testid='publish']"
-            )).some(isVisible);
+            const publishSelectors = [
+                "#publish",
+                ".editor-post-publish-button",
+                "button[aria-label='Publish']",
+                "button[data-testid='publish']"
+            ];
+            const publishVisible = publishSelectors.some((selector) =>
+                Array.from(document.querySelectorAll(selector)).some(isVisible)
+            );
 
             return {
                 title: {
