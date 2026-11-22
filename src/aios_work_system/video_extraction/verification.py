@@ -125,8 +125,15 @@ class _LlamaServer:
             raise LocalModelUnavailable(f"local verifier model file not found: {self.model_path}")
         parsed = _validate_loopback(self.endpoint)
         command = [
-            self.binary, "--model", str(self.model_path), "--host", "127.0.0.1",
-            "--port", str(parsed.port or 80), "--n-gpu-layers", str(self.gpu_layers),
+            self.binary,
+            "--model",
+            str(self.model_path),
+            "--host",
+            "127.0.0.1",
+            "--port",
+            str(parsed.port or 80),
+            "--n-gpu-layers",
+            str(self.gpu_layers),
         ]
         try:
             self.process = subprocess.Popen(
@@ -354,8 +361,16 @@ class LocalDecisionEpisodeVerifier:
                 {
                     key: episode.get(key)
                     for key in (
-                        "schema_version", "episode_id", "source", "task", "state_before",
-                        "narration", "decision", "operation", "outcome", "evidence",
+                        "schema_version",
+                        "episode_id",
+                        "source",
+                        "task",
+                        "state_before",
+                        "narration",
+                        "decision",
+                        "operation",
+                        "outcome",
+                        "evidence",
                     )
                 },
                 2400,
@@ -365,8 +380,11 @@ class LocalDecisionEpisodeVerifier:
         try:
             if self.start_server:
                 with _LlamaServer(
-                    self.model_path, self.endpoint, self.server_binary,
-                    self.startup_timeout_seconds, self.n_gpu_layers,
+                    self.model_path,
+                    self.endpoint,
+                    self.server_binary,
+                    self.startup_timeout_seconds,
+                    self.n_gpu_layers,
                 ):
                     raw = self.client.complete_json(SYSTEM_PROMPT, payload)
             else:
@@ -399,15 +417,16 @@ class LocalDecisionEpisodeVerifier:
             }
         raw_levels = raw.get("levels") if isinstance(raw.get("levels"), dict) else {}
         levels = {
-            name: self._normalise(raw_levels.get(name), name, set(evidence))
-            for name in LEVEL_NAMES
+            name: self._normalise(raw_levels.get(name), name, set(evidence)) for name in LEVEL_NAMES
         }
         levels["outcome_validity"] = self._outcome_guard(
             levels["outcome_validity"], episode, evidence, raw_levels.get("outcome_validity")
         )
         statuses = [levels[name]["status"] for name in LEVEL_NAMES]
-        overall = "pass" if all(status == "pass" for status in statuses) else (
-            "fail" if "fail" in statuses else "unknown"
+        overall = (
+            "pass"
+            if all(status == "pass" for status in statuses)
+            else ("fail" if "fail" in statuses else "unknown")
         )
         report = {
             "schema_version": "1.0",
@@ -424,8 +443,10 @@ class LocalDecisionEpisodeVerifier:
         if not isinstance(raw, dict) or raw.get("status") not in {"pass", "fail", "unknown"}:
             return _unknown(f"No valid {name} verdict was returned.")
         reasons, refs = raw.get("reasons"), raw.get("evidence_refs", [])
-        if not isinstance(reasons, list) or not reasons or not all(
-            isinstance(item, str) and item.strip() for item in reasons
+        if (
+            not isinstance(reasons, list)
+            or not reasons
+            or not all(isinstance(item, str) and item.strip() for item in reasons)
         ):
             return _unknown(f"{name} verdict has no usable reasons.")
         if not isinstance(refs, list) or not all(isinstance(item, str) for item in refs):
@@ -452,8 +473,10 @@ class LocalDecisionEpisodeVerifier:
 
     @staticmethod
     def _outcome_guard(
-        level: dict[str, Any], episode: dict[str, Any],
-        evidence: dict[str, dict[str, Any]], raw: Any,
+        level: dict[str, Any],
+        episode: dict[str, Any],
+        evidence: dict[str, dict[str, Any]],
+        raw: Any,
     ) -> dict[str, Any]:
         if level["status"] != "pass":
             return level
@@ -465,14 +488,17 @@ class LocalDecisionEpisodeVerifier:
             for item in cited
         )
         direct_result_ids = {
-            item["evidence_id"] for item in cited
+            item["evidence_id"]
+            for item in cited
             if item.get("evidence_type") == "business_result"
             and item.get("observation_channel") == "direct_capture"
         }
         outcome = episode.get("outcome") or {}
         passed_refs = {
-            ref for check in outcome.get("postcondition_checks", [])
-            if check.get("result") == "passed" for ref in check.get("evidence_refs", [])
+            ref
+            for check in outcome.get("postcondition_checks", [])
+            if check.get("result") == "passed"
+            for ref in check.get("evidence_refs", [])
         }
         reasons = []
         if raw.get("causal_basis") not in CAUSAL_BASES:
@@ -481,7 +507,10 @@ class LocalDecisionEpisodeVerifier:
                 "require a controlled comparison or system audit trail."
             )
         if not direct_action or (episode.get("operation") or {}).get("execution_status") in {
-            None, "not_observed", "unknown", "not_executed",
+            None,
+            "not_observed",
+            "unknown",
+            "not_executed",
         }:
             reasons.append(
                 "No directly captured evidence verifies execution of the selected operation."
