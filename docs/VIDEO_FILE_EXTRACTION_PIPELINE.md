@@ -38,4 +38,4 @@ part-breakdown.json records stage status, counts, frame timestamps, OCR results,
 
 ## Demo source fallback
 
-The downloader tries the three user-supplied YouTube IDs first. If YouTube denies the runner access, it records each failure and downloads the openly licensed Wikimedia Commons Content Translation Screencast (English) plus its timed SRT captions. The fallback attribution and CC BY-SA 4.0 license are written to `source-manifest.json`. This remains a real downloaded software screencast video file; it is not a synthetic fixture.
+The downloader tries the three user-supplied YouTube IDs first. If YouTube denies runner access, it records each failure and downloads the real Wikipedia Content Translation Tool Tutorial (2 min 8 s) from Wikimedia Commons with its published English SRT captions. The video is by AlexandraShagzhina and is licensed CC BY-SA 4.0. The fallback attribution and license are written to `source-manifest.json`. This is a real browser-tool tutorial file, not a synthetic fixture.

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import time
 from pathlib import Path
 from typing import Any
-from urllib.error import URLError
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
@@ -22,14 +23,35 @@ WIKIMEDIA_VIDEO_URL = (
 WIKIMEDIA_CAPTION_URL = "https://commons.wikimedia.org/w/index.php"
 
 
-def _write_url(url: str, destination: Path) -> None:
-    request = Request(
-        url,
-        headers={"User-Agent": "AI-Learning-Work-System/0.1 (video tutorial research)"},
-    )
-    with urlopen(request, timeout=90) as response, destination.open("wb") as handle:
-        while chunk := response.read(1024 * 1024):
-            handle.write(chunk)
+def _write_url(url: str, destination: Path, referer: str | None = None) -> None:
+    """Download with bounded retry/backoff for transient CDN 429/5xx responses."""
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (compatible; AI-Learning-Work-System/0.1; "
+            "+https://github.com/Haneof/AI-Learning-Work-System)"
+        )
+    }
+    if referer:
+        headers["Referer"] = referer
+    for attempt in range(4):
+        request = Request(url, headers=headers)
+        try:
+            with urlopen(request, timeout=120) as response, destination.open("wb") as handle:
+                while chunk := response.read(1024 * 1024):
+                    handle.write(chunk)
+            break
+        except HTTPError as exc:
+            if exc.code not in {429, 500, 502, 503, 504} or attempt == 3:
+                raise
+            delay = 20 * (2**attempt)
+            print(f"Download HTTP {exc.code}; retrying in {delay}s (attempt {attempt + 2}/4)")
+            time.sleep(delay)
+        except URLError:
+            if attempt == 3:
+                raise
+            delay = 10 * (2**attempt)
+            print(f"Download network error; retrying in {delay}s (attempt {attempt + 2}/4)")
+            time.sleep(delay)
     if not destination.is_file() or destination.stat().st_size < 1024:
         raise RuntimeError(f"downloaded file is missing or unexpectedly small: {destination}")
 
@@ -52,42 +74,55 @@ def _download_wikimedia_fallback(
     output_dir: Path,
     attempts: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Fallback to the openly licensed screencast already used by repository CI."""
-    video_id = "wikimedia-content-translation-en"
-    video_path = output_dir / "content-translation-screencast-en.webm"
-    caption_path = output_dir / "content-translation-screencast-en.srt"
+    """Download a real UI tutorial with its published, timestamped English subtitles."""
+    video_id = "wikimedia-wikipedia-content-translation-tool-tutorial"
+    video_path = output_dir / "wikipedia-content-translation-tool-tutorial.webm"
+    caption_path = output_dir / "wikipedia-content-translation-tool-tutorial.en.srt"
+    video_url = (
+        "https://upload.wikimedia.org/wikipedia/commons/f/f2/"
+        "Wikipedia_Content_Translation_Tool_Tutorial.webm"
+    )
+    source_page = (
+        "https://commons.wikimedia.org/wiki/"
+        "File:Wikipedia_Content_Translation_Tool_Tutorial.webm"
+    )
     caption_query = urlencode(
         {
-            "title": "TimedText:Content Translation Screencast (English).webm.en.srt",
+            "title": "TimedText:Wikipedia Content Translation Tool Tutorial.webm.en.srt",
             "action": "raw",
         }
     )
+    caption_url = f"https://commons.wikimedia.org/w/index.php?{caption_query}"
     try:
-        _write_url(WIKIMEDIA_VIDEO_URL, video_path)
-        _write_url(f"{WIKIMEDIA_CAPTION_URL}?{caption_query}", caption_path)
+        _write_url(video_url, video_path, referer=source_page)
+        _write_url(caption_url, caption_path, referer=source_page)
         caption_text = caption_path.read_text(encoding="utf-8-sig", errors="replace")
         if "-->" not in caption_text or not any(char.isdigit() for char in caption_text):
-            raise RuntimeError("Wikimedia timed-text response has no timestamped subtitle cues")
+            raise RuntimeError("published timed-text response has no timestamped subtitle cues")
         metadata = {
             "video_id": video_id,
-            "title": "Content Translation Screencast (English)",
-            "url": WIKIMEDIA_VIDEO_URL,
+            "title": "Wikipedia Content Translation Tool Tutorial",
+            "url": video_url,
             "extractor": "wikimedia_commons",
-            "duration_seconds": None,
+            "duration_seconds": 128.128,
             "video_path": str(video_path.resolve()),
             "captions_path": str(caption_path.resolve()),
             "caption_candidates": [str(caption_path.resolve())],
-            "subtitle_source": "wikimedia_timed_text",
+            "subtitle_source": "published_wikimedia_timed_text",
             "license": "CC BY-SA 4.0",
-            "attribution": "Content Translation Screencast (English), Wikimedia Commons",
+            "attribution": (
+                "Wikipedia Content Translation Tool Tutorial, "
+                "AlexandraShagzhina, Wikimedia Commons"
+            ),
             "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
-            "source_page": "https://commons.wikimedia.org/wiki/File:Content_Translation_Screencast_(English).webm",
+            "source_page": source_page,
+            "media_direct_url": video_url,
         }
         attempts.append(
             {
-                "source": "Wikimedia Commons fallback",
+                "source": "Wikimedia Commons",
                 "status": "selected",
-                "reason": "All three supplied YouTube candidates failed to download.",
+                "reason": "The three supplied YouTube IDs were unavailable from the CI runner.",
             }
         )
         return _save_manifest(output_dir, metadata, attempts)
@@ -97,13 +132,13 @@ def _download_wikimedia_fallback(
                 partial.unlink()
         attempts.append(
             {
-                "source": "Wikimedia Commons fallback",
+                "source": "Wikimedia Commons",
                 "status": "failed",
                 "error": f"{type(exc).__name__}: {exc}",
             }
         )
         raise RuntimeError(
-            "All supplied YouTube candidates and the Wikimedia Commons fallback failed: "
+            "All supplied YouTube candidates and the Wikimedia tutorial fallback failed: "
             + json.dumps(attempts, ensure_ascii=False)
         ) from exc
 

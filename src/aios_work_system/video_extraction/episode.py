@@ -165,7 +165,7 @@ def build_decision_episode(
                 "evidence_type": "ui_event",
                 "observation_channel": "inferred_from_video",
                 "rationale_source": "behavioral_inference",
-                "confidence": min(0.49, max(confidence_values + [0.0])),
+                "confidence": min(1.0, max(confidence_values + [0.0])),
                 "labels": ["inferred_from_video"],
                 "capture_method": (
                     "cursor-settle heuristic and Qwen3-VL grounding on changed frames only"
