@@ -129,6 +129,7 @@ def evaluate_grounder(
         predictions.append(
             {
                 **result,
+                "timestamp_ms": timestamp_ms,
                 "expected_label": annotation["target_label"],
                 "expected_bbox_norm": bbox,
                 "hit": hit,
