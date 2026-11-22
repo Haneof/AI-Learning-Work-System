@@ -490,8 +490,14 @@ class BrainHandsLoop:
             raise ProtocolError("delegation task_id is not a primitive task in the active workflow")
         if task.get("capability_id") != delegation.capability_id:
             raise ProtocolError("delegation capability_id does not match the workflow task")
-        if delegation.capability_id not in self._capabilities:
+        capability = self._capabilities.get(delegation.capability_id)
+        if capability is None:
             raise ProtocolError("delegation capability_id is not registered")
+        declared_risk = str(task.get("risk_level") or capability.get("risk_level") or "unknown")
+        if delegation.risk_level != declared_risk:
+            raise ProtocolError("delegation risk_level does not match the workflow capability")
+        if declared_risk in {"high", "critical", "unknown"} and not delegation.requires_human_approval:
+            raise ProtocolError("high/critical/unknown risk capabilities require human approval")
         if delegation.node_id != delegation.task_id:
             raise ProtocolError("delegation workflow_ref.node_id must identify its task")
         if delegation.capability_id not in delegation.constraints.get("allowed_scope", []):
