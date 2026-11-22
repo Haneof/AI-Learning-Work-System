@@ -34,3 +34,8 @@ Pass --vlm-model none to exercise the deterministic extraction stages without do
 ## Per-part report
 
 part-breakdown.json records stage status, counts, frame timestamps, OCR results, cursor candidates, click hypotheses, VLM submissions/results/failures, narration alignment coverage, and final contract validation.
+
+
+## Demo source fallback
+
+The downloader tries the three user-supplied YouTube IDs first. If YouTube denies the runner access, it records each failure and downloads the openly licensed Wikimedia Commons Content Translation Screencast (English) plus its timed SRT captions. The fallback attribution and CC BY-SA 4.0 license are written to `source-manifest.json`. This remains a real downloaded software screencast video file; it is not a synthetic fixture.

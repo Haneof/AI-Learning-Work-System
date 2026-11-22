@@ -169,7 +169,7 @@ def test_pipeline_runs_on_a_real_video_file_and_emits_contract_valid_episode(tmp
             "-i",
             "color=c=white:s=640x360:d=2:r=4",
             "-vf",
-            "drawtext=text='Start Settings':x=50:y=70:fontsize=42:fontcolor=black:enable='between(t,1,2)'",
+            "drawbox=x=0:y=0:w=iw:h=ih/2:color=black:t=fill:enable='between(t,1,2)'",
             "-an",
             "-c:v",
             "libx264",

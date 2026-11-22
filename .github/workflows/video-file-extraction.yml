@@ -75,7 +75,8 @@ jobs:
           VIDEO_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_path"])')"
           CAPTIONS_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["captions_path"] or "")')"
           SOURCE_ID="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_id"])')"
-          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform youtube --sample-fps 2 --maximum-vlm-frames 24)
+          SOURCE_PLATFORM="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["extractor"])')"
+          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform "$SOURCE_PLATFORM" --sample-fps 2 --maximum-vlm-frames 24)
           if [[ -n "$CAPTIONS_PATH" ]]; then
             ARGS+=(--captions "$CAPTIONS_PATH")
           fi

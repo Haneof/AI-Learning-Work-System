@@ -362,7 +362,10 @@ def infer_click_candidates(
                 ),
                 "source": "cursor_and_frame_change_heuristic",
                 "certainty": "inferred_from_video",
-                "warning": "No click event is present in a downloaded video; this is only a visual inference.",
+                "warning": (
+                    "No click event is present in a downloaded video; "
+                    "this is only a visual inference."
+                ),
             }
         )
     return candidates
