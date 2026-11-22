@@ -411,7 +411,7 @@ def _split_groups(group_ids: list[str], seed: int, train_fraction: float) -> dic
         return {group_id: "train" for group_id in unique}
     ranked = sorted(
         unique,
-        key=lambda group_id: hashlib.sha256(f"{seed}\0{group_id}".encode("utf-8")).hexdigest(),
+        key=lambda group_id: hashlib.sha256(f"{seed}\0{group_id}".encode()).hexdigest(),
     )
     test_count = min(len(ranked) - 1, max(1, round(len(ranked) * (1.0 - train_fraction))))
     test_groups = set(ranked[:test_count])
