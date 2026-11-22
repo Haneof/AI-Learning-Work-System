@@ -29,7 +29,7 @@ The `Real Media Sample Integration` workflow currently runs:
    - Runs Tesseract English OCR on sampled frames after resizing.
    - Writes recognized text, frame timestamps, per-frame character counts, and elapsed time.
 
-Each job uploads reports and generated artifacts. The workflow is a component smoke test; it does not call Qwen3-VL, Mage-VL, or Magma.
+Each job uploads reports and generated artifacts. The workflow is a component smoke test; it does not invoke a multimodal workflow-understanding model or a GUI operation model.
 
 ## Existing recorded smoke-test evidence
 
