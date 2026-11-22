@@ -175,6 +175,19 @@ def test_unknown_is_preserved_and_never_treated_as_pass():
     assert report["overall_status"] == "unknown"
 
 
+def test_model_cannot_pass_a_level_while_reporting_unresolved_unknowns():
+    response = _response(decision_status="pass")
+    response["levels"]["decision_validity"]["unknowns"] = [
+        "The relevant application state is not fully visible."
+    ]
+    report = LocalDecisionEpisodeVerifier(
+        completion_client=FakeLocalModel(response)
+    ).verify(_episode(), _source_evidence())
+
+    assert report["levels"]["decision_validity"]["status"] == "unknown"
+    assert report["overall_status"] == "unknown"
+
+
 def test_positive_result_after_action_without_causal_evidence_is_unknown():
     episode = _episode()
     episode["operation"]["execution_status"] = "observed"
@@ -265,3 +278,5 @@ def test_dataset_requires_local_pass_and_separate_pm_pass():
         "proposed_record_evidence_refs": ["episode:decision.selected_strategy"],
     }
     assert training_dataset_admission_status(local, pm_review)["eligible_for_dataset"] is True
+    pm_review["source_evidence_refs"] = "not-a-list"
+    assert training_dataset_admission_status(local, pm_review)["eligible_for_dataset"] is False
