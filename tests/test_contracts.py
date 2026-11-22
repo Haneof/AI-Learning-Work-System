@@ -3,6 +3,7 @@
 import json
 from pathlib import Path
 
+from aios_work_system.brain_hands import BrainContext, WorkflowBrain, workflow_goal_satisfied
 from contracts.validate import (
     validate_episode,
     validate_protocol,
@@ -334,3 +335,79 @@ def test_training_meta_must_not_be_embedded_in_model_messages(tmp_path: Path):
     errors = validate_training_jsonl(training_path, sidecar_path)
 
     assert any("training_meta must be stored in sidecar" in error for error in errors)
+
+
+def test_woocommerce_save_draft_examples_pass_contract_validation():
+    workflow = load_example("woocommerce-save-draft.workflow.json")
+    episode = load_example("woocommerce-save-draft.episode.json")
+    evidence_ids = {item["evidence_id"] for item in episode["evidence"]}
+
+    assert validate_episode(episode) == []
+    assert validate_workflow(workflow, evidence_ids) == []
+
+
+def _run_woocommerce_brain_sequence(initial_product_type: str) -> tuple[list[str], dict]:
+    workflow = load_example("woocommerce-save-draft.workflow.json")
+    state = dict(workflow["initial_state"])
+    state["product_type.value"] = initial_product_type
+    brain = WorkflowBrain(workflow)
+    workflow_inputs = {
+        "enter_title": {"title_text": "Example Backpack"},
+        "set_price": {"price": "39.95"},
+    }
+    delegated_tasks = []
+
+    for decision_number in range(1, 10):
+        context = BrainContext(
+            workflow=workflow,
+            current_state=dict(state),
+            workflow_inputs=workflow_inputs,
+            decision_number=decision_number,
+        )
+        decision = brain.decide(context)
+
+        if decision.action == "finish":
+            assert workflow_goal_satisfied(workflow, state)
+            return delegated_tasks, state
+
+        assert decision.action == "delegate"
+        assert decision.delegation is not None
+        task_id = decision.delegation.task_id
+        delegated_tasks.append(task_id)
+
+        # Apply only the delegated task's declared business postcondition to
+        # the next scripted observation. No Hands or browser is involved.
+        if task_id == "enter_title":
+            state["title.status"] = "present"
+            state["title.value"] = workflow_inputs["enter_title"]["title_text"]
+        elif task_id == "set_product_type":
+            state["product_type.value"] = "simple"
+        elif task_id == "set_price":
+            state["price.value"] = workflow_inputs["set_price"]["price"]
+        elif task_id == "save_draft":
+            state["draft.status"] = "draft_updated"
+        else:
+            raise AssertionError(f"Unexpected delegated task: {task_id}")
+
+    raise AssertionError("WorkflowBrain did not finish within the scripted decision limit.")
+
+
+def test_woocommerce_brain_skips_simple_product_type_and_saves_draft():
+    delegated_tasks, final_state = _run_woocommerce_brain_sequence("simple")
+
+    assert delegated_tasks == ["enter_title", "set_price", "save_draft"]
+    assert "set_product_type" not in delegated_tasks
+    assert final_state["title.status"] == "present"
+    assert final_state["product_type.value"] == "simple"
+    assert final_state["price.value"] == "39.95"
+    assert final_state["draft.status"] == "draft_updated"
+
+
+def test_woocommerce_brain_sets_variable_product_to_simple_before_pricing():
+    delegated_tasks, final_state = _run_woocommerce_brain_sequence("variable")
+
+    assert delegated_tasks == ["enter_title", "set_product_type", "set_price", "save_draft"]
+    assert final_state["title.status"] == "present"
+    assert final_state["product_type.value"] == "simple"
+    assert final_state["price.value"] == "39.95"
+    assert final_state["draft.status"] == "draft_updated"
