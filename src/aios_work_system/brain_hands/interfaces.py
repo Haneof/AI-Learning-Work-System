@@ -6,9 +6,10 @@ operations remain an implementation detail of Hands and the existing GUI Agent.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
-from typing import Any, Literal, Mapping, Protocol
+from typing import Any, Literal, Protocol
 
 
 ExecutionStatus = Literal[
