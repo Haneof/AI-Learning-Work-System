@@ -59,7 +59,13 @@ def main() -> int:
         help="Allow Hugging Face to download model WEIGHTS only; all inference remains local.",
     )
     parser.add_argument("--minimum-grounding-accuracy", type=float, default=0.75)
-    parser.add_argument("--maximum-changed-frames", "--maximum-vlm-frames", dest="maximum_vlm_frames", type=int, default=24)
+    parser.add_argument(
+        "--maximum-changed-frames",
+        "--maximum-vlm-frames",
+        dest="maximum_vlm_frames",
+        type=int,
+        default=24,
+    )
     parser.add_argument("--llama-gpu-layers", type=int, default=-1)
     parser.add_argument("--source-id")
     parser.add_argument("--source-platform", default="youtube")

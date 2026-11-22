@@ -9,19 +9,14 @@ import time
 from pathlib import Path
 from typing import Any
 
-
 SHOWUI_MODEL_ID = "showlab/ShowUI-2B"
 UI_TARS_SMALL_MODEL_ID = "ByteDance-Seed/UI-TARS-2B-SFT"
 UI_TARS_FALLBACK_MODEL_ID = "ByteDance-Seed/UI-TARS-7B-SFT"
 EPISODE_SMALL_MODEL_ID = "2Beyes/Aurum-4B-Uncensored"
-EPISODE_FALLBACK_MODEL_ID = (
-    "yan2026/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF"
-)
+EPISODE_FALLBACK_MODEL_ID = "yan2026/DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-GGUF"
 EPISODE_SMALL_GGUF_REPO = "2Beyes/Aurum-4B-Uncensored-GGUF"
 EPISODE_SMALL_GGUF_NAME = "Aurum-4B-Q4_K_M.gguf"
-EPISODE_FALLBACK_GGUF_NAME = (
-    "DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf"
-)
+EPISODE_FALLBACK_GGUF_NAME = "DeepSeek-V4-Pro-Qwen3.5-9B-UNCENSORED-heretic-Q4_K_M.gguf"
 
 
 class LocalModelUnavailable(RuntimeError):
@@ -306,9 +301,7 @@ class LocalGGUFDecisionModel:
     ) -> None:
         self.model_path = Path(model_path)
         if not self.model_path.is_file():
-            raise LocalModelUnavailable(
-                f"local GGUF model file does not exist: {self.model_path}"
-            )
+            raise LocalModelUnavailable(f"local GGUF model file does not exist: {self.model_path}")
         try:
             from llama_cpp import Llama
         except ImportError as exc:
@@ -346,11 +339,11 @@ class LocalGGUFDecisionModel:
             "3. Do not invent business constraints, mandatory ordering, policy, prices, "
             "commission rules or application state not present in the supplied events.\n"
             "4. Use only the supplied evidence IDs. Do not fabricate evidence references.\n"
-            "5. If the operation is uncertain, use decision_basis [\"unknown\"], say why, "
-            "and request human review. Otherwise use [\"behavioral_inference\"].\n"
+            '5. If the operation is uncertain, use decision_basis ["unknown"], say why, '
+            'and request human review. Otherwise use ["behavioral_inference"].\n'
             "6. Keep applicable_conditions empty for this video-only example.\n"
-            "7. selected_next_step must be {\"action\":\"ask_user\",\"objective\":\"Review "
-            "the proposed interpretation before accepting it\"}; question may be included.\n"
+            '7. selected_next_step must be {"action":"ask_user","objective":"Review '
+            'the proposed interpretation before accepting it"}; question may be included.\n'
             "8. Describe one demonstration, not a universal workflow rule.\n"
             "Return a compact and externally auditable decision object. rationale_summary must "
             "be a short evidence summary, not private reasoning."

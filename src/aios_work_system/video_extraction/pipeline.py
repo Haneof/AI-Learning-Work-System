@@ -58,9 +58,7 @@ def probe_video(video_path: str | Path) -> dict[str, Any]:
         (stream for stream in payload.get("streams", []) if stream.get("codec_type") == "video"),
         {},
     )
-    duration = float(
-        payload.get("format", {}).get("duration") or video_stream.get("duration") or 0
-    )
+    duration = float(payload.get("format", {}).get("duration") or video_stream.get("duration") or 0)
     if duration <= 0:
         raise RuntimeError("video duration could not be read from the local video file")
     return {
@@ -189,9 +187,7 @@ class VideoExtractionPipeline:
         stages["subtitle_asr"]["segments"] = len(transcript)
         if not transcript and stages["subtitle_asr"]["status"] == "completed":
             stages["subtitle_asr"]["status"] = "failed"
-            stages["subtitle_asr"]["error"] = (
-                "all transcript cues were outside the video duration"
-            )
+            stages["subtitle_asr"]["error"] = "all transcript cues were outside the video duration"
         _write_json(output / "transcript.json", transcript)
 
         sampled_frames = extract_sampled_frames(
@@ -354,28 +350,26 @@ class VideoExtractionPipeline:
                 "inference_mode": "local_open_weights_only",
                 "local_only_inference": True,
                 "external_inference_provider_calls": 0,
-                "forbidden_inference_providers": ["OpenAI GPT", "Google Gemini", "hosted moderation APIs"],
+                "forbidden_inference_providers": [
+                    "OpenAI GPT",
+                    "Google Gemini",
+                    "hosted moderation APIs",
+                ],
                 "model_downloads_are_weights_only": True,
             },
             "counts": {
                 "sampled_frames": len(analyzed_frames),
                 "changed_frames": len(change_frames),
-                "ocr_text_regions": sum(
-                    len(record.get("regions", [])) for record in ocr_records
-                ),
+                "ocr_text_regions": sum(len(record.get("regions", [])) for record in ocr_records),
                 "subtitle_or_asr_segments": len(transcript),
-                "cursor_candidates": stages.get("cursor_tracking", {}).get(
-                    "cursor_candidates", 0
-                ),
+                "cursor_candidates": stages.get("cursor_tracking", {}).get("cursor_candidates", 0),
                 "inferred_click_candidates": len(cursor_events),
                 "ui_grounding_results": len(grounding_results),
                 "episode_synthesis_status": stages["decision_synthesis"].get("status"),
                 "frame_event_counts": dict(event_counts),
             },
             "evidence_semantics": {
-                "observed_from_video": (
-                    "Visible pixels, timestamped frame changes, and OCR text."
-                ),
+                "observed_from_video": ("Visible pixels, timestamped frame changes, and OCR text."),
                 "inferred_from_video": (
                     "Cursor/click hypotheses and local GUI-model target coordinates."
                 ),

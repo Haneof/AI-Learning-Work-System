@@ -7,7 +7,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 MODELS = {
     "showui_2b": {
         "repo_id": "showlab/ShowUI-2B",

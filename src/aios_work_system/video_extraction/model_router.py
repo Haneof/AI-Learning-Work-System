@@ -148,9 +148,7 @@ def evaluate_grounder(
         "coordinate_parse_rate": round(coordinate_rate, 4),
         "target_box_hits": hits,
         "target_box_hit_rate": round(hit_rate, 4),
-        "mean_normalized_center_error": (
-            round(sum(errors) / len(errors), 5) if errors else None
-        ),
+        "mean_normalized_center_error": (round(sum(errors) / len(errors), 5) if errors else None),
         "pass_threshold": 0.75,
         "passed": bool(samples and hit_rate >= 0.75 and coordinate_rate >= 0.95),
         "metric_definition": (
@@ -454,24 +452,17 @@ def run_ui_grounding(
     )
     changed_frames = [frame for frame in frames if frame.get("is_change")]
     selected_by_timestamp = {
-        int(frame["timestamp_ms"]): frame
-        for frame in changed_frames[:maximum_frames]
+        int(frame["timestamp_ms"]): frame for frame in changed_frames[:maximum_frames]
     }
     # Keep manually scored benchmark frames in the episode even when outside the first-N window.
     for timestamp_ms in cached:
         frame = next(
-            (
-                item
-                for item in changed_frames
-                if int(item["timestamp_ms"]) == int(timestamp_ms)
-            ),
+            (item for item in changed_frames if int(item["timestamp_ms"]) == int(timestamp_ms)),
             None,
         )
         if frame is not None:
             selected_by_timestamp[int(timestamp_ms)] = frame
-    selected_frames = [
-        selected_by_timestamp[key] for key in sorted(selected_by_timestamp)
-    ]
+    selected_frames = [selected_by_timestamp[key] for key in sorted(selected_by_timestamp)]
     results: list[dict[str, Any]] = []
     if grounder is None:
         stage["frames_submitted"] = 0
@@ -567,9 +558,7 @@ def local_model_file(
     """Resolve local primary or fallback GGUF weights."""
     if fallback:
         target = (
-            Path(model_path)
-            if model_path
-            else Path("artifacts/models/deepseek-v4-pro-9b-q4.gguf")
+            Path(model_path) if model_path else Path("artifacts/models/deepseek-v4-pro-9b-q4.gguf")
         )
         return ensure_hf_file(
             EPISODE_FALLBACK_MODEL_ID,
@@ -577,11 +566,7 @@ def local_model_file(
             target,
             allow_download=allow_download,
         )
-    target = (
-        Path(model_path)
-        if model_path
-        else Path("artifacts/models/aurum-4b-q4.gguf")
-    )
+    target = Path(model_path) if model_path else Path("artifacts/models/aurum-4b-q4.gguf")
     return ensure_hf_file(
         EPISODE_SMALL_GGUF_REPO,
         EPISODE_SMALL_GGUF_NAME,
@@ -613,18 +598,17 @@ def _decision_quality_check(
     if missing:
         errors.append(f"missing decision keys: {missing}")
     refs = decision.get("evidence_refs", [])
-    if (
-        not isinstance(refs, list)
-        or any(not isinstance(ref, str) for ref in refs)
-    ):
+    if not isinstance(refs, list) or any(not isinstance(ref, str) for ref in refs):
         errors.append("evidence_refs must be an array of strings")
     elif not set(refs).issubset(allowed_evidence_ids):
         errors.append("decision contains evidence references not present in this episode")
     if decision.get("applicable_conditions") != []:
         errors.append("video-only automatic synthesis may not invent applicable conditions")
     basis = decision.get("decision_basis", [])
-    if not isinstance(basis, list) or not basis or any(
-        item not in {"behavioral_inference", "unknown"} for item in basis
+    if (
+        not isinstance(basis, list)
+        or not basis
+        or any(item not in {"behavioral_inference", "unknown"} for item in basis)
     ):
         errors.append("decision_basis must be behavioral_inference or unknown")
     next_step = decision.get("selected_next_step")
@@ -781,7 +765,9 @@ def synthesize_episode_decision(
                     "json_parse_valid": False,
                     "decision_quality_valid": False,
                     "decision_episode_contract_valid": False,
-                    "quality_errors": ["small model did not return a parseable decision JSON object"],
+                    "quality_errors": [
+                        "small model did not return a parseable decision JSON object"
+                    ],
                     "latency_ms_total": round((time.perf_counter() - started) * 1000, 2),
                 }
             valid, errors = _decision_quality_check(episode, decision, allowed_ids)
