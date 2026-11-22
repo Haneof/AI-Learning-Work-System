@@ -473,7 +473,8 @@ class LocalDecisionEpisodeVerifier:
         if raw["status"] == "pass" and unknowns:
             return {
                 "status": "unknown",
-                "reasons": reasons + ["The model reported unresolved unknowns; this level cannot pass."],
+                "reasons": reasons
+                + ["The model reported unresolved unknowns; this level cannot pass."],
                 "evidence_refs": sorted(set(refs)),
                 "unknowns": unknowns,
             }
