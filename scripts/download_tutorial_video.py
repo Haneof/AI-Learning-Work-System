@@ -82,7 +82,9 @@ def _download_wikimedia_fallback(
         "https://upload.wikimedia.org/wikipedia/commons/f/f2/"
         "Wikipedia_Content_Translation_Tool_Tutorial.webm"
     )
-    source_page = "https://commons.wikimedia.org/wiki/File:Wikipedia_Content_Translation_Tool_Tutorial.webm"
+    source_page = (
+        "https://commons.wikimedia.org/wiki/File:Wikipedia_Content_Translation_Tool_Tutorial.webm"
+    )
     caption_query = urlencode(
         {
             "title": "TimedText:Wikipedia Content Translation Tool Tutorial.webm.en.srt",
