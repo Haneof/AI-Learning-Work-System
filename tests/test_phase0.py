@@ -39,6 +39,7 @@ def test_phase0_demo_refuses_to_overwrite_nonempty_output(tmp_path):
         raise AssertionError("Expected non-empty output directory to be rejected")
     assert (output / "user-file.txt").read_text(encoding="utf-8") == "keep"
 
+
 def test_phase0_demo_reports_invalid_output_paths_clearly(tmp_path):
     output_file = tmp_path / "not-a-directory"
     output_file.write_text("keep", encoding="utf-8")

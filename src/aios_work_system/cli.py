@@ -17,9 +17,7 @@ def build_parser() -> argparse.ArgumentParser:
     serve_parser.add_argument("--host", default="127.0.0.1")
     serve_parser.add_argument("--port", type=int, default=8000)
 
-    benchmark_parser = subparsers.add_parser(
-        "benchmark", help="run the model benchmark dataset"
-    )
+    benchmark_parser = subparsers.add_parser("benchmark", help="run the model benchmark dataset")
     benchmark_parser.add_argument("--dataset", required=True)
     benchmark_parser.add_argument("--output-jsonl", default="artifacts/benchmark/results.jsonl")
     benchmark_parser.add_argument("--output-report", default="artifacts/benchmark/report.md")

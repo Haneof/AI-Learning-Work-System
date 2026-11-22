@@ -81,8 +81,4 @@ class KnowledgeRegistry:
         return copy.deepcopy(item)
 
     def list_for_expert(self, expert_id: str) -> list[KnowledgeItem]:
-        return [
-            copy.deepcopy(item)
-            for item in self._items.values()
-            if item.expert_id == expert_id
-        ]
+        return [copy.deepcopy(item) for item in self._items.values() if item.expert_id == expert_id]

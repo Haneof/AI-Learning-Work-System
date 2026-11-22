@@ -28,8 +28,6 @@ jobs:
         run: playwright install --with-deps chromium
       - name: Lint
         run: ruff check .
-      - name: Inspect repository format drift
-        run: ruff format --diff .
       - name: Format check for PR-owned files
         run: >-
           ruff format --check

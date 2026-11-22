@@ -111,10 +111,13 @@ def write_markdown_report(results: list[BenchmarkResult], path: str | Path) -> N
         "|---|---|---|---:|---:|---:|---|",
     ]
     for result in results:
-        checks = ", ".join(
-            f"{name}={'PASS' if passed_check else 'FAIL'}"
-            for name, passed_check in result.checks.items()
-        ) or "no automated checks"
+        checks = (
+            ", ".join(
+                f"{name}={'PASS' if passed_check else 'FAIL'}"
+                for name, passed_check in result.checks.items()
+            )
+            or "no automated checks"
+        )
         lines.append(
             f"| {result.case_id} | {result.category} | {result.model.model_id} | "
             f"{result.latency_ms:.2f} | {result.output_tokens or ''} | "

@@ -109,9 +109,7 @@ def main() -> None:
         "ocr_adapter": "curated-screencast-ocr-stub (illustrative labels, no inference)",
     }
     report_path = Path(args.output_dir).resolve() / "video-learning-report.json"
-    report_path.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    report_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
 
 

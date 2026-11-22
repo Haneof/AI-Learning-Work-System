@@ -48,7 +48,9 @@ def make_item(
         state=state,
         confidence=ConfidenceLabel.HIGH,
         conflict_key=conflict_key,
-        evidence=evidence if evidence is not None else [
+        evidence=evidence
+        if evidence is not None
+        else [
             EvidenceLink(
                 source_id="source-1",
                 segment_id="seg-1",
@@ -159,9 +161,7 @@ def test_conflicting_items_coexist_but_require_review():
 def test_duplicate_id_does_not_mutate_existing_conflict_state():
     registry = KnowledgeRegistry()
     registry.add_segment(make_segment())
-    registry.add_segment(
-        make_segment(segment_id="seg-2", text="The return window is 60 days.")
-    )
+    registry.add_segment(make_segment(segment_id="seg-2", text="The return window is 60 days."))
     registry.add_knowledge(make_item())
     duplicate_id = registry.add_knowledge(
         make_item(
@@ -193,6 +193,7 @@ def test_expert_cannot_read_another_experts_knowledge():
         pass
     else:
         raise AssertionError("cross-expert knowledge access must be denied")
+
 
 def test_registry_deep_copies_segments_and_knowledge_evidence():
     registry = KnowledgeRegistry()

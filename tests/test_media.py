@@ -180,6 +180,7 @@ def test_task_journal_persists_exhausted_failure(tmp_path):
     assert journal.records["broken-source"].state == "FAILED"
     assert journal.records["broken-source"].error == "RuntimeError: broken media"
 
+
 def test_task_journal_reports_corrupt_json_with_a_clear_error(tmp_path):
     journal_path = tmp_path / "corrupt-task-journal.json"
     journal_path.write_text("{ invalid json", encoding="utf-8")

@@ -170,10 +170,10 @@ def _check_python_script(path: Path) -> list[str]:
                         root_name in {"os", "subprocess", "builtins"}
                         and function.attr in blocked_attributes
                     ):
-                        errors.append(
-                            f"{path.name}: blocked call '{root_name}.{function.attr}'"
-                        )
+                        errors.append(f"{path.name}: blocked call '{root_name}.{function.attr}'")
     return errors
+
+
 def _validate_relative_file(root: Path, relative_value: object, label: str) -> list[str]:
     if not isinstance(relative_value, str) or not relative_value.strip():
         return [f"{label} must be a non-empty relative path"]

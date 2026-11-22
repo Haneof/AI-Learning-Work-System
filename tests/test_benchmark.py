@@ -41,6 +41,4 @@ def test_smoke_dataset_runs_and_writes_reports(tmp_path):
 
 
 def test_invalid_json_is_scored_as_failure():
-    assert score_output("not json", {"valid_json_object": True}) == {
-        "valid_json_object": False
-    }
+    assert score_output("not json", {"valid_json_object": True}) == {"valid_json_object": False}

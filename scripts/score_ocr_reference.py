@@ -69,11 +69,7 @@ def main() -> None:
             }
         )
 
-    cer = (
-        total_edits / total_reference_chars
-        if total_reference_chars
-        else 1.0
-    )
+    cer = total_edits / total_reference_chars if total_reference_chars else 1.0
     result = {
         "status": "SCORED" if not missing_frames else "INCOMPLETE",
         "metric": "Chinese-character CER (edit distance / reference characters)",
