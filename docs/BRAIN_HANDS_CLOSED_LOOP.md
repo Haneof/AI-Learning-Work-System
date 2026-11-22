@@ -9,7 +9,7 @@ Hands owns GUI operations. It returns an operation_result correlated by call_id 
 ## Implemented components
 
 - Brain and Hands are replaceable Python protocols in aios_work_system.brain_hands.interfaces.
-- WorkflowBrain is a deterministic workflow-driven stand-in for the future Brain LoRA. It chooses applicable primitive workflow capabilities from current state, conditions, hard dependencies, invariants, and postconditions. It does not replay coordinates or pretend a trained adapter exists.
+- WorkflowBrain is a deterministic workflow-driven stand-in for the future Brain LoRA. It chooses applicable primitive workflow capabilities from current state, conditions, hard dependencies, invariants, and postconditions. It does not replay coordinates or pretend a trained model exists.
 - SimulatedHands applies registered capability handlers to an isolated business-state mapping and returns evidence-linked postcondition checks. shop_listing_handlers() supplies the repository's shop-list-product.workflow.json fixture.
 - BrainHandsLoop refreshes state before the first decision and after every Hands result. It independently checks the result against the fresh observed state and requires every expected postcondition to be reported as passed with evidence. A failed/partial/uncertain result is passed back to the Brain with the latest state; the loop never automatically advances the workflow. The workflow goal is independently checked before accepting the Brain's finish decision.
 - BrowserAgentHandsAdapter bridges the same Hands protocol to the existing BrowserAgent, DecisionModel, Playwright local-origin guard, and JSONL trace. It does not replace the current GUI operation machinery. It requires an application-specific state observer; DOM text or a BrowserAgent done alone is not a substitute for business postcondition verification.
@@ -25,20 +25,83 @@ Run:
 
 ```bash
 python -m pip install -e ".[dev,gui]"
-pytest tests/test_brain_hands.py
+python -m pytest tests/test_brain_hands.py
 ruff check src/aios_work_system/brain_hands tests/test_brain_hands.py
 ruff format --check src/aios_work_system/brain_hands tests/test_brain_hands.py
 ```
 
-## Manual Brain + real Hands harness (not CI)
+## CLI Brain + Hands runner
 
-This path is intentionally manual. It requires a controlled local application, Chromium/Playwright, a local UI-TARS-class operation model (or a local OpenAI-compatible server that emits the repository's constrained GuiAction contract), and a domain-specific state observer. No operation model is downloaded or run by CI.
+The closed loop is available through the existing `aios` console script. The command validates a WorkflowDefinition v0.1 with `contracts/validate.py` before execution, constructs `WorkflowBrain`, runs the selected Hands implementation, and writes `report.json` plus `history.jsonl` under the output directory.
 
-1. Start the target application on loopback only (localhost, 127.0.0.1, or ::1). Do not point the adapter at a production account or an unrestricted external origin. The existing BrowserAgent request guard rejects cross-origin navigation and network requests.
-2. Install the GUI extra and Chromium: python -m pip install -e ".[gui]" and playwright install chromium.
-3. Configure the existing local GUI model endpoint variables: AIOS_GUI_MODEL_BASE_URL, AIOS_GUI_MODEL_NAME, and AIOS_GUI_MODEL_API_KEY. Point them to a local UI-TARS-class serving endpoint only after reviewing its model revision and action schema. The operation model must implement the existing DecisionModel.decide(request) response contract; if its native output differs, translate it at that adapter boundary, not in the Brain.
-4. Implement an async state_observer(page) for the target application. It must return normalized business fields used by the WorkflowDefinition (for example, {"title.status": "verified", "price.status": "set"}) based on a fresh DOM/accessibility or application-state observation. Do not infer success from a model's text response.
-5. Instantiate OpenAICompatibleDecisionModel.from_env(), BrowserAgentHandsAdapter(page, model, state_observer, trace_dir), and BrainHandsLoop(workflow, WorkflowBrain(workflow), hands). Replace WorkflowBrain with the real Brain adapter only when one exists and has passed its own evaluation.
-6. Evaluate the final LoopReport.goal_satisfied and final business state against every workflow success condition. Also inspect each operation result, trace, evidence ref, recovery event, and any partial/failed result. The score is business-goal completion plus safe recovery on alternate states—not click count, selector accuracy, or the model's done token.
+### Simulated example
 
-The manual path above is a harness specification and adapter implementation, not a claim of an executed real-model test. For this code change only the simulated Brain + simulated Hands path is run in CI. No real Brain LoRA adapter, no real Hands model, and no real operation-model request were run.
+Create an inputs file for the repository's shop-list-product example. The handler contract reads `product_title` (also accepts `title`) and `price` from `workflow_inputs`:
+
+```json
+{
+  "initial_state": {
+    "photos.status": "complete",
+    "title.status": "missing",
+    "price.status": "not_set"
+  },
+  "workflow_inputs": {
+    "product_title": "Portable Pet Water Fountain",
+    "price": 39.99
+  }
+}
+```
+
+Save that object as `shop-list-product-inputs.json`, then run:
+
+```bash
+aios run-loop \
+  --workflow contracts/examples/shop-list-product.workflow.json \
+  --inputs shop-list-product-inputs.json \
+  --hands simulated \
+  --brain workflow \
+  --output-dir artifacts/brain-hands/shop-list-product
+```
+
+The example should finish with `status=succeeded`, `goal_satisfied=true`, a verified title, and a set price. The simulated handler does not open a browser or publish a product.
+
+### Browser Hands against a local WooCommerce sandbox
+
+Install Playwright and Chromium:
+
+```bash
+python -m pip install -e ".[dev,gui]"
+playwright install chromium
+```
+
+Configure the existing local OpenAI-compatible operation-model endpoint with `AIOS_GUI_MODEL_BASE_URL`, `AIOS_GUI_MODEL_NAME`, and `AIOS_GUI_MODEL_API_KEY`. There is no fake-model fallback: missing or invalid configuration exits with code 2. The endpoint's model must implement the existing constrained `DecisionModel.decide(request)` contract. Browser mode accepts loopback HTTP(S) URLs only; do not point it at a production store or an unrestricted external origin.
+
+The following is a command template for a future local sandbox. The WooCommerce WorkflowDefinition JSON is a separate acceptance-test deliverable and is intentionally not included in this CLI change:
+
+```bash
+aios run-loop \
+  --workflow path/to/woocommerce-product.workflow.json \
+  --inputs path/to/woocommerce-product-inputs.json \
+  --hands browser \
+  --brain workflow \
+  --url "http://localhost:8080/wp-admin/post-new.php?post_type=product" \
+  --trace-dir artifacts/brain-hands/woocommerce/traces \
+  --output-dir artifacts/brain-hands/woocommerce
+```
+
+Browser mode uses the read-only `woocommerce_product_state(page)` observer for title, product type, regular price, description fields, draft-update notice, and Publish-button visibility. The observer never clicks Publish or writes to the page. Actual operations remain limited to the workflow's registered capabilities; this CLI adds no publishing capability or approval bypass.
+
+### Flags and exit codes
+
+- `--workflow`: required path to a WorkflowDefinition v0.1 JSON file.
+- `--inputs`: optional JSON file with top-level `initial_state` and `workflow_inputs` objects; either may be omitted and defaults to an empty object.
+- `--hands`: `simulated` (default) or `browser`.
+- `--brain`: only `workflow` is accepted; this is the deterministic WorkflowBrain stub, not a LoRA Brain.
+- `--max-decisions`: positive decision limit (default 30).
+- `--output-dir`: report directory (default `artifacts/brain-hands/run`).
+- `--url`: required for browser Hands; must be a loopback HTTP(S) URL.
+- `--trace-dir`: browser-only trace directory (default `<output-dir>/traces`).
+
+Exit code 0 means the loop status is `succeeded` and the independently checked workflow goal is satisfied. Other loop outcomes return 1. Missing/invalid files, workflow validation failures, unsupported configuration, or a missing/unconfigured browser operation model return 2. The loop continues to block high-, critical-, and unknown-risk delegations pending human approval; no `--yes`, `--force`, or auto-approval option is provided.
+
+No real Brain LoRA adapter is present. Browser operation still requires a separately provisioned, locally served GUI DecisionModel and a controlled local application. A successful BrowserAgent `done` action is not enough: the loop verifies business postconditions against a fresh observer state.
