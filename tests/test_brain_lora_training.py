@@ -234,19 +234,19 @@ def test_weighted_materialization_keeps_every_sample_and_repeats_high_weight(tmp
         [_sample(), _sample()],
         [
             _meta(
-            "low",
-            observations=["unknown"],
-            rationales=["unknown"],
-            confidence=0.1,
-            rationale_loss_weight=0.1,
-        ),
+                "low",
+                observations=["unknown"],
+                rationales=["unknown"],
+                confidence=0.1,
+                rationale_loss_weight=0.1,
+            ),
             _meta(
-            "high",
-            observations=["direct_capture"],
-            rationales=["instructor_explicit"],
-            confidence=1.0,
-            rationale_loss_weight=1.0,
-        ),
+                "high",
+                observations=["direct_capture"],
+                rationales=["instructor_explicit"],
+                confidence=1.0,
+                rationale_loss_weight=1.0,
+            ),
         ],
     )
     loaded = load_weighted_split(model_path, sidecar_path, expected_partition="train")
@@ -329,8 +329,7 @@ def test_pr40_style_synthetic_fixture_pipeline_tokenizes_train_and_test_without_
         for line in (tmp_path / "axolotl" / "train.weighted.jsonl").read_text().splitlines()
     ]
     test_rows = [
-        json.loads(line)
-        for line in (tmp_path / "axolotl" / "test.jsonl").read_text().splitlines()
+        json.loads(line) for line in (tmp_path / "axolotl" / "test.jsonl").read_text().splitlines()
     ]
     tokenizer = _SyntheticTokenizer()
     train_tokens = tokenize_dataset(train_rows, tokenizer, max_sequence_length=512)
