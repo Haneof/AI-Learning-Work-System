@@ -2,11 +2,11 @@
 
 ## Role in the learning system
 
-The GUI Agent provides a downstream validation loop for a trained vertical expert. It is not the source-video understanding pipeline and must not be confused with historical mouse/keyboard reconstruction from prerecorded MP4 files.
+The GUI Agent provides runtime validation/execution infrastructure for Brain/Hands workflows. It is not the tutorial source-understanding pipeline: tutorial evidence is extracted from downloaded video files and timed subtitles/ASR. Pixel-derived cursor/click hypotheses remain inferred_from_video.
 
 The target product is a 4B base model with a vertical LoRA adapter trained on double-verified knowledge packages. After adapter loading, the GUI loop tests whether the expert can use the learned principles to complete a goal in a live controlled interface, observe the resulting state, recover from unexpected changes, and generalize beyond the tutorial's exact route.
 
-This loop can capture actual pointer, mouse, keyboard, and input events while the existing Hands model is operating in the controlled environment. Those runtime observations are different from the semantic event stream captured while recording a new tutorial, and different again from inferred historical actions reconstructed from a prerecorded MP4.
+This loop can capture actual pointer, mouse, keyboard, and input events while the existing Hands model is operating in the controlled environment. These are runtime Hands execution observations, not tutorial-ingestion evidence. They may be used to audit a live operation, but they must remain distinct from observations and inferences extracted from downloaded tutorial video files. The previously proposed rrweb/Windows UIA live tutorial recorder/event collector was cancelled on 2026-11-21 and is not part of the current ingestion architecture.
 
 ## Scope
 
@@ -34,7 +34,7 @@ The initial page must use loopback HTTP(S) (`localhost`, `127.0.0.1`, or `::1`).
 
 ## Trace format and replay
 
-Each JSONL trace starts with a `gui-trace-v1` header. Every step records before and after PNG frames, DOM and accessibility snapshots, captured pointer/mouse/keyboard/input events, the structured action, expected and observed result, and a `training_example` pair (`observation -> action`). Text and event metadata for password/secret/token inputs are redacted by the event collector.
+Each JSONL trace starts with a `gui-trace-v1` header. Every step records before and after PNG frames, DOM and accessibility snapshots, captured pointer/mouse/keyboard/input events, the structured action, expected and observed result, and a `training_example` pair (`observation -> action`). Text and event metadata for password/secret/token inputs are redacted by the event collector. The GUI trace's `training_example` observation-to-action pair is a runtime Hands operation trace for replay/evaluation; it is not a Brain LoRA decision sample. The Brain training-sample compiler in PR #40 consumes separately reviewed DecisionEpisodes extracted from downloaded tutorial files.
 
 `TraceReplayer` requires the exact recorded local origin and executes steps in order. A malformed step, recorded error, action failure, or verification mismatch raises `ReplayVerificationError` and stops replay immediately.
 

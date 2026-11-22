@@ -126,3 +126,25 @@ The verifier currently receives structured timestamped extraction evidence rathe
 ## Real tutorial source used by the CI demo
 
 The downloader tries the three user-supplied YouTube IDs first. If YouTube denies runner access, it records each failure and downloads the real Wikipedia Content Translation Tool Tutorial (2 min 8 s) from Wikimedia Commons with its published English SRT captions. The video is by AlexandraShagzhina and is licensed CC BY-SA 4.0. The fallback attribution and licence are written to \`source-manifest.json\`. This is a real browser-tool tutorial file, not a synthetic fixture.
+
+
+## Downstream learning pipeline after extraction
+
+This document describes PR #38's file-based extraction and PR #39's local verifier. The complete repository learning sequence continues through the separately implemented downstream milestones:
+
+1. **PR #38 — extract and validate:** download the tutorial video file; process supplied subtitles or local ASR; decode and select changed frames; run OCR, cursor inference, and local GUI grounding; align narration; assemble a structured DecisionEpisode; validate it against the schema and semantic contract.
+2. **PR #39 — local verifier gate:** evaluate extraction fidelity, decision validity, and outcome validity with a local open-weight verifier. Every level must pass. A video-only temporal sequence is UNKNOWN for causal outcome validity. The verifier consumes timestamped structured extraction evidence, not raw image pixels, so it does not replace independent PM inspection of the original video.
+3. **Independent PM review — admission prerequisite:** local PASS leaves the episode held pending an evidence-linked PM PASS against the source and proposed episode. The extractor does not perform or bypass this independent review.
+4. **PR #40 — training-sample compiler:** compile only episodes that have local verification PASS, independent PM PASS, approved review, eligible annotation state, and quality/trainable approval. It creates one decision-time conversational sample per decision point, source-grouped train/test partitions, a manifest, and separate training metadata sidecars. The assistant target excludes future Hands execution outcomes.
+5. **PR #41 — Brain LoRA setup:** prepare metadata-aware training/held-out datasets and validate the Qwen3 4B Axolotl/T4 FP16 LoRA configuration. This is training setup only. PR #41 did not execute an actual training run or produce adapter weights; an eligible real corpus, provisioned compute, and recorded training run remain required.
+6. **PR #42 — Brain+Hands closed loop:** provide typed business-level delegation and Hands result contracts, fresh observation and independent postcondition verification, recovery/replanning, a deterministic WorkflowBrain stand-in, SimulatedHands, and a BrowserAgentHandsAdapter bridge. The CI acceptance uses the deterministic Brain and simulated Hands. No trained Brain adapter or real UI-TARS-class operation model was run.
+
+The intended conceptual chain is therefore:
+
+`downloaded video file` → `subtitle/ASR + frame-change-driven evidence extraction` → `DecisionEpisode + contract validation (#38)` → `local verifier (#39)` → `independent PM evidence review` → `training-sample compiler (#40)` → `Brain LoRA dataset/configuration (#41)` → `Brain+Hands closed-loop harness (#42)`.
+
+The milestones are separate components and harnesses, not yet one deployed end-to-end production service. In particular, PR #38's current pipeline invokes the local verifier after episode validation and writes a proposed episode/admission report; it does not automatically create or approve training samples. PR #40 is the separate compiler, PR #41 is a training setup rather than a completed training run, and PR #42's CI is a simulated Brain/Hands acceptance path rather than a real-model run.
+
+## Superseded live tutorial recorder route
+
+The earlier proposed live-recorder/event-collector route (rrweb for web tutorials and Windows UI Automation for desktop tutorials) was **cancelled on 2026-11-21** and superseded by downloaded-video-file extraction. It was cancelled because the chosen learning path operates on available tutorial files and does not require installing and synchronizing a recorder inside each live application/session. Preserve the proposal as historical design context only; it is not an active primary route or a required fallback.

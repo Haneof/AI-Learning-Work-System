@@ -1,88 +1,120 @@
 # Engineering Roadmap
 
-**Version:** 0.1 design update  
+**Version:** updated after PRs #38–#42  
 Stage order is governed by evidence and quality gates. Do not scale tutorial volume to compensate for a weak learning signal.
 
-## Stage 0 — Source and recording baseline
+## Selected route and superseded decision
+
+The primary learning route is **downloaded tutorial video files processed offline**. The pipeline prefers existing timestamped subtitles, uses local ASR only when needed, decodes sampled frames with FFmpeg, detects actual screen changes, runs OCR and cursor/UI-target inference on selected frames, aligns narration, and creates DecisionEpisodes.
+
+**Superseded — cancelled 2026-11-21:** the previously proposed rrweb web-recorder / Windows UI Automation desktop-recorder event-collector route was cancelled. It was replaced by file-based extraction because tutorials can be processed from downloaded files without installing and synchronizing a recorder in every live application/session. Retain the old proposal as history only, not an active ingestion route or required fallback.
+
+Frames are not rejected. Uncontextualized screenshot dumps are insufficient, but frame-change-driven extraction combined with transcript/ASR, OCR, cursor inference, target grounding, provenance, and verification is the selected method.
+
+## Stage 0 — Acquire and preserve video files
+
+**Status:** downloader implementation exists; full production cloud archive integration remains a separate integration task.
 
 **Deliverables**
-- Tutorial discovery and cloud download into the 5TB Google Drive.
-- Creator/series/course archive layout and one source-link/platform record per video.
-- Recording profile for new tutorials with rrweb web-event capture or Windows UI Automation event capture.
-- Synchronized instructor audio and source/session metadata.
+- Tutorial video file and available subtitle files.
+- Source URL/platform, creator/course grouping, source hash, and attribution/license metadata.
+- One acquisition record for each selected file.
 
 **Exit criteria**
-- Directly captured event records have stable timestamps, source/session references, and enough context to reconstruct UI state changes.
-- Capture gaps, unsupported controls, and provider limitations are recorded rather than silently ignored.
+- Source file is reproducibly available to the local extraction pipeline.
+- Attribution, licensing, source identity, and hash are retained.
+- Unknown metadata remains unknown rather than guessed.
 
-## Stage 1 — Narration alignment and Decision Episode extraction
+## Stage 1 — Video-file extraction and DecisionEpisode validation (PR #38)
+
+**Status:** implemented and merged.
 
 **Deliverables**
-- Existing-subtitle-first workflow; ASR fallback only when usable subtitles are absent.
-- Word- or segment-level narration alignment to the recording timeline.
-- Decision Episodes joining goal, state, instructor explanation, behavioral inference, selected operation, result, and next decision.
-- Evidence labels separating direct capture, legacy-video inference, instructor-explicit rationale, behavioral inference, user-provided rules, and unknown information.
+- Existing-subtitle-first parsing and local faster-whisper fallback.
+- FFmpeg timestamped frame sampling and pixel-difference screen-change detection.
+- Tesseract OCR on initial/changed frames.
+- OpenCV cursor and possible-click inference.
+- Local ShowUI/UI-TARS grounding on selected changed frames with measured escalation gates.
+- Timestamp alignment between narration and visual change events.
+- Structured DecisionEpisode assembly and contract/schema validation.
+- Per-stage reports and evidence artifacts.
 
 **Exit criteria**
-- Independent reviewers can trace each important claim to a source event or narration segment.
-- The dataset does not invent spoken reasons or upgrade reconstructed video events to directly captured telemetry.
-- Decision Episodes represent decision points, not just a replayable click list.
+- Every episode claim references timestamped source evidence or is explicitly unknown/inferred.
+- Video-derived hypotheses are never labelled as native DOM, UIA, mouse, or keyboard telemetry.
+- Contract validity is kept separate from truth, independent review, and training approval.
 
-## Stage 2 — HTN workflow construction and review
+## Stage 2 — Local verifier and independent PM gate (PR #39)
+
+**Status:** local verifier implemented and merged; real approved corpus still required.
 
 **Deliverables**
-- Hierarchical tasks, methods, conditional branches, hard dependencies, soft preferences, and explicit ordering constraints.
-- Preconditions, postconditions, invariants, operation capabilities, transitions, and recovery rules.
-- Source/tutorial/software-version/applicability scope for each workflow.
-- Duplicate handling and conflict coexistence.
-- Dual review and quality/trainable gates.
+- Local open-weight verifier for extraction fidelity, decision validity, and outcome validity.
+- Separate pass/fail/unknown verdicts, reasons, evidence references, and unknowns.
+- Fail-closed preliminary training admission.
+- Independent PM verification using the original source and proposed episode.
 
 **Exit criteria**
-- Workflow semantics survive changes in starting state and alternative valid paths.
-- No conflicting tutorial or software-version workflow is silently overwritten.
-- Only examples passing both gates enter the approved training snapshot.
+- All three local levels pass; there is no majority-vote override.
+- PM review separately passes and cites source evidence and reviewed episode claims.
+- Video-only temporal ordering is not accepted as causal proof of an operation outcome.
 
-## Stage 3 — Brain LoRA training
+## Stage 3 — Training-sample compiler (PR #40)
+
+**Status:** implemented and merged.
 
 **Deliverables**
-- Versioned Brain training dataset in conversational JSONL.
-- Separate training_meta sidecar for evidence_tier and rationale_loss_weight.
-- Normal-decision and error-recovery samples.
-- Tutorial/course/source-level train/test split.
-- Cloud LoRA training, adapter lineage, and reproducible loading.
+- One conversational Brain sample per decision point.
+- Compiler checks for local verification, PM evidence review, annotation status, quality/trainable flags, and exclusion reasons.
+- Source/course-grouped train/test splits, manifest, and separate training metadata sidecars.
+- Decision-time input only; future Hands outcomes do not leak into earlier assistant targets.
 
 **Exit criteria**
-- Training targets contain only the Brain's next decision, not future Hands execution outcomes.
-- The Brain can decompose tasks, check workflow preconditions, choose branches, select capabilities, ask for missing information, and recover from simulated Hands errors.
-- Volatile workflow rules are supplied in the runtime HTN slice rather than memorized as immutable weights.
+- Held, rejected, incomplete, or misaligned examples are excluded fail-closed.
+- Sidecar metadata is not inserted into model-facing messages.
+- At least two distinct eligible source groups exist before claiming a meaningful train/test evaluation split.
 
-## Stage 4 — Brain-to-Hands integration and expert validation
+## Stage 4 — Brain LoRA preparation and training (PR #41)
+
+**Status:** preparation and T4 Axolotl configuration implemented and merged; actual training not run.
 
 **Deliverables**
-- Versioned delegation and execution-result JSON contracts.
-- Hands adapter to the existing GUI operation model (do not build a replacement operation model).
-- Simulated executor for Brain-only decision testing.
-- Docker sandbox and live GUI operation loop for end-to-end tests.
+- Metadata-aware train/test sidecar alignment and exclusion checks.
+- Bounded evidence-weighted train-row repetition; test split remains unchanged.
+- `DreamFast/qwen3-4b-heretic` Transformers checkpoint configuration.
+- T4-compatible FP16 LoRA configuration and tokenization/config validation.
 
-**Exit criteria**
-- Business postconditions are verified; low-level action success alone is insufficient.
-- The Brain handles success, failure, partial success, blocked, and ambiguous Hands results.
-- Tests cover unseen tasks, alternative valid paths, changed UI/business states, recovery, safe stop, and unauthorized side-effect prevention.
+**Remaining exit criteria**
+- Obtain enough real dual-approved examples and source groups.
+- Run the actual configured training job on provisioned compute.
+- Record base revision, dataset hash, run configuration, resource usage, metrics, and adapter hash.
+- Evaluate the trained adapter on held-out decision points and unseen workflow variations.
 
-## Stage 5 — Multiple vertical experts
+The merged configuration is not a trained adapter. PR #41 explicitly did not download the checkpoint, run Axolotl optimization, or produce weights.
+
+## Stage 5 — Brain-to-Hands closed loop (PR #42)
+
+**Status:** protocol, loop, simulator, and adapter bridge implemented and merged.
 
 **Deliverables**
-- Shared base model with separate vertical LoRA adapters.
-- Versioned local workflow libraries and capability registries.
-- Independent held-out evaluation and controlled expert coordination.
+- Typed business-level Brain delegation and Hands execution-result contracts.
+- WorkflowDefinition-driven deterministic Brain test stand-in.
+- SimulatedHands business-state executor.
+- Fresh observation and independent postcondition verification after every Hands result.
+- Failure/partial/uncertain-result recovery and safe stop behavior.
+- BrowserAgentHandsAdapter reusing the existing GUI execution machinery.
 
-**Exit criteria**
-- Each vertical expert can be independently evaluated, upgraded, rolled back, and scoped.
-- Cross-expert workflow sharing is explicit and provenance-preserving.
+**Remaining exit criteria**
+- Add a serving adapter for the actual trained Brain LoRA.
+- Run and evaluate the real Hands operation model manually against a controlled local app.
+- Test business-goal completion, alternate paths, partial failures, safe recovery, and postcondition evidence—not click count.
+- Integrate and test the full extraction → approved dataset → trained Brain → Hands path as one usable workflow.
+
+The PR #42 CI acceptance used only the deterministic Brain stand-in and SimulatedHands. No real Brain adapter or real UI-TARS-class Hands model was run.
 
 ## Historical model experiment
 
-The earlier Colab T4 blind comparison of Qwen3-VL-4B and Mage-VL-4B was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It did not produce a validated model winner. The frame-based extraction route was rejected; the semantic event-stream plus narration route is the current design.
+The earlier Qwen3-VL-4B vs Mage-VL-4B blind comparison on Colab T4 was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It was not a completed winner-selection benchmark; no model winner is claimed. That experiment did **not** reject frame extraction and is not the reason the tutorial-ingestion route changed.
 
 ## Engineering management
 

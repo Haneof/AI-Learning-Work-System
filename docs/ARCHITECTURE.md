@@ -2,39 +2,50 @@
 
 ## Product architecture: Brain and Hands
 
-The system's primary product is a set of domain experts: a shared language-model base with different vertical LoRA adapters. Each adapter trains the **Brain** to reason about a business workflow. The **Hands** are an existing GUI operation model that performs live page perception and low-level interaction.
+The system's product is a domain expert: a language-model base with a vertical LoRA that learns business workflow decisions. The **Brain** reasons about goals, state, constraints, task order, branches, capability choice, verification, and recovery. The **Hands** are an existing GUI operation model and adapter that perceive the live page and perform low-level interactions.
 
-- **Brain:** understands the business goal, current state, rules and constraints; decomposes tasks; chooses methods and branches; delegates high-level capabilities; verifies results; and recovers from errors.
-- **Hands:** identifies live page controls and performs concrete UI operations such as click, type, scroll, and navigation. Reuse a ready-made operation model (for example, UI-TARS) through an adapter. Do not build a new page-recognition or low-level action model as the Brain training project.
-- **Tutorial event recorder:** supplies the behavior evidence from which the Brain learns.
-- **Narration aligner:** provides the instructor's explicit goals, reasons, and constraints on the same timeline as the UI events.
+- **Brain:** interprets a business goal, uses a versioned workflow slice, chooses what should happen next and why, delegates a high-level capability, and reacts to the verified result.
+- **Hands:** identifies live page controls and performs concrete UI operations such as click, type, scroll, and navigation. Reuse an operation model (for example, UI-TARS) rather than training a duplicate perception/action model as part of Brain learning.
+- **Video-file extraction:** processes downloaded tutorial files offline and converts transcript, visible screen changes, OCR, and inferred cursor/target hypotheses into evidence for DecisionEpisodes.
+- **Local verifier and PM gate:** checks the episode's evidence and decision quality before any training admission.
+- **Training compiler and LoRA setup:** converts only approved decision points into model-facing samples and prepares the configured Brain LoRA training data.
 
 A transcript, summary, or fixed click sequence is not the product. The target is a Brain that can select a suitable workflow path and direct the Hands to accomplish the business objective.
 
-## Four-step data flow
+## Current learning and runtime data flow
 
-1. **Acquire:** web-search target-vertical tutorials; use a cloud downloader to store them directly in the 5TB Google Drive; group by creator and series/course; retain a source-link/platform record per video.
-2. **Capture and align:**
-   - for new web tutorials, record semantic rrweb events from session start: DOM mutations, interactions, focus, scrolling, input changes, navigation and timestamps;
-   - for new Windows desktop tutorials, record supported Windows UI Automation events, element identities, property/state changes and timestamps;
-   - preserve the instructor's voice and align supplied subtitles or ASR fallback to word/segment timestamps;
-   - for legacy MP4 files without event telemetry, reconstruct only supportable events from the recording and mark them inferred_from_video.
-3. **Build and review workflow knowledge:** align events and narration into Decision Episodes; construct HTN workflows with methods, conditions, hard dependencies, soft preferences, explicit ordering constraints, invariants, transitions and recovery rules; preserve source conflicts and require both review gates.
-4. **Train and operate:** train the Brain LoRA from approved conversational decision samples. At runtime, supply the applicable local HTN workflow slice, let the Brain delegate a high-level capability to the existing Hands adapter, receive a structured execution result, and decide the next action.
+1. **Acquire video files:** download source tutorials and available subtitle files; preserve source URL, platform, attribution/license, course grouping, and content hash.
+2. **Extract from the local file (PR #38):**
+   - prefer usable SRT/WebVTT captions; use local faster-whisper ASR only when no usable timed subtitles are available;
+   - use FFmpeg to decode sampled frames from the downloaded file;
+   - use pixel-difference screen-change detection to select initial/changed frames;
+   - OCR selected visual states; infer cursor/possible-click candidates and ground UI targets on selected changed frames;
+   - align timestamped transcript segments to visual events and produce a structured DecisionEpisode;
+   - validate the episode with the versioned schema and semantic validator.
+3. **Apply the local verifier gate (PR #39):** independently score extraction fidelity, decision validity, and outcome validity. All three must pass. A local pass is not enough for training admission; PM independent review and cited evidence are also required.
+4. **Compile approved decision points (PR #40):** fail closed on missing/failed local verification, PM review, annotation approval, or quality/trainable flags. Emit conversational samples, source-grouped train/test splits, and separate training-metadata sidecars.
+5. **Prepare the Brain LoRA (PR #41):** metadata-aware train/test preparation and configuration validation for the Qwen3 4B Brain LoRA profile. A training setup is present; a trained adapter is not thereby produced.
+6. **Operate through Brain and Hands (PR #42):** the Brain emits a typed high-level delegation; Hands returns a correlated result; the loop observes fresh state, verifies postconditions, and replans/recoveries on failure or uncertainty.
 
-Frame extraction is not the primary tutorial-learning route. A legacy MP4 reconstruction may use recording inspection as a fallback, but reconstructed interactions remain inferred rather than direct telemetry.
+The extractor, verifier, compiler, training setup, and Brain/Hands harness are separate repository components. Their presence does not mean there is a deployed end-to-end service, a trained Brain adapter, or a real Hands model run.
+
+## Superseded live-recorder route — cancelled 2026-11-21
+
+The earlier proposal to capture rrweb events from live web tutorials and Windows UI Automation events from live desktop tutorials was **cancelled on 2026-11-21**. It was superseded by the downloaded-video-file route because the selected workflow can process tutorial files already available for download without installing a recorder into each target application/session or synchronizing a live event-collection channel. This event-stream route remains historical design context, not an active ingestion path or required fallback.
+
+Frame extraction is part of the selected route, but it is frame-change-driven and evidence-combined—not a blind screenshot-only action log. The video contains no native mouse/keyboard/DOM/UIA telemetry. Cursor/click and UI target candidates inferred from pixels remain labelled `inferred_from_video`.
 
 ## Runtime Brain-to-Hands loop
 
 1. The user or calling system supplies a business goal and current known state.
-2. The Brain loads the relevant local HTN workflow slice and available operation capabilities.
+2. The Brain loads the applicable local HTN workflow slice and registered operation capabilities.
 3. The Brain checks preconditions and selects the next business subtask or asks for missing information/approval.
-4. For an executable operation, the Brain emits a high-level delegation containing objective, capability ID, arguments, constraints, expected postconditions and observation requirements.
+4. For an executable operation, the Brain emits a high-level delegation containing objective, capability ID, arguments, constraints, expected postconditions, and observation requirements.
 5. The Hands adapter maps the capability to the existing operation model and performs page interaction.
-6. Hands returns status, observed state, postcondition results, error category and evidence references.
-7. The Brain verifies the result and chooses continue, branch, recover, replan, ask, request approval, finish, or stop.
+6. Hands returns status, observed state, per-postcondition results, error category, and evidence references.
+7. The loop obtains a fresh state observation and independently checks postconditions before allowing progress. Failed, partial, stale, or uncertain results return to Brain for re-planning/recovery; a successful click alone is not business success.
 
-A successful low-level tool call is not proof that the business task succeeded. The Brain advances only when the relevant postconditions are supported.
+PR #42's current CI acceptance uses a deterministic `WorkflowBrain` stand-in and `SimulatedHands`. `BrowserAgentHandsAdapter` bridges the same protocol to the existing BrowserAgent, but requires a domain-specific fresh business-state observer. No real Brain LoRA adapter or real UI-TARS-class operation model was run for that PR.
 
 ## Workflow representation
 
@@ -45,44 +56,49 @@ Volatile business rules remain in versioned workflow data and are supplied local
 ## Evidence and provenance
 
 For every decision-driving fact, retain:
-- source tutorial/session identity and content hash;
-- event ID/type, timestamp, target/element reference, and captured before/after state where available;
-- narration segment and word/utterance timestamps;
-- observation channel (direct capture or inferred from legacy video);
-- rationale source (instructor explicit, behavioral inference, hybrid, not applicable, or unknown);
-- confidence and explicit unknowns;
+- source tutorial/file identity, content hash, and timestamp range;
+- decoded visual frame and screen-change references;
+- visible OCR text and bounding boxes;
+- timestamped subtitle/ASR segment IDs and transcript method;
+- observation channel: `observed_from_video`, `inferred_from_video`, or unknown as applicable;
+- rationale source: instructor-explicit, behavioral inference, hybrid, not applicable, or unknown;
+- confidence, explicit unknowns, and conflicting interpretations;
 - workflow source, software version, and applicability.
 
-Do not label a reconstructed MP4 interaction as a direct rrweb/Windows UIA event. An instructor quote records what was said, not an automatically verified universal business rule. Preserve conflicting workflows rather than silently normalizing them.
+A downloaded video can directly support claims about visible pixels and recorded speech. It cannot establish hidden clicks, key presses, DOM mutations, or that an operation actually executed. Do not relabel an inferred action as direct event telemetry. An instructor quote records what was said, not an automatically verified universal business rule.
 
-## Layered services
+## Layered services and milestone mapping
 
-- **Acquisition:** web discovery, platform adapters, cloud download, course grouping, download records, Drive archive.
-- **Event capture:** rrweb for web tutorials; Windows UI Automation for Windows desktop tutorials.
-- **Narration:** subtitle discovery, ASR fallback, audio alignment, transcript provenance.
-- **Decision extraction:** event/narration alignment, Decision Episodes, conditions, reasons, operation choices, results, and next decisions.
-- **Workflow service:** HTN tasks/methods, conditional transitions, invariants, capabilities, recovery rules, and versions.
-- **Review and knowledge:** source verification, deduplication, conflicts, evidence validation, GPT/PM review, SQLite persistence.
-- **Brain training/runtime:** conversational JSONL dataset, LoRA jobs, runtime HTN context, decision generation.
-- **Hands adapter:** maps high-level capability delegations to the existing GUI operation model and normalizes return messages.
-- **Validation harness:** simulated Hands executor, skill package compiler, static checks, Docker sandbox, and live GUI operation loop.
-- **Orchestrator/audit:** task state, resource scheduling, authorization, retries, logs, and provenance.
+- **Acquisition:** discovery, downloading tutorial files/subtitles, source/course records, archive metadata.
+- **Video-file extraction (#38):** subtitle/ASR, FFmpeg sampling, screen-change detection, OCR, cursor/click hypotheses, local UI grounding, narration alignment, DecisionEpisode construction, contract validation.
+- **Local verification (#39):** extraction-fidelity, decision-validity, and outcome-validity verdicts with evidence references and unknowns; PM review remains a separate gate.
+- **Training-sample compiler (#40):** dual-gate and quality admission, decision-point sample creation, grouped splits, sidecar and manifest generation.
+- **Brain LoRA setup (#41):** metadata-aware dataset preparation and a validated Axolotl configuration; not a completed training run.
+- **Brain/Hands (#42):** typed protocols, workflow-driven test Brain, simulated Hands, state/postcondition checks, and BrowserAgent adapter.
+- **Validation harness:** unit/contract tests, simulated business-state tests, local model harnesses, sandbox and GUI execution tests.
 
-MVP may remain a modular monolith with separate worker processes; do not turn every logical boundary into a microservice prematurely.
+The implementation can remain a modular monolith with worker processes; do not turn every logical boundary into a microservice prematurely.
 
 ## Storage
 
-- Google Drive: original tutorials organized by platform/creator/series, plus large media assets.
-- SQLite: download metadata, semantic UI events, narration segments, Decision Episodes, workflow versions, evidence links, conflicts, reviews, training-dataset membership, and lineage.
-- Training artifacts: versioned cloud outputs, base-model revision, adapter weights, run configuration, and benchmark reports.
-- Git: documentation, contracts, validation rules, and code; never commit source videos, secrets, or model weights.
+- **Video archive:** original tutorial files, supplied subtitles, source URL, platform, creator/course, attribution/license, and content hash.
+- **Extraction artifacts:** transcript, sampled frames, screen-change metadata, OCR, cursor/target hypotheses, narration alignment, source evidence, proposed DecisionEpisode, and validation/verifier reports.
+- **Training artifacts:** approved review bundles, conversational JSONL, sidecar metadata, source-grouped split manifest, dataset snapshot, training configuration, run logs, and adapter lineage.
+- **Runtime artifacts:** workflow definitions, capability registry, Brain decision history, Hands result, fresh state observations, postcondition evidence, and execution trace.
+- **Git:** source, contracts, documentation, and tests; never commit tutorial videos, secrets, or model weights.
 
 ## Compute and experiment status
 
-- Initial Brain LoRA planning target: 4B. Planning assumption: 4B BF16 LoRA on T4 16GB; 9B requires 24GB+ GPU. Actual fit and peak VRAM must be measured.
-- Existing local RTX 3070 8GB supports development and lightweight processing; it is not assumed to be the primary 4B BF16 trainer.
-- The previous Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It was not a completed winner-selection benchmark. The frame-based route was rejected as the primary learning method; the current input design is semantic UI events plus instructor narration.
+The extraction path uses local open-weight inference. It does not send video, frame, OCR, transcript, or episode content to GPT, Gemini, or hosted model APIs. Model-weight downloads, when permitted by the documented measured escalation gates, are separate from inference.
 
-## Existing implementation boundary
+The earlier Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It was not a completed winner-selection benchmark; no winner was selected. That experiment did not reject frame extraction. The selected path is the downloaded-video, frame-change-driven extraction route.
 
-The repository has real FFmpeg media operations, ASR/OCR Protocols with static test adapters, a basic video-learning provenance path, SQLite-backed knowledge/skill components, a GUI Agent, and an OpenAI-compatible GUI decision adapter. It does not yet contain the complete event-capture/narration-alignment/Decision Episode/HTN/Brain LoRA/Brain-to-Hands pipeline. Do not describe interface stubs or supplied-caption integration tests as completed direct event capture or Brain workflow learning.
+## Implementation boundary
+
+- PR #38 provides the video-file extraction, DecisionEpisode builder, and contract validation.
+- PR #39 adds the local verifier gate. A separate PM evidence-linked PASS is still required.
+- PR #40 adds the fail-closed DecisionEpisode-to-training-sample compiler.
+- PR #41 adds the Brain LoRA dataset preparation and training configuration. No trained adapter is implied.
+- PR #42 adds the Brain/Hands protocol and loop. Its passing CI uses a deterministic Brain stand-in and SimulatedHands; the real operation-model harness is documented, not executed.
+
+The code milestones are merged and tested, but the real-world end-to-end expert still needs eligible PM-approved training data, an actual LoRA run, and real Hands evaluation.
