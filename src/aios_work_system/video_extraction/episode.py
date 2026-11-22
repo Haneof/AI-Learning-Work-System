@@ -71,13 +71,11 @@ def build_decision_episode(
     grounded_results = [
         result
         for result in vlm_results
-        if result.get("status") == "completed"
-        and str(result.get("likely_action", "unknown")).lower() != "unknown"
-        and str(result.get("visible_ui_element", "unknown")).lower() != "unknown"
+        if result.get("status") == "completed" and result.get("point_norm") is not None
     ]
     inferred_refs = [str(item["event_id"]) for item in cursor_events if item.get("event_id")]
     inferred_refs.extend(
-        f"vlm-grounding-{index:04d}"
+        str(result.get("event_id") or f"ui-grounding-{index:04d}")
         for index, result in enumerate(vlm_results, start=1)
         if result in grounded_results
     )
@@ -168,7 +166,7 @@ def build_decision_episode(
                 "confidence": min(1.0, max(confidence_values + [0.0])),
                 "labels": ["inferred_from_video"],
                 "capture_method": (
-                    "cursor-settle heuristic and Qwen3-VL grounding on changed frames only"
+                    "cursor-settle heuristic and local ShowUI-2B/UI-TARS grounding on changed frames only"
                 ),
                 "source_locator": {
                     "start_ms": 0,
@@ -178,7 +176,8 @@ def build_decision_episode(
                 "raw_record_ref": "video-extraction/inferred-actions.json",
                 "claim": (
                     "Possible target elements and actions are inferred from cursor candidates, "
-                    "screen changes, OCR, narration context, and VLM outputs. No click telemetry "
+                    "screen changes, OCR, narration context, and local GUI grounding outputs. "
+                    "No click telemetry "
                     "exists in the downloaded video; these are not observed click facts."
                 ),
             }
@@ -193,15 +192,15 @@ def build_decision_episode(
     if grounded_results:
         first = grounded_results[0]
         selected_strategy = (
-            f"VLM inference at {first['timestamp_ms']} ms: "
-            f"{first.get('likely_action')} involving "
-            f"{first.get('visible_ui_element') or 'an uncertain UI element'}."
+            f"A local GUI grounding model localized a possible target at "
+            f"{first['timestamp_ms']} ms: "
+            f"{first.get('visible_ui_element') or 'an unlabeled UI region'}."
         )
         basis = ["behavioral_inference"]
         rationale = (
-            "Qwen3-VL was prompted only with frames selected by the frame-change detector. "
-            "Its UI target/action is an inference grounded with OCR and nearby narration, "
-            "not a directly observed click or a general business rule."
+            "ShowUI-2B or the UI-TARS fallback was run locally only on frames selected by "
+            "the frame-change detector. Its normalized point and OCR label are target "
+            "localization hypotheses; they do not prove that a click occurred."
         )
     elif cursor_events:
         first = cursor_events[0]

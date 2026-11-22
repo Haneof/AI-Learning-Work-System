@@ -22,12 +22,45 @@ def main() -> int:
     parser.add_argument("--ocr-language", default="eng")
     parser.add_argument("--whisper-model", default="tiny")
     parser.add_argument("--language")
+    parser.add_argument("--ui-model-path", type=Path, default=Path("artifacts/models/showui-2b"))
     parser.add_argument(
-        "--vlm-model",
-        default="Qwen/Qwen3-VL-2B-Instruct",
-        help="Qwen3-VL model ID; pass 'none' to disable VLM.",
+        "--ui-secondary-small-model-path",
+        type=Path,
+        default=Path("artifacts/models/ui-tars-2b"),
     )
-    parser.add_argument("--maximum-vlm-frames", type=int, default=24)
+    parser.add_argument(
+        "--ui-fallback-model-path",
+        type=Path,
+        default=Path("artifacts/models/ui-tars-7b"),
+    )
+    parser.add_argument(
+        "--ui-secondary-small-model-path",
+        type=Path,
+        default=Path("artifacts/models/ui-tars-2b"),
+    )
+    parser.add_argument(
+        "--grounding-benchmark",
+        type=Path,
+        help="Human-annotated changed-frame target bounding boxes used to measure grounding accuracy.",
+    )
+    parser.add_argument(
+        "--episode-model-path",
+        type=Path,
+        default=Path("artifacts/models/aurum-4b-q4.gguf"),
+    )
+    parser.add_argument(
+        "--episode-fallback-model-path",
+        type=Path,
+        default=Path("artifacts/models/deepseek-v4-pro-9b-q4.gguf"),
+    )
+    parser.add_argument(
+        "--allow-model-download",
+        action="store_true",
+        help="Allow Hugging Face to download model WEIGHTS only; all inference remains local.",
+    )
+    parser.add_argument("--minimum-grounding-accuracy", type=float, default=0.75)
+    parser.add_argument("--maximum-changed-frames", "--maximum-vlm-frames", dest="maximum_vlm_frames", type=int, default=24)
+    parser.add_argument("--llama-gpu-layers", type=int, default=-1)
     parser.add_argument("--source-id")
     parser.add_argument("--source-platform", default="youtube")
     args = parser.parse_args()
@@ -38,8 +71,16 @@ def main() -> int:
             ocr_language=args.ocr_language,
             whisper_model=args.whisper_model,
             language=args.language,
-            vlm_model=None if args.vlm_model.lower() == "none" else args.vlm_model,
+            ui_model_path=args.ui_model_path,
+            ui_fallback_model_path=args.ui_fallback_model_path,
+            ui_secondary_small_model_path=args.ui_secondary_small_model_path,
+            grounding_benchmark_path=args.grounding_benchmark,
+            episode_model_path=args.episode_model_path,
+            episode_fallback_model_path=args.episode_fallback_model_path,
+            allow_model_download=args.allow_model_download,
             maximum_vlm_frames=args.maximum_vlm_frames,
+            minimum_grounding_accuracy=args.minimum_grounding_accuracy,
+            llama_gpu_layers=args.llama_gpu_layers,
         )
         metadata = {
             "video_id": args.source_id or args.input.stem,

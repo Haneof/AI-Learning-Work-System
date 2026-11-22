@@ -6,8 +6,11 @@ on:
     paths:
       - "src/aios_work_system/video_extraction/**"
       - "scripts/download_tutorial_video.py"
+      - "scripts/download_video_models.py"
       - "scripts/run_video_file_pipeline.py"
       - "tests/test_video_file_extraction.py"
+      - "tests/test_local_video_models.py"
+      - "tests/fixtures/video_grounding_benchmark.wikimedia.json"
       - "docs/VIDEO_FILE_EXTRACTION_PIPELINE.md"
       - "contracts/decision-episode.schema.json"
       - "pyproject.toml"
@@ -20,7 +23,7 @@ permissions:
 jobs:
   quality:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -42,55 +45,56 @@ jobs:
 
   real-tutorial-demo:
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 120
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
           cache: pip
-      - name: Install FFmpeg, Tesseract, yt-dlp, Whisper and OpenCV
+      - name: Install media tools and open-model inference dependencies
+        env:
+          CMAKE_ARGS: "-DGGML_NATIVE=OFF"
         run: |
           sudo apt-get update
-          sudo apt-get install -y ffmpeg tesseract-ocr
+          sudo apt-get install -y ffmpeg tesseract-ocr cmake build-essential
           python -m pip install --upgrade pip
-          python -m pip install -e ".[dev,video]"
-      - name: Download one real test tutorial video file and timed captions
+          python -m pip install -e ".[dev,video,video-open-models]"
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
+      - name: Download one real tutorial video file and timed captions
         run: |
           mkdir -p artifacts/video-file-demo/source artifacts/video-file-demo/output
           python scripts/download_tutorial_video.py --output-dir artifacts/video-file-demo/source
           cat artifacts/video-file-demo/source/source-manifest.json
-      - name: Install CPU PyTorch and Qwen3-VL Transformers
-        continue-on-error: true
-        run: |
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
-          python -m pip install "transformers>=4.57.0,<5" "accelerate>=1,<2"
-          python - <<'PY'
-          from transformers import Qwen3VLForConditionalGeneration
-          import torchvision
-          print("Qwen3-VL Transformers class available:", Qwen3VLForConditionalGeneration.__name__)
-          print("Torchvision version:", torchvision.__version__)
-          PY
-      - name: Run downloaded video through the extraction pipeline
+      - name: Download open-weight small-first models (weights only)
         env:
-          HF_HOME: ${{ runner.temp }}/huggingface
+          HF_HUB_DISABLE_TELEMETRY: "1"
+        run: |
+          python scripts/download_video_models.py --model-dir artifacts/models
+          cat artifacts/models/model-manifest.json
+      - name: Run downloaded video using local open-weight models only
+        env:
+          HF_HUB_OFFLINE: "1"
+          TRANSFORMERS_OFFLINE: "1"
+          HF_HUB_DISABLE_TELEMETRY: "1"
         run: |
           VIDEO_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_path"])')"
           CAPTIONS_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["captions_path"] or "")')"
           SOURCE_ID="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_id"])')"
           SOURCE_PLATFORM="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["extractor"])')"
-          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform "$SOURCE_PLATFORM" --sample-fps 2 --maximum-vlm-frames 24)
+          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform "$SOURCE_PLATFORM" --sample-fps 2 --maximum-changed-frames 8 --minimum-grounding-accuracy 0.75 --ui-model-path artifacts/models/showui-2b --ui-secondary-small-model-path artifacts/models/ui-tars-2b --ui-fallback-model-path artifacts/models/ui-tars-7b --grounding-benchmark tests/fixtures/video_grounding_benchmark.wikimedia.json --episode-model-path artifacts/models/aurum-4b-q4.gguf --episode-fallback-model-path artifacts/models/deepseek-v4-pro-9b-q4.gguf --llama-gpu-layers 0)
           if [[ -n "$CAPTIONS_PATH" ]]; then
             ARGS+=(--captions "$CAPTIONS_PATH")
           fi
           python scripts/run_video_file_pipeline.py "${ARGS[@]}"
-      - name: Upload per-part breakdown and validated DecisionEpisode
+      - name: Upload per-part model measurements and validated DecisionEpisode
         if: always()
         uses: actions/upload-artifact@v6
         with:
           name: downloaded-video-extraction-demo
           path: |
             artifacts/video-file-demo/source/source-manifest.json
+            artifacts/models/model-manifest.json
             artifacts/video-file-demo/output/
           if-no-files-found: warn
           retention-days: 14
