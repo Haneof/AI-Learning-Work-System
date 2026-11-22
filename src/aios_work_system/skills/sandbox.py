@@ -103,7 +103,7 @@ class DockerSandboxRunner:
             "--user=65534:65534",
             f"--mount={mount}",
             "--tmpfs=/tmp:rw,noexec,nosuid,size=64m",
-            "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m",
+            "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m,uid=65534,gid=65534,mode=0700",
             "--workdir=/workspace",
         ]
         if container_name:
