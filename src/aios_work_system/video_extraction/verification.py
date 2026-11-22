@@ -236,11 +236,18 @@ def training_dataset_admission_status(
             "eligible_for_dataset": False,
             "reason": "PM must independently inspect source evidence and the proposed record.",
         }
-    if pm_verification.get("status") != "pass":
+    if (
+        pm_verification.get("status") != "pass"
+        or not pm_verification.get("source_evidence_refs")
+        or not pm_verification.get("proposed_record_evidence_refs")
+    ):
         return {
             "status": "held_pm_independent_verification",
             "eligible_for_dataset": False,
-            "reason": "PM independent verification did not pass.",
+            "reason": (
+                "PM must pass and cite both the source evidence inspected and the proposed-record "
+                "claims reviewed."
+            ),
         }
     return {
         "status": "eligible_after_both_gates",
@@ -338,7 +345,9 @@ class LocalDecisionEpisodeVerifier:
                 "verifier": metadata,
                 "levels": levels,
                 "overall_status": "unknown",
-                "training_admission": training_dataset_admission_status(None, None),
+                "training_admission": training_dataset_admission_status(
+                    {"levels": levels, "overall_status": "unknown"}, None
+                ),
             }
         payload = {
             "episode": _clip(
@@ -371,7 +380,9 @@ class LocalDecisionEpisodeVerifier:
                 "verifier": metadata,
                 "levels": levels,
                 "overall_status": "unknown",
-                "training_admission": training_dataset_admission_status(None, None),
+                "training_admission": training_dataset_admission_status(
+                    {"levels": levels, "overall_status": "unknown"}, None
+                ),
             }
         if raw.get("episode_id") != episode_id:
             reason = "Verifier response episode_id did not match the input episode."
@@ -382,7 +393,9 @@ class LocalDecisionEpisodeVerifier:
                 "verifier": metadata,
                 "levels": levels,
                 "overall_status": "unknown",
-                "training_admission": training_dataset_admission_status(None, None),
+                "training_admission": training_dataset_admission_status(
+                    {"levels": levels, "overall_status": "unknown"}, None
+                ),
             }
         raw_levels = raw.get("levels") if isinstance(raw.get("levels"), dict) else {}
         levels = {
