@@ -1,0 +1,318 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-learning-work-system.local/contracts/workflow.schema.json",
+  "title": "WorkflowDefinition",
+  "description": "An HTN workflow with conditional methods, graph edges, hard ordering constraints, capability mappings, and recovery rules. Version 0.1 is unvalidated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workflow_id",
+    "version",
+    "name",
+    "domain",
+    "goal",
+    "success_conditions",
+    "tasks",
+    "capabilities",
+    "methods",
+    "edges",
+    "ordering_constraints",
+    "invariants",
+    "transitions",
+    "recovery_rules",
+    "evidence_refs",
+    "lifecycle_status"
+  ],
+  "properties": {
+    "schema_version": { "const": "0.1" },
+    "workflow_id": { "type": "string", "minLength": 1 },
+    "version": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "domain": { "type": "string", "minLength": 1 },
+    "goal": { "type": "string", "minLength": 1 },
+    "applicability": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "software": { "type": "string" },
+        "software_versions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "business_context": { "type": "string" },
+        "conditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        }
+      }
+    },
+    "success_conditions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "initial_state": { "type": "object" },
+    "tasks": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/task" }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/capability" }
+    },
+    "methods": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/method" }
+    },
+    "edges": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "ordering_constraints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/ordering_constraint" }
+    },
+    "invariants": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/invariant" }
+    },
+    "transitions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/transition" }
+    },
+    "recovery_rules": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/recovery_rule" }
+    },
+    "evidence_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "lifecycle_status": {
+      "enum": ["draft", "needs_review", "approved", "deprecated", "rejected"]
+    }
+  },
+  "$defs": {
+    "condition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "operator", "value"],
+      "properties": {
+        "path": { "type": "string", "minLength": 1 },
+        "operator": {
+          "enum": [
+            "equals",
+            "not_equals",
+            "in",
+            "not_in",
+            "exists",
+            "not_exists",
+            "greater_than",
+            "greater_than_or_equal",
+            "less_than",
+            "less_than_or_equal"
+          ]
+        },
+        "value": {}
+      }
+    },
+    "task": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "task_id",
+        "kind",
+        "description",
+        "preconditions",
+        "postconditions"
+      ],
+      "properties": {
+        "task_id": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["compound", "primitive"] },
+        "description": { "type": "string", "minLength": 1 },
+        "parent_task_id": { "type": "string" },
+        "capability_id": { "type": "string" },
+        "preconditions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "postconditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "risk_level": {
+          "enum": ["low", "medium", "high", "critical", "unknown"]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "kind": { "const": "primitive" } },
+            "required": ["kind"]
+          },
+          "then": { "required": ["capability_id"] },
+          "else": {
+            "not": { "required": ["capability_id"] }
+          }
+        }
+      ]
+    },
+    "capability": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["capability_id", "version", "description"],
+      "properties": {
+        "capability_id": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "risk_level": {
+          "enum": ["low", "medium", "high", "critical", "unknown"]
+        },
+        "idempotent": { "type": "boolean" }
+      }
+    },
+    "method": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_id",
+        "compound_task_id",
+        "applicable_when",
+        "subtasks"
+      ],
+      "properties": {
+        "method_id": { "type": "string", "minLength": 1 },
+        "compound_task_id": { "type": "string", "minLength": 1 },
+        "applicable_when": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/condition" }
+        },
+        "subtasks": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "ordering_constraints": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/method_ordering" }
+        },
+        "priority": { "type": "integer" },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "method_ordering": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before_task_id", "after_task_id"],
+      "properties": {
+        "before_task_id": { "type": "string" },
+        "after_task_id": { "type": "string" }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_task_id", "to_task_id", "relation"],
+      "properties": {
+        "from_task_id": { "type": "string" },
+        "to_task_id": { "type": "string" },
+        "relation": { "enum": ["hard_dependency", "soft_preference"] },
+        "when": { "$ref": "#/$defs/condition" },
+        "rationale": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "ordering_constraint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["before_task_id", "after_task_id", "rationale"],
+      "properties": {
+        "before_task_id": { "type": "string" },
+        "after_task_id": { "type": "string" },
+        "rationale": { "type": "string" },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "invariant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "invariant_id",
+        "description",
+        "condition",
+        "must_hold_before_task_ids"
+      ],
+      "properties": {
+        "invariant_id": { "type": "string" },
+        "description": { "type": "string" },
+        "condition": { "$ref": "#/$defs/condition" },
+        "must_hold_before_task_ids": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        },
+        "evidence_refs": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "transition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_task_id", "to_task_id", "when"],
+      "properties": {
+        "from_task_id": { "type": "string" },
+        "to_task_id": { "type": "string" },
+        "when": { "$ref": "#/$defs/condition" },
+        "decision_action": {
+          "enum": [
+            "delegate",
+            "ask_user",
+            "request_approval",
+            "replan",
+            "finish",
+            "stop"
+          ]
+        },
+        "rationale": { "type": "string" }
+      }
+    },
+    "recovery_rule": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rule_id", "when", "next_action", "stop_conditions"],
+      "properties": {
+        "rule_id": { "type": "string" },
+        "when": { "$ref": "#/$defs/condition" },
+        "next_action": {
+          "enum": [
+            "delegate",
+            "ask_user",
+            "request_approval",
+            "replan",
+            "finish",
+            "stop"
+          ]
+        },
+        "next_task_id": { "type": "string" },
+        "stop_conditions": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "rationale": { "type": "string" }
+      }
+    }
+  }
+}
