@@ -56,7 +56,7 @@ The Brain language model remains the primary training target; the existing Hands
 ## Compute and storage planning assumptions
 
 - Initial Brain base-model target: 4B, with one LoRA adapter per vertical expert.
-- Planning assumption: a 16GB T4 may accommodate 4B BF16 LoRA; 9B LoRA planning requires 24GB or more. These are capacity assumptions until measured with a fixed model revision, sequence length, batch size, optimizer, and checkpointing configuration.
+- T4 planning profile: 4B LoRA uses FP16 compute (BF16 is disabled for the T4 profile); 9B LoRA planning requires 24GB or more. Actual fit and performance must be measured with a fixed model revision, sequence length, batch size, optimizer, and checkpointing configuration.
 - Existing local GPU: RTX 3070 8GB; useful for development, event/data processing, and lightweight validation, not assumed to be the primary BF16 LoRA trainer.
 - Tutorial archive target: 5TB Google Drive.
 - SQLite stores structured source, event, narration, workflow, review, and training lineage metadata.

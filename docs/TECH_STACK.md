@@ -79,7 +79,7 @@ The Qwen3-VL-4B vs Mage-VL-4B blind test on Colab T4 was stopped on 2026-11-21 a
 ## 6. Training resources
 
 - First Brain LoRA base: 4B.
-- Planning assumption: T4 16GB for 4B BF16 LoRA; 24GB+ for 9B LoRA.
+- T4 16GB profile: 4B FP16 LoRA; 24GB+ planning capacity for 9B LoRA. The merged PR #41 configuration disables BF16 on T4.
 - Local RTX 3070 8GB: development, video-file processing, and lightweight validation; not the default 4B BF16 training environment.
 - For every run, record base revision, dataset snapshot hash, context length, batch, gradient accumulation, optimizer, precision, checkpointing, GPU model/VRAM, peak memory, wall time, and adapter hash.
 - Planning estimates must not be reported as measured capacity.
