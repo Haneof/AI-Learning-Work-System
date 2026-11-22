@@ -45,12 +45,26 @@ jobs:
           src/aios_work_system/training_data/__init__.py
           scripts/compile_training_samples.py
           tests/test_training_sample_compiler.py
+      - name: Diagnose compiler formatting
+        if: always()
+        run: |
+          for file in \
+            src/aios_work_system/training_data/compiler.py \
+            src/aios_work_system/training_data/__init__.py \
+            scripts/compile_training_samples.py \
+            tests/test_training_sample_compiler.py; do
+            if ruff format --check "$file" >/dev/null 2>&1; then
+              echo "FORMATTED: $file"
+            else
+              echo "NEEDS_FORMAT: $file"
+            fi
+          done
       - name: Format check for GUI milestone files
         run: ruff format --check src/aios_work_system/gui tests/test_gui.py tests/test_gui_real_model.py scripts/run_gui_agent_demo.py
-      - name: Format check for the entire repository
-        run: ruff format --check .
       - name: Test
         run: pytest
+      - name: Format check for the entire repository
+        run: ruff format --check .
       - name: Format changed Python files
         run: >-
           ruff format --check
