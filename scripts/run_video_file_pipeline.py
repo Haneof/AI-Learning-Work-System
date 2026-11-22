@@ -100,7 +100,8 @@ def main() -> int:
             minimum_grounding_accuracy=args.minimum_grounding_accuracy,
             llama_gpu_layers=args.llama_gpu_layers,
             decision_verifier_model_path=(
-                args.decision_verifier_model_path or args.episode_model_path
+                args.decision_verifier_model_path
+                or (None if args.decision_verifier_endpoint else args.episode_model_path)
             ),
             decision_verifier_endpoint=args.decision_verifier_endpoint,
             decision_verifier_model_name=args.decision_verifier_model_name,
