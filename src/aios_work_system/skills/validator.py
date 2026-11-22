@@ -115,14 +115,15 @@ def _check_python_script(path: Path) -> list[str]:
                     dynamic_lookup_aliases.add(local_name)
 
     for node in ast.walk(tree):
-        assignment = (
-            node.value
-            if isinstance(node, ast.Assign)
-            else node.value
-            if isinstance(node, ast.AnnAssign)
-            else None
-        )
-        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
+        if isinstance(node, ast.Assign):
+            assignment = node.value
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            assignment = node.value
+            targets = [node.target]
+        else:
+            continue
+
         if isinstance(assignment, ast.Attribute) and isinstance(assignment.value, ast.Name):
             imported_module = module_aliases.get(assignment.value.id, assignment.value.id)
             root_name = imported_module.split(".", maxsplit=1)[0]
