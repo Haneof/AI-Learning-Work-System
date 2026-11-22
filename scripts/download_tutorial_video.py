@@ -82,10 +82,7 @@ def _download_wikimedia_fallback(
         "https://upload.wikimedia.org/wikipedia/commons/f/f2/"
         "Wikipedia_Content_Translation_Tool_Tutorial.webm"
     )
-    source_page = (
-        "https://commons.wikimedia.org/wiki/"
-        "File:Wikipedia_Content_Translation_Tool_Tutorial.webm"
-    )
+    source_page = "https://commons.wikimedia.org/wiki/File:Wikipedia_Content_Translation_Tool_Tutorial.webm"
     caption_query = urlencode(
         {
             "title": "TimedText:Wikipedia Content Translation Tool Tutorial.webm.en.srt",
@@ -110,10 +107,7 @@ def _download_wikimedia_fallback(
             "caption_candidates": [str(caption_path.resolve())],
             "subtitle_source": "published_wikimedia_timed_text",
             "license": "CC BY-SA 4.0",
-            "attribution": (
-                "Wikipedia Content Translation Tool Tutorial, "
-                "AlexandraShagzhina, Wikimedia Commons"
-            ),
+            "attribution": "Wikipedia Content Translation Tool Tutorial, AlexandraShagzhina, Wikimedia Commons",
             "license_url": "https://creativecommons.org/licenses/by-sa/4.0/",
             "source_page": source_page,
             "media_direct_url": video_url,
