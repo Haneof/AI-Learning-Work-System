@@ -154,13 +154,14 @@ class VideoExtractionPipeline:
         # Kept only for backwards compatibility. Hosted and legacy Qwen VLM inference
         # is not used by this pipeline; local ShowUI/UI-TARS weights are the default.
         self.legacy_vlm_model = vlm_model
-        self.decision_verifier_model_path = decision_verifier_model_path or os.getenv(
-            "AIOS_DECISION_VERIFIER_MODEL_PATH",
-            str(self.episode_model_path),
-        )
         self.decision_verifier_endpoint = decision_verifier_endpoint or os.getenv(
             "AIOS_DECISION_VERIFIER_ENDPOINT"
         )
+        self.decision_verifier_model_path = decision_verifier_model_path or os.getenv(
+            "AIOS_DECISION_VERIFIER_MODEL_PATH"
+        )
+        if self.decision_verifier_model_path is None and not self.decision_verifier_endpoint:
+            self.decision_verifier_model_path = str(self.episode_model_path)
         self.decision_verifier_model_name = decision_verifier_model_name
         self.decision_verifier_server_binary = decision_verifier_server_binary
         self.decision_verifier_port = decision_verifier_port
