@@ -238,10 +238,10 @@ class WorkflowBrain:
                     "allowed_scope": [str(self.workflow["workflow_id"]), task_id, capability_id],
                 },
                 expected_postconditions=tuple(postconditions),
-                observation_requirements=[
+                observation_requirements=(
                     "Return a fresh business-state observation after execution.",
                     "Provide evidence for every verified postcondition.",
-                ],
+                ),
                 risk_level=risk_level,
                 requires_human_approval=risk_level in {"high", "critical", "unknown"},
                 idempotency_key=f"{self.workflow['workflow_id']}:{task_id}:attempt-{attempt}",
