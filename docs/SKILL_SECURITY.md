@@ -54,4 +54,4 @@ A passing test is not just that an expected click occurred. The actual goal/resu
 
 ## Approval and training boundary
 
-Only knowledge packages that pass GPT review and PM Sangou's independent video-evidence/test verification may enter the approved SQLite store and training dataset snapshot. The sandbox/compiler can validate those packages but cannot approve them. Training output is a versioned LoRA adapter; the validation harness does not replace the expert.
+Only knowledge packages that pass the local open-weight verifier (extraction fidelity, decision validity, and outcome validity) and PM Sangou's independent source-video/evidence/test review may enter the approved SQLite store and training dataset snapshot. A local verifier PASS alone is not approval; the PM gate remains separate and evidence-linked. The sandbox/compiler can validate package structure and admission prerequisites but cannot substitute for either review gate. Training output is a versioned LoRA adapter; the validation harness does not replace the expert.
