@@ -114,9 +114,7 @@ def calculate_sample_weight(metadata: Mapping[str, Any]) -> float:
         isinstance(value, str) for value in observations
     ):
         raise ValueError("evidence_tier.observation_channel must be a list of strings")
-    if not isinstance(rationales, list) or not all(
-        isinstance(value, str) for value in rationales
-    ):
+    if not isinstance(rationales, list) or not all(isinstance(value, str) for value in rationales):
         raise ValueError("evidence_tier.rationale_source must be a list of strings")
     if not isinstance(confidences, Mapping):
         raise ValueError("evidence_tier.confidence must be an object")
@@ -142,9 +140,7 @@ def calculate_sample_weight(metadata: Mapping[str, Any]) -> float:
 
     observation_score = _mean_weighted(observations, OBSERVATION_WEIGHTS)
     rationale_score = _mean_weighted(rationales, RATIONALE_WEIGHTS)
-    confidence_score = (
-        sum(confidence_values) / len(confidence_values) if confidence_values else 0.5
-    )
+    confidence_score = sum(confidence_values) / len(confidence_values) if confidence_values else 0.5
     score = (
         0.30 * observation_score
         + 0.30 * rationale_score
@@ -420,11 +416,7 @@ def tokenize_sample(
         token_ids = token_ids.get("input_ids")
     if hasattr(token_ids, "tolist"):
         token_ids = token_ids.tolist()
-    if (
-        isinstance(token_ids, list)
-        and token_ids
-        and isinstance(token_ids[0], list)
-    ):
+    if isinstance(token_ids, list) and token_ids and isinstance(token_ids[0], list):
         if len(token_ids) != 1:
             raise ValueError("tokenizer returned a batch for one sample")
         token_ids = token_ids[0]
