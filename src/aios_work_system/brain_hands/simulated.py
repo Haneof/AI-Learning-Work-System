@@ -8,7 +8,11 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from aios_work_system.brain_hands.engine import condition_matches, get_state_path, set_state_path
+from aios_work_system.brain_hands.engine import (
+    condition_matches,
+    get_state_path,
+    set_state_path,
+)
 from aios_work_system.brain_hands.interfaces import ExecutionResult, OperationDelegation
 
 
@@ -183,6 +187,16 @@ class SimulatedHands:
         return None if value.__class__ is object else value
 
 
+def _set_business_path(state: dict[str, Any], path: str, value: Any) -> None:
+    root = path.split(".", maxsplit=1)[0]
+    if path in state or any(
+        isinstance(key, str) and key.startswith(f"{root}.") for key in state
+    ):
+        state[path] = value
+    else:
+        set_state_path(state, path, value)
+
+
 def shop_listing_handlers() -> dict[str, OperationHandler]:
     """Handlers for the repository's shop-list-product WorkflowDefinition example."""
 
@@ -200,14 +214,14 @@ def shop_listing_handlers() -> dict[str, OperationHandler]:
                     "message": "product_title is required",
                 },
             )
-        set_state_path(state, "title.value", title)
-        set_state_path(state, "title.status", "saved")
+        _set_business_path(state, "title.value", title)
+        _set_business_path(state, "title.status", "saved")
         return SimulatedOutcome(result_summary="Product title entered and saved.")
 
     def verify_title(
         state: dict[str, Any], arguments: Mapping[str, Any], _delegation: OperationDelegation
     ) -> SimulatedOutcome:
-        actual = state.get("title.value")
+        actual = get_state_path(state, "title.value")
         expected = arguments.get("product_title", arguments.get("title"))
         if not isinstance(actual, str) or (expected is not None and actual != expected):
             return SimulatedOutcome(
@@ -219,13 +233,13 @@ def shop_listing_handlers() -> dict[str, OperationHandler]:
                     "message": "Saved title did not match the supplied title",
                 },
             )
-        set_state_path(state, "title.status", "verified")
+        _set_business_path(state, "title.status", "verified")
         return SimulatedOutcome(result_summary="Product title independently verified.")
 
     def set_price(
         state: dict[str, Any], arguments: Mapping[str, Any], _delegation: OperationDelegation
     ) -> SimulatedOutcome:
-        if state.get("title.status") != "verified":
+        if get_state_path(state, "title.status") != "verified":
             return SimulatedOutcome(
                 status="blocked",
                 result_summary="Price cannot be set before title verification.",
@@ -246,8 +260,8 @@ def shop_listing_handlers() -> dict[str, OperationHandler]:
                     "message": "price is required",
                 },
             )
-        set_state_path(state, "price.amount", price)
-        set_state_path(state, "price.status", "set")
+        _set_business_path(state, "price.amount", price)
+        _set_business_path(state, "price.status", "set")
         return SimulatedOutcome(result_summary="Product price set after title verification.")
 
     return {
