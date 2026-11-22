@@ -411,4 +411,3 @@ def test_woocommerce_brain_sets_variable_product_to_simple_before_pricing():
     assert final_state["product_type.value"] == "simple"
     assert final_state["price.value"] == "39.95"
     assert final_state["draft.status"] == "draft_updated"
-
