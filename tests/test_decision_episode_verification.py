@@ -237,7 +237,14 @@ def test_dataset_requires_local_pass_and_separate_pm_pass():
         training_dataset_admission_status(local, {"status": "fail"})["eligible_for_dataset"]
         is False
     )
+    # A bare PASS cannot attest that the PM actually inspected both artifacts.
     assert (
         training_dataset_admission_status(local, {"status": "pass"})["eligible_for_dataset"]
-        is True
+        is False
     )
+    pm_review = {
+        "status": "pass",
+        "source_evidence_refs": ["video:timestamp:2000"],
+        "proposed_record_evidence_refs": ["episode:decision.selected_strategy"],
+    }
+    assert training_dataset_admission_status(local, pm_review)["eligible_for_dataset"] is True
