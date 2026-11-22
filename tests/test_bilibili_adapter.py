@@ -193,3 +193,44 @@ def test_search_rejects_invalid_input_without_request():
     with pytest.raises(ValueError, match="at least 1"):
         adapter.search("Python", max_results=0)
     assert not called
+
+
+def test_search_accepts_anonymous_nav_minus_101_when_wbi_image_is_available():
+    def fake_open(request, *, timeout):
+        if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
+            payload = _nav_payload()
+            payload["code"] = -101
+            payload["message"] = "not logged in"
+            return FakeResponse(payload)
+        return FakeResponse(_payload([_video()]))
+
+    adapter = BilibiliPlatformAdapter(http_open=fake_open)
+
+    candidates = adapter.search("Python", max_results=1)
+
+    assert len(candidates) == 1
+    assert candidates[0].video_id == "BV1ab411c7mD"
+
+
+def test_search_rejects_anonymous_nav_minus_101_without_wbi_image():
+    def fake_open(request, *, timeout):
+        if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
+            return FakeResponse({"code": -101, "message": "not logged in", "data": {}})
+        return FakeResponse(_payload([_video()]))
+
+    adapter = BilibiliPlatformAdapter(http_open=fake_open)
+
+    with pytest.raises(AcquisitionPlatformError, match=r"API error \(code -101\)"):
+        adapter.search("Python")
+
+
+def test_search_endpoint_still_rejects_minus_101_after_successful_nav():
+    def fake_open(request, *, timeout):
+        if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
+            return FakeResponse(_nav_payload())
+        return FakeResponse({"code": -101, "message": "not logged in"})
+
+    adapter = BilibiliPlatformAdapter(http_open=fake_open)
+
+    with pytest.raises(AcquisitionPlatformError, match=r"API error \(code -101\)"):
+        adapter.search("Python")
