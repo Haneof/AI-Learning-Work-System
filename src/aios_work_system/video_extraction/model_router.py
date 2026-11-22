@@ -668,9 +668,7 @@ def _build_episode_synthesis_context(
         if item.get("timestamp_ms") is not None
     ]
     if not grounding_timestamps:
-        grounding_timestamps = [
-            int(frame["timestamp_ms"]) for frame in changed_frames[:12]
-        ]
+        grounding_timestamps = [int(frame["timestamp_ms"]) for frame in changed_frames[:12]]
 
     ocr_observations: list[dict[str, Any]] = []
     seen_ocr_timestamps: set[int] = set()
@@ -712,12 +710,8 @@ def _build_episode_synthesis_context(
                 "event_id": item.get("event_id"),
                 "timestamp_ms": item.get("timestamp_ms"),
                 "point_norm": item.get("point_norm"),
-                "visible_ui_element": _compact_synthesis_text(
-                    item.get("visible_ui_element"), 120
-                ),
-                "matched_ocr_text": _compact_synthesis_text(
-                    item.get("matched_ocr_text"), 160
-                ),
+                "visible_ui_element": _compact_synthesis_text(item.get("visible_ui_element"), 120),
+                "matched_ocr_text": _compact_synthesis_text(item.get("matched_ocr_text"), 160),
                 "model_id": item.get("model_id"),
                 "certainty": "inferred_from_video",
             }
