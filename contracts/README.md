@@ -12,7 +12,7 @@ The three contracts are deliberately separate:
 | B — WorkflowDefinition | workflow.schema.json | HTN task hierarchy, methods, conditions, graph edges, ordering constraints, invariants, capability mappings and recovery rules |
 | C — BrainHandsProtocol | brain-hands-protocol.schema.json | Runtime JSON messages for Brain-to-Hands delegation and Hands-to-Brain execution results |
 
-The shop example is in examples/shop-list-product.episode.json. It is a structural fixture only and is explicitly not approved for training.
+The shop example is in examples/shop-list-product.episode.json. It is a structural fixture only and is explicitly not approved for training. Its all-zero SHA-256 value is a placeholder sentinel, not the digest of a real recording.
 
 ## Version and freeze note
 

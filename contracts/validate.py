@@ -352,10 +352,16 @@ def validate_workflow(
     workflow_evidence_refs = set(_collect_evidence_refs(data))
     if workflow_evidence_refs:
         if available_evidence_refs is None:
-            errors.append("an evidence registry is required to validate WorkflowDefinition references")
+            errors.append(
+                "an evidence registry is required to validate "
+                "WorkflowDefinition references"
+            )
         else:
             unresolved = workflow_evidence_refs - set(available_evidence_refs)
-            errors.extend(f"workflow has unresolved evidence reference: {ref}" for ref in sorted(unresolved))
+            errors.extend(
+                f"workflow has unresolved evidence reference: {ref}"
+                for ref in sorted(unresolved)
+            )
 
     return errors
 
