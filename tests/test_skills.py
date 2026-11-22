@@ -313,8 +313,7 @@ def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
     assert "--network=none" in command
     assert "--read-only" in command
     assert (
-        "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m,"
-        "uid=65534,gid=65534,mode=0700"
+        "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m,uid=65534,gid=65534,mode=0700"
     ) in command
     assert (package / "output").is_dir()
     assert "--cap-drop=ALL" in command
