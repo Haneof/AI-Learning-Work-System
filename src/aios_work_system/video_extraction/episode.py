@@ -166,7 +166,8 @@ def build_decision_episode(
                 "confidence": min(1.0, max(confidence_values + [0.0])),
                 "labels": ["inferred_from_video"],
                 "capture_method": (
-                    "cursor-settle heuristic and local ShowUI-2B/UI-TARS grounding on changed frames only"
+                    "cursor-settle heuristic and local ShowUI-2B/UI-TARS "
+                    "grounding on changed frames only"
                 ),
                 "source_locator": {
                     "start_ms": 0,

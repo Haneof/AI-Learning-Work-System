@@ -41,7 +41,10 @@ def main() -> int:
     parser.add_argument(
         "--grounding-benchmark",
         type=Path,
-        help="Human-annotated changed-frame target bounding boxes used to measure grounding accuracy.",
+        help=(
+            "Human-annotated changed-frame target bounding boxes used to measure "
+            "grounding accuracy."
+        ),
     )
     parser.add_argument(
         "--episode-model-path",
