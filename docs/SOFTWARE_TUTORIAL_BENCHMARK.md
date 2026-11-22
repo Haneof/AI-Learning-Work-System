@@ -1,4 +1,4 @@
-# Legacy Software Tutorial Benchmark: Content Translation Screencast
+# Software Tutorial File-Extraction Benchmark: Content Translation Screencast
 
 ## Purpose
 
@@ -6,7 +6,7 @@ This openly licensed tutorial is a **downloaded video-file extraction sample**. 
 
 This sample is compatible with the primary training-input design: downloaded tutorial files are processed offline by programs rather than captured through a live recorder. It is not a Qwen3-VL/Mage-VL model-selection benchmark. Visible screen-change/OCR observations must be linked to source timestamps; inferred interactions must be labelled inferred_from_video. Instructor words must be aligned to the audio/subtitle source and kept separate from behavioral inference.
 
-A successful reconstruction should identify the business task, decision points, likely operation sequence, visible before/after UI state, narration-based reasons, result evidence, and uncertainty. It must not invent hidden clicks or keyboard events.
+A successful extraction should identify the business task, decision points, likely operation sequence, visible before/after UI state, narration-based reasons, result evidence, and uncertainty. It must not invent hidden clicks or keyboard events.
 
 ## Source and license
 
@@ -36,9 +36,9 @@ A successful reconstruction should identify the business task, decision points, 
 | 03:02-03:23 | Review categories and autosaved draft; resume from dashboard | narration and dashboard state |
 | 03:24-03:31 | Publish translation | narration and visible publish result |
 
-These are PM reference landmarks, not verified event records. During reconstruction, cite the relevant recording time and narration. If the input event cannot be established, preserve the operation as inferred or unknown rather than calling it an observed click.
+These are PM reference landmarks, not verified event records. During file extraction and review, cite the relevant video time and narration. If the underlying interaction cannot be established from visible evidence, preserve the operation as inferred or unknown rather than calling it an observed click.
 
-## Reconstruction protocol for this legacy sample
+## Video-file extraction protocol for this sample
 
 1. Preserve the original WebM, source hash, attribution, and timed subtitle files.
 2. Run the downloaded-file extractor: use timed subtitles first, local ASR only if usable subtitle cues are unavailable, and align narration to the detected visual changes.
@@ -73,4 +73,4 @@ Passing requires a coherent, evidence-grounded Decision Episode and workflow rep
 
 ## Limitations
 
-This sample is short and dates from 2015. It is a legacy reconstruction fixture, not a representative modern enterprise tutorial corpus. The spoken audio is English; the Chinese subtitle file is a separately aligned reference, not Chinese speech. Native DOM/UIA/mouse/keyboard event telemetry cannot be retroactively recovered from this MP4. Expand validation across more downloaded tutorial files, software versions, visual conditions, languages, and tasks before claiming extraction quality or large-scale generalization.
+This sample is short and dates from 2015. It is a historical tutorial-file fixture, not a representative modern enterprise tutorial corpus. The spoken audio is English; the Chinese subtitle file is a separately aligned reference, not Chinese speech. Native DOM/UIA/mouse/keyboard event telemetry cannot be retroactively recovered from this MP4. Expand validation across more downloaded tutorial files, software versions, visual conditions, languages, and tasks before claiming extraction quality or large-scale generalization.
