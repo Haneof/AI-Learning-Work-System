@@ -35,7 +35,11 @@ def _write_url(url: str, destination: Path) -> None:
         raise RuntimeError(f"downloaded file is missing or unexpectedly small: {destination}")
 
 
-def _save_manifest(output_dir: Path, metadata: dict[str, Any], attempts: list[dict[str, Any]]) -> dict[str, Any]:
+def _save_manifest(
+    output_dir: Path,
+    metadata: dict[str, Any],
+    attempts: list[dict[str, Any]],
+) -> dict[str, Any]:
     metadata["download_attempts"] = attempts
     (output_dir / "source-manifest.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",

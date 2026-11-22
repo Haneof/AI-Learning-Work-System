@@ -29,7 +29,7 @@ class Qwen3VLGrounder:
         self.processor = AutoProcessor.from_pretrained(model_id)
         self.model = Qwen3VLForConditionalGeneration.from_pretrained(
             model_id,
-            dtype=torch.float32,
+            dtype="auto",
             device_map="cpu",
         )
         self.model.eval()
