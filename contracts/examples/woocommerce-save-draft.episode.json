@@ -1,0 +1,1713 @@
+{
+  "schema_version": "0.1",
+  "episode_id": "downloaded-video-peaU0g4uzek",
+  "expert_id": "software-tutorial-operator",
+  "workflow_ref": {
+    "workflow_id": "software_tutorial.demonstration",
+    "version": "0.1",
+    "node_id": "video_grounding"
+  },
+  "source": {
+    "source_id": "peaU0g4uzek",
+    "source_kind": "downloaded_tutorial_video",
+    "sha256": "ab8a9a5650f8babc6060cdca18537cedda118afed513a37c13dc30d9130f8f35",
+    "platform": "youtube",
+    "application": "unknown_ui",
+    "recording_session_id": "peaU0g4uzek",
+    "recorder_version": "video-file-extraction-v0.1",
+    "source_duration_ms": 235775
+  },
+  "task": {
+    "business_domain": "software_tutorial",
+    "goal": "整理已抽取的 WooCommerce 教程材料，产出 DecisionEpisode DRAFT：覆盖创建产品到 Save Draft + Preview 的工作流，每步以字幕和/或帧为据，observed 与 inferred 明确区分，缺失值标 missing；不含 Publish；DRAFT 未批准用于训练。",
+    "user_request": "把抽取材料整理成 DecisionEpisode DRAFT：覆盖创建简单产品、名称与描述、产品数据、设置产品图片、Save Draft + 预览，每步以字幕时间戳和/或关键帧为据，observed 与 inferred 明确区分，缺失值标 missing，不含 Publish，不开 PR、不合并。",
+    "success_criteria": [
+      {
+        "criterion_id": "create-product",
+        "description": "Add new product 菜单项在 17.0s 帧中可见（subtitle-00008；frame-000035.jpg 17.0s；grounding t01）；点击进入编辑器为推断，未观察到点击后成功进入编辑器",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "name-long-description",
+        "description": "产品名 Backpack，长描述编辑器可见（subtitle-00009 至 subtitle-00011；frame-000057.jpg 28.0s；grounding t02/t03）",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "short-description",
+        "description": "短描述编辑器可见（subtitle-00012/00013；frame-000373.jpg 186.0s；grounding t10）",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "product-data-simple",
+        "description": "产品类型为 Simple product（subtitle-00027 至 subtitle-00029；frame-000135.jpg 67.0s；grounding t07）",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "regular-price-field",
+        "description": "Regular price ($) 字段在 74.0s 帧中可见并聚焦；regular_price: missing，sale_price: missing，未观察到价格已填写（subtitle-00031/00032；frame-000149.jpg 74.0s；grounding t08）",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "inventory-shipping",
+        "description": "库存与运输仅旁白提及，值: missing，无帧（subtitle-00034 至 subtitle-00039）",
+        "verification_type": "unknown"
+      },
+      {
+        "criterion_id": "set-product-image",
+        "description": "Set product image 链接在 28.0s 帧中可见（subtitle-00040/00041；grounding t09）；点击约 96-103.7s 为推断，未观察到图片上传成功或已绑定；product_image_filename: missing",
+        "verification_type": "human_confirmation"
+      },
+      {
+        "criterion_id": "categories-tags",
+        "description": "分类 bags/backpacks，标签 yellow、canvas，仅旁白提及，未通过画面核实，未观察到分类/标签已确认保存（subtitle-00049 至 subtitle-00076）",
+        "verification_type": "unknown"
+      },
+      {
+        "criterion_id": "save-draft-preview",
+        "description": "43.0s 帧显示 Product draft updated，Save Draft 与 Preview 按钮位置已人工标注（subtitle-00019/00020；frame-000087.jpg 43.0s；grounding t04/t05；t06 Publish 为对照）；点击为推断，Preview 无专门结果帧，预览内容未独立画面验证；不 Publish",
+        "verification_type": "human_confirmation"
+      }
+    ],
+    "business_constraints": [],
+    "risk_level": "low"
+  },
+  "state_before": {
+    "application": "unknown_ui",
+    "page": "video_initial_frame",
+    "business_state": {
+      "visible_text": "missing"
+    },
+    "facts": [
+      {
+        "fact_id": "state-before-wordpress-prerequisites",
+        "path": "state_before.wordpress_and_woocommerce_prerequisites",
+        "value": "登录 WordPress 且已安装 WooCommerce：仅旁白提及（subtitle-00005/00006），无帧证明。",
+        "evidence_refs": [
+          "ev-instructor-words"
+        ]
+      },
+      {
+        "fact_id": "state-before-ocr-availability",
+        "path": "state_before.ocr_availability",
+        "value": "missing（Tesseract 未安装，未获得 OCR 结果；这不代表画面中没有文字。）",
+        "evidence_refs": [
+          "ev-observed-video"
+        ]
+      }
+    ]
+  },
+  "narration": [
+    {
+      "segment_id": "subtitle-00001",
+      "start_ms": 40,
+      "end_ms": 4600,
+      "speaker_role": "unknown",
+      "text": "to create a simple product in woo",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00002",
+      "start_ms": 1959,
+      "end_ms": 7399,
+      "speaker_role": "unknown",
+      "text": "Commerce which is a single item just",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00003",
+      "start_ms": 4600,
+      "end_ms": 9800,
+      "speaker_role": "unknown",
+      "text": "like this one without any variations",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00004",
+      "start_ms": 7399,
+      "end_ms": 11200,
+      "speaker_role": "unknown",
+      "text": "please follow along to create a simple",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00005",
+      "start_ms": 9800,
+      "end_ms": 13040,
+      "speaker_role": "unknown",
+      "text": "product make sure you're logged into",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00006",
+      "start_ms": 11200,
+      "end_ms": 15400,
+      "speaker_role": "unknown",
+      "text": "WordPress and make sure you have wo",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00007",
+      "start_ms": 13040,
+      "end_ms": 17880,
+      "speaker_role": "unknown",
+      "text": "Commerce installed and then hover over",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00008",
+      "start_ms": 15400,
+      "end_ms": 20680,
+      "speaker_role": "unknown",
+      "text": "the products Tab and click on add new",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00009",
+      "start_ms": 17880,
+      "end_ms": 23000,
+      "speaker_role": "unknown",
+      "text": "product give the product a name give the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00010",
+      "start_ms": 20680,
+      "end_ms": 25439,
+      "speaker_role": "unknown",
+      "text": "product a description this is a longer",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00011",
+      "start_ms": 23000,
+      "end_ms": 27439,
+      "speaker_role": "unknown",
+      "text": "description and then at the bottom give",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00012",
+      "start_ms": 25439,
+      "end_ms": 29519,
+      "speaker_role": "unknown",
+      "text": "the product a shorter",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00013",
+      "start_ms": 27439,
+      "end_ms": 32920,
+      "speaker_role": "unknown",
+      "text": "description you can see that I've given",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00014",
+      "start_ms": 29519,
+      "end_ms": 34640,
+      "speaker_role": "unknown",
+      "text": "the product a name I've added a product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00015",
+      "start_ms": 32920,
+      "end_ms": 37079,
+      "speaker_role": "unknown",
+      "text": "description which is the longer",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00016",
+      "start_ms": 34640,
+      "end_ms": 38239,
+      "speaker_role": "unknown",
+      "text": "description and also I've added the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00017",
+      "start_ms": 37079,
+      "end_ms": 40840,
+      "speaker_role": "unknown",
+      "text": "product short",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00018",
+      "start_ms": 38239,
+      "end_ms": 43320,
+      "speaker_role": "unknown",
+      "text": "description if you go to the top and you",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00019",
+      "start_ms": 40840,
+      "end_ms": 46640,
+      "speaker_role": "unknown",
+      "text": "click on Save",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00020",
+      "start_ms": 43320,
+      "end_ms": 49920,
+      "speaker_role": "unknown",
+      "text": "draft and then you can choose to preview",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00021",
+      "start_ms": 46640,
+      "end_ms": 52440,
+      "speaker_role": "unknown",
+      "text": "the product as you can see there's the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00022",
+      "start_ms": 49920,
+      "end_ms": 54719,
+      "speaker_role": "unknown",
+      "text": "product name there's the product shot",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00023",
+      "start_ms": 52440,
+      "end_ms": 57199,
+      "speaker_role": "unknown",
+      "text": "description and then there's the product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00024",
+      "start_ms": 54719,
+      "end_ms": 61160,
+      "speaker_role": "unknown",
+      "text": "description which when you go back into",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00025",
+      "start_ms": 57199,
+      "end_ms": 63320,
+      "speaker_role": "unknown",
+      "text": "WordPress was here well now scroll down",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00026",
+      "start_ms": 61160,
+      "end_ms": 66159,
+      "speaker_role": "unknown",
+      "text": "and we'll go to this product data",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00027",
+      "start_ms": 63320,
+      "end_ms": 68560,
+      "speaker_role": "unknown",
+      "text": "section you can choose which product you",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00028",
+      "start_ms": 66159,
+      "end_ms": 70280,
+      "speaker_role": "unknown",
+      "text": "want to create by using this dropdown so",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00029",
+      "start_ms": 68560,
+      "end_ms": 72920,
+      "speaker_role": "unknown",
+      "text": "we're creating a simple products but you",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00030",
+      "start_ms": 70280,
+      "end_ms": 75240,
+      "speaker_role": "unknown",
+      "text": "could for example create a variable",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00031",
+      "start_ms": 72920,
+      "end_ms": 77240,
+      "speaker_role": "unknown",
+      "text": "product you can add a price so we'll",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00032",
+      "start_ms": 75240,
+      "end_ms": 79159,
+      "speaker_role": "unknown",
+      "text": "just add a price in here you could add a",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00033",
+      "start_ms": 77240,
+      "end_ms": 81920,
+      "speaker_role": "unknown",
+      "text": "sales price if you",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00034",
+      "start_ms": 79159,
+      "end_ms": 84119,
+      "speaker_role": "unknown",
+      "text": "wanted you can go to the inventory Tab",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00035",
+      "start_ms": 81920,
+      "end_ms": 87960,
+      "speaker_role": "unknown",
+      "text": "and you can choose whether the products",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00036",
+      "start_ms": 84119,
+      "end_ms": 90240,
+      "speaker_role": "unknown",
+      "text": "in stock out of stock you can set that",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00037",
+      "start_ms": 87960,
+      "end_ms": 93280,
+      "speaker_role": "unknown",
+      "text": "you can also go to shipping and you can",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00038",
+      "start_ms": 90240,
+      "end_ms": 96040,
+      "speaker_role": "unknown",
+      "text": "add the weight for example",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00039",
+      "start_ms": 93280,
+      "end_ms": 98040,
+      "speaker_role": "unknown",
+      "text": "Dimensions you can also add a product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00040",
+      "start_ms": 96040,
+      "end_ms": 100680,
+      "speaker_role": "unknown",
+      "text": "image by going up to the top here and",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00041",
+      "start_ms": 98040,
+      "end_ms": 103719,
+      "speaker_role": "unknown",
+      "text": "clicking set product image you can",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00042",
+      "start_ms": 100680,
+      "end_ms": 106399,
+      "speaker_role": "unknown",
+      "text": "choose to upload it by clicking upload",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00043",
+      "start_ms": 103719,
+      "end_ms": 108680,
+      "speaker_role": "unknown",
+      "text": "files and then choose the image this",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00044",
+      "start_ms": 106399,
+      "end_ms": 110880,
+      "speaker_role": "unknown",
+      "text": "image is available to download in the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00045",
+      "start_ms": 108680,
+      "end_ms": 112560,
+      "speaker_role": "unknown",
+      "text": "description by clicking on the link once",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00046",
+      "start_ms": 110880,
+      "end_ms": 115000,
+      "speaker_role": "unknown",
+      "text": "you've selected the image that you want",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00047",
+      "start_ms": 112560,
+      "end_ms": 117920,
+      "speaker_role": "unknown",
+      "text": "you can click on set product image and",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00048",
+      "start_ms": 115000,
+      "end_ms": 120360,
+      "speaker_role": "unknown",
+      "text": "as you can see it appears there it's",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00049",
+      "start_ms": 117920,
+      "end_ms": 123039,
+      "speaker_role": "unknown",
+      "text": "also possible to add in product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00050",
+      "start_ms": 120360,
+      "end_ms": 125200,
+      "speaker_role": "unknown",
+      "text": "categories product categories help group",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00051",
+      "start_ms": 123039,
+      "end_ms": 127159,
+      "speaker_role": "unknown",
+      "text": "products into broad sections making it",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00052",
+      "start_ms": 125200,
+      "end_ms": 130080,
+      "speaker_role": "unknown",
+      "text": "easier for customers to browse the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00053",
+      "start_ms": 127159,
+      "end_ms": 132680,
+      "speaker_role": "unknown",
+      "text": "website and find particular products so",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00054",
+      "start_ms": 130080,
+      "end_ms": 135959,
+      "speaker_role": "unknown",
+      "text": "you can click on this section here add",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00055",
+      "start_ms": 132680,
+      "end_ms": 138680,
+      "speaker_role": "unknown",
+      "text": "new category and you could for example",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00056",
+      "start_ms": 135959,
+      "end_ms": 141040,
+      "speaker_role": "unknown",
+      "text": "add a category in of bags and set it as",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00057",
+      "start_ms": 138680,
+      "end_ms": 143680,
+      "speaker_role": "unknown",
+      "text": "the parent category and then click on",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00058",
+      "start_ms": 141040,
+      "end_ms": 146920,
+      "speaker_role": "unknown",
+      "text": "add new category and then because this",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00059",
+      "start_ms": 143680,
+      "end_ms": 151360,
+      "speaker_role": "unknown",
+      "text": "products a a backpack and it's included",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00060",
+      "start_ms": 146920,
+      "end_ms": 155560,
+      "speaker_role": "unknown",
+      "text": "in let's say the bag section you could",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00061",
+      "start_ms": 151360,
+      "end_ms": 158239,
+      "speaker_role": "unknown",
+      "text": "create a subcategory of backpacks and",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00062",
+      "start_ms": 155560,
+      "end_ms": 160319,
+      "speaker_role": "unknown",
+      "text": "choose to be in the bag section and as",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00063",
+      "start_ms": 158239,
+      "end_ms": 162800,
+      "speaker_role": "unknown",
+      "text": "you can see there it creates a",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00064",
+      "start_ms": 160319,
+      "end_ms": 165800,
+      "speaker_role": "unknown",
+      "text": "subcategory of the bags the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00065",
+      "start_ms": 162800,
+      "end_ms": 168120,
+      "speaker_role": "unknown",
+      "text": "uncategorized is if you haven't given um",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00066",
+      "start_ms": 165800,
+      "end_ms": 171480,
+      "speaker_role": "unknown",
+      "text": "the product any category so we'll just",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00067",
+      "start_ms": 168120,
+      "end_ms": 174280,
+      "speaker_role": "unknown",
+      "text": "untick that we'll scroll down to product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00068",
+      "start_ms": 171480,
+      "end_ms": 176640,
+      "speaker_role": "unknown",
+      "text": "tags so it's possible to add product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00069",
+      "start_ms": 174280,
+      "end_ms": 179080,
+      "speaker_role": "unknown",
+      "text": "tags in which are flexible labels that",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00070",
+      "start_ms": 176640,
+      "end_ms": 181959,
+      "speaker_role": "unknown",
+      "text": "help customers find similar items based",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00071",
+      "start_ms": 179080,
+      "end_ms": 184640,
+      "speaker_role": "unknown",
+      "text": "on shared feat features so for example",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00072",
+      "start_ms": 181959,
+      "end_ms": 187640,
+      "speaker_role": "unknown",
+      "text": "this is a this is a yellow bag so you",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00073",
+      "start_ms": 184640,
+      "end_ms": 190879,
+      "speaker_role": "unknown",
+      "text": "might want to add yellow in and then",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00074",
+      "start_ms": 187640,
+      "end_ms": 192720,
+      "speaker_role": "unknown",
+      "text": "click add you could also say it's made",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00075",
+      "start_ms": 190879,
+      "end_ms": 195799,
+      "speaker_role": "unknown",
+      "text": "of",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00076",
+      "start_ms": 192720,
+      "end_ms": 197440,
+      "speaker_role": "unknown",
+      "text": "canvas and then choose to add and then",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00077",
+      "start_ms": 195799,
+      "end_ms": 200280,
+      "speaker_role": "unknown",
+      "text": "when you're ready to take the product",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00078",
+      "start_ms": 197440,
+      "end_ms": 202560,
+      "speaker_role": "unknown",
+      "text": "live you can choose to publish it by",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00079",
+      "start_ms": 200280,
+      "end_ms": 204440,
+      "speaker_role": "unknown",
+      "text": "clicking publish up at the top here and",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00080",
+      "start_ms": 202560,
+      "end_ms": 206720,
+      "speaker_role": "unknown",
+      "text": "then you can click on view product and",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00081",
+      "start_ms": 204440,
+      "end_ms": 210400,
+      "speaker_role": "unknown",
+      "text": "here's the product with the product name",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00082",
+      "start_ms": 206720,
+      "end_ms": 211400,
+      "speaker_role": "unknown",
+      "text": "the price the product short description",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00083",
+      "start_ms": 210400,
+      "end_ms": 214239,
+      "speaker_role": "unknown",
+      "text": "the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00084",
+      "start_ms": 211400,
+      "end_ms": 216159,
+      "speaker_role": "unknown",
+      "text": "description and one thing that you'll",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00085",
+      "start_ms": 214239,
+      "end_ms": 218480,
+      "speaker_role": "unknown",
+      "text": "find interesting is you can see the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00086",
+      "start_ms": 216159,
+      "end_ms": 219599,
+      "speaker_role": "unknown",
+      "text": "product categories here so part of the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00087",
+      "start_ms": 218480,
+      "end_ms": 221959,
+      "speaker_role": "unknown",
+      "text": "section",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00088",
+      "start_ms": 219599,
+      "end_ms": 224680,
+      "speaker_role": "unknown",
+      "text": "bags you can you could click on it for",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00089",
+      "start_ms": 221959,
+      "end_ms": 225920,
+      "speaker_role": "unknown",
+      "text": "example and it'll show you all the bags",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00090",
+      "start_ms": 224680,
+      "end_ms": 228400,
+      "speaker_role": "unknown",
+      "text": "under that",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00091",
+      "start_ms": 225920,
+      "end_ms": 230000,
+      "speaker_role": "unknown",
+      "text": "section or for example you could click",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00092",
+      "start_ms": 228400,
+      "end_ms": 232239,
+      "speaker_role": "unknown",
+      "text": "backpacks and it'll show you all the",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00093",
+      "start_ms": 230000,
+      "end_ms": 234599,
+      "speaker_role": "unknown",
+      "text": "backpacks under there if we just click",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00094",
+      "start_ms": 232239,
+      "end_ms": 235775,
+      "speaker_role": "unknown",
+      "text": "on the W it'll return us back into",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    },
+    {
+      "segment_id": "subtitle-00095",
+      "start_ms": 234599,
+      "end_ms": 235775,
+      "speaker_role": "unknown",
+      "text": "WordPress",
+      "transcript_method": "subtitle",
+      "words": [],
+      "evidence_refs": [
+        "ev-instructor-words"
+      ]
+    }
+  ],
+  "decision": {
+    "decision_type": "step_selection",
+    "selected_strategy": "基于教程信息重建的建议工作顺序，并非视频中实际动作的时间顺序。最后的 Save Draft + Preview 是拟议终点；Save Draft 讲解约 40.8–49.9 秒，随后预览相关讲述延续到约 61.16 秒；没有专门的结果帧，因此仍不独立确认预览页面状态。此后补充产品数据、图片、分类和标签后再次保存的证据 missing。视频实际顺序为：Save Draft（约 40.8-49.9s，subtitle-00019/20）先于产品类型/价格（约 61-82s）、图片（约 96-120s）、分类/标签（约 117-197s），Publish 讲解约 195-211s。建议工作顺序（重建，非实际时间顺序）：1 创建产品；2 名称 Backpack + 长/短描述；3 产品数据 Simple 类型与价格（regular_price: missing）；4 库存/运输（仅旁白，无值）；5 设置产品图片；6 分类 bags/backpacks 与标签 yellow、canvas；7 Save Draft + Preview 检查（拟议终点，未独立画面验证预览内容）。不 Publish。",
+    "rationale_summary": "步骤1 创建产品：subtitle-00007（13040-17880ms）与 subtitle-00008（15400-20680ms，原文 hover over the products Tab and click on add new）；帧 frame-000035.jpg 17.0s，grounding t01 add_new_product_menu [112,422,224,448]。菜单项本身为帧中观察到，点击动作为推断。未观察到点击后成功进入编辑器。步骤2 名称与长描述：subtitle-00009 至 subtitle-00011；产品名 Backpack 见帧 frame-000057.jpg 28.0s，grounding t02 product_name_field [124,158,778,208]；长描述编辑器 t03 [124,258,779,977]，可见开头 Stay organized and stylish...，全文: missing。字段内容为帧中观察到，输入动作为推断。步骤3 短描述：subtitle-00012/00013/00017；帧 frame-000373.jpg 186.0s，grounding t10 short_description_editor [128,362,777,718]，可见开头 Upgrade your everyday carry...，全文: missing；注意 186s 是帧时间而非输入时间，输入约 25.4-40.8s，当时该编辑器在折叠线以下。步骤4 产品数据 Simple 类型：subtitle-00026 至 subtitle-00029（原文 we're creating a simple products）；帧 frame-000135.jpg 67.0s，grounding t07 product_type_dropdown [205,420,361,564]，下拉已打开，Simple product 已勾选。类型状态为帧中观察到，点击动作为推断。步骤5 价格：subtitle-00031 至 subtitle-00033（原文 you can add a price）；帧 frame-000149.jpg 74.0s，grounding t08 regular_price_field [368,510,567,546]，Regular price ($) 已聚焦；regular_price: missing，sale_price: missing，未观察到价格已填写，不得编造。步骤6 库存/运输：subtitle-00034 至 subtitle-00039，in stock/out of stock、重量、尺寸均只在旁白中提及；无附帧、无 grounding 标注、无任何数值，值: missing。步骤7 设置产品图片：subtitle-00040 至 subtitle-00048；链接见帧 frame-000057.jpg 28.0s，grounding t09 set_product_image_link [799,577,878,598]，但实际点击约 96-103.7s（subtitle-00040/00041），28s 帧仅证明同一位置同一链接；上传与选择后图片出现无附帧证明，未观察到图片上传成功或已绑定，product_image_filename: missing。步骤8 分类/标签：subtitle-00049 至 subtitle-00076；父分类 bags、子分类 backpacks，标签 yellow、canvas；subtitle-00051 至 subtitle-00058 在 narration-alignment 中无匹配画面变化事件；无附帧、无 grounding，仅旁白；未观察到分类/标签已通过画面核实或确认保存。步骤9 Save Draft + Preview（证明终点）：subtitle-00019（40840-46640ms，原文 click on Save）、subtitle-00020（43320-49920ms，原文 draft and then you can choose to preview）、subtitle-00021 至 subtitle-00024 为预览相关讲述；Save Draft 讲解约 40.8–49.9 秒，随后预览相关讲述延续到约 61.16 秒；没有专门的结果帧，因此仍不独立确认预览页面状态。帧 frame-000087.jpg 43.0s，grounding t04 save_draft_button [800,293,861,327]、t05 preview_button [930,293,979,327]，帧中显示 Product draft updated；t06 publish_button [928,533,979,570] 为对照，绝不选。时间顺序说明：视频实际顺序为 Save Draft（约 40.8-49.9s）先于产品类型/价格（约 61-82s）、图片（约 96-120s）、分类/标签（约 117-197s），Publish 讲解约 195-211s；本 DRAFT 的 Save Draft + Preview 是基于教程信息重建的建议工作顺序的拟议终点，并非视频实际动作的时间顺序，材料中无分类/标签之后再次 Save Draft 的证据，不声称有第二次保存。Publish 排除：subtitle-00078/00079 约 197-204s 讲 Publish，不在证明目标内，本集不含该步，也不含 View product。",
+    "decision_basis": [
+      "behavioral_inference"
+    ],
+    "applicable_conditions": [],
+    "selected_next_step": {
+      "action": "ask_user",
+      "objective": "请审阅本 DRAFT：核对每步的字幕/帧依据、observed 与 inferred 的区分、missing 标记，以及 Save Draft 为终点、不含 Publish 的边界。",
+      "question": "本 DRAFT 是否可作为待审稿保留（held），在补齐 OCR、grounding 模型确认与本地验证之前不用于训练、不 Publish？"
+    },
+    "alternatives_considered": [],
+    "uncertainties": [
+      "OCR 全部失败（本机无 tesseract）：69 帧 0 个文字区域，帧内文字均来自人工 grounding 标注，非 OCR 记录。",
+      "所有点击动作均为推断：下载视频无原生点击/DOM 事件遥测；全视频共 28 个推断点击，cursor-settle 启发式置信度 0.361。本 Episode 仅保留 195s 前的 23 个（inferred-click-0001 至 inferred-click-0023）；0024–0028 不纳入本集。",
+      "Grounding 为人工标注 benchmark（10 个目标），未运行 grounding 模型，模型确认未完成；t09 与 t10 的时间戳是帧时间，不是动作时间。",
+      "regular_price: missing：字幕只说 add a price，从未给出数字；sale_price: missing。",
+      "long_description_full_text: missing，仅见开头 Stay organized and stylish...；short_description_full_text: missing，仅见开头 Upgrade your everyday carry...。",
+      "product_image_filename: missing；SKU: missing；stock_quantity: missing；weight: missing；dimensions: missing。",
+      "分类段 subtitle-00051 至 subtitle-00058 无匹配画面变化事件（narration-alignment 为空数组）。",
+      "时间顺序：视频中 Save Draft 实际演示在 40.8–49.9s（43s 帧），早于产品数据、图片和分类/标签步骤；预览相关讲述延续到 subtitle-00024 的 61.16s，但没有专门结果帧，因此不能独立确认预览页面状态。本 DRAFT 按重建的建议工作顺序将 Save Draft + Preview 置于拟议终点；材料中无分类/标签之后再次 Save Draft 的证据，不声称有第二次保存。",
+      "本地验证 held：三级全部 unknown，无本地验证模型；decision_synthesis 未跑模型（Aurum-4B 不存在）。",
+      "一次教程演示不构成通用业务规则。"
+    ],
+    "evidence_refs": [
+      "ev-observed-video",
+      "ev-instructor-words",
+      "ev-inferred-actions",
+      "ev-grounding-save-draft",
+      "ev-grounding-product-fields"
+    ]
+  },
+  "operation": {
+    "execution_status": "not_observed",
+    "event_refs": [
+      "inferred-click-0001",
+      "inferred-click-0002",
+      "inferred-click-0003",
+      "inferred-click-0004",
+      "inferred-click-0005",
+      "inferred-click-0006",
+      "inferred-click-0007",
+      "inferred-click-0008",
+      "inferred-click-0009",
+      "inferred-click-0010",
+      "inferred-click-0011",
+      "inferred-click-0012",
+      "inferred-click-0013",
+      "inferred-click-0014",
+      "inferred-click-0015",
+      "inferred-click-0016",
+      "inferred-click-0017",
+      "inferred-click-0018",
+      "inferred-click-0019",
+      "inferred-click-0020",
+      "inferred-click-0021",
+      "inferred-click-0022",
+      "inferred-click-0023"
+    ],
+    "execution_trace_ref": "downloaded-video:peaU0g4uzek"
+  },
+  "outcome": {
+    "status": "not_verified",
+    "state_after": {
+      "application": "unknown_ui",
+      "page": "missing",
+      "business_state": {
+        "visible_text": "missing"
+      },
+      "facts": [
+        {
+          "fact_id": "state-after-product-name",
+          "path": "product.name",
+          "value": "Backpack（frame-000057.jpg，28.0s；帧中文字由人工 grounding 标注，非 OCR。）",
+          "evidence_refs": [
+            "ev-grounding-product-fields"
+          ]
+        },
+        {
+          "fact_id": "state-after-product-type",
+          "path": "product.type",
+          "value": "Simple product（frame-000135.jpg，67.0s；下拉菜单中已勾选，点击过程仍为推断。）",
+          "evidence_refs": [
+            "ev-grounding-product-fields"
+          ]
+        },
+        {
+          "fact_id": "state-after-save-draft-preview",
+          "path": "product.save_draft_and_preview_evidence",
+          "value": "Product draft updated 在 frame-000087.jpg，43.0s 可见；Save Draft 点击为推断。Save Draft 讲解约 40.8–49.9 秒，随后预览相关讲述延续到约 61.16 秒；没有专门的结果帧，因此仍不独立确认预览页面状态。",
+          "evidence_refs": [
+            "ev-grounding-save-draft",
+            "ev-instructor-words"
+          ]
+        },
+        {
+          "fact_id": "state-after-pricing-values",
+          "path": "product.pricing",
+          "value": "regular_price: missing；sale_price: missing。Regular price ($) 字段在 frame-000149.jpg，74.0s 可见并聚焦；字幕提及可添加价格，但没有给出数字，也未观察到价格已填写。",
+          "evidence_refs": [
+            "ev-grounding-product-fields",
+            "ev-instructor-words"
+          ]
+        },
+        {
+          "fact_id": "state-after-long-description",
+          "path": "product.long_description",
+          "value": "long_description_full_text: missing；frame-000057.jpg，28.0s 仅见开头 Stay organized and stylish...，全文缺失。",
+          "evidence_refs": [
+            "ev-grounding-product-fields"
+          ]
+        },
+        {
+          "fact_id": "state-after-short-description",
+          "path": "product.short_description",
+          "value": "short_description_full_text: missing；frame-000373.jpg，186.0s 仅见开头 Upgrade your everyday carry...；186.0s 是帧时间，不是输入时间；输入相关旁白约 25.439–40.840s。",
+          "evidence_refs": [
+            "ev-grounding-product-fields",
+            "ev-instructor-words"
+          ]
+        },
+        {
+          "fact_id": "state-after-product-image-filename",
+          "path": "product.image_filename",
+          "value": "product_image_filename: missing；Set product image 链接在 frame-000057.jpg，28.0s 可见；约 96–103.7s 的点击/上传流程来自旁白及动作推断，未观察到上传成功或图片已绑定。",
+          "evidence_refs": [
+            "ev-grounding-product-fields",
+            "ev-instructor-words"
+          ]
+        },
+        {
+          "fact_id": "state-after-sku",
+          "path": "product.sku",
+          "value": "SKU: missing（本次抽取材料未提供 SKU 值；不能据此断言原视频画面中不存在 SKU。）",
+          "evidence_refs": []
+        },
+        {
+          "fact_id": "state-after-inventory-shipping-values",
+          "path": "product.inventory_and_shipping",
+          "value": "stock_quantity: missing；weight: missing；dimensions: missing。subtitle-00034 至 subtitle-00039 仅旁白提及库存状态、重量和尺寸，没有提供具体值，也没有对应帧 grounding。",
+          "evidence_refs": [
+            "ev-instructor-words"
+          ]
+        },
+        {
+          "fact_id": "episode-scope-publish",
+          "path": "episode.scope.publish",
+          "value": "Publish：不纳入本 Episode。视频后段包含 Publish 讲解及 View product 相关旁白；本稿不建模该动作，不对是否实际点击 Publish 或发布结果作判断。",
+          "evidence_refs": [
+            "ev-instructor-words"
+          ]
+        }
+      ]
+    },
+    "postcondition_checks": [],
+    "next_action": "ask_user",
+    "next_step_reason": "Visual tutorial evidence is not a live-system postcondition check."
+  },
+  "evidence": [
+    {
+      "evidence_type": "ui_event",
+      "observation_channel": "observed_from_video",
+      "rationale_source": "not_applicable",
+      "confidence": 1,
+      "labels": [
+        "observed_from_video"
+      ],
+      "capture_method": "FFmpeg decoded frames + pixel-difference detector; OCR unavailable (Tesseract not installed; 69 frames produced zero OCR results)",
+      "source_locator": {
+        "start_ms": 0,
+        "end_ms": 235775,
+        "event_ids": [
+          "frame-change-000007",
+          "frame-change-000017",
+          "frame-change-000020",
+          "frame-change-000030",
+          "frame-change-000037",
+          "frame-change-000048",
+          "frame-change-000050",
+          "frame-change-000055",
+          "frame-change-000067",
+          "frame-change-000069",
+          "frame-change-000071",
+          "frame-change-000077",
+          "frame-change-000079",
+          "frame-change-000085",
+          "frame-change-000092",
+          "frame-change-000094",
+          "frame-change-000106",
+          "frame-change-000108",
+          "frame-change-000111",
+          "frame-change-000113",
+          "frame-change-000115",
+          "frame-change-000117",
+          "frame-change-000120",
+          "frame-change-000122",
+          "frame-change-000132",
+          "frame-change-000146",
+          "frame-change-000148",
+          "frame-change-000161",
+          "frame-change-000176",
+          "frame-change-000191",
+          "frame-change-000193",
+          "frame-change-000197",
+          "frame-change-000202",
+          "frame-change-000207",
+          "frame-change-000213",
+          "frame-change-000221",
+          "frame-change-000226",
+          "frame-change-000228",
+          "frame-change-000230",
+          "frame-change-000232",
+          "frame-change-000234",
+          "frame-change-000239",
+          "frame-change-000309",
+          "frame-change-000311",
+          "frame-change-000338",
+          "frame-change-000340",
+          "frame-change-000343",
+          "frame-change-000363",
+          "frame-change-000365",
+          "frame-change-000367",
+          "frame-change-000390",
+          "frame-change-000392",
+          "frame-change-000405",
+          "frame-change-000407",
+          "frame-change-000419",
+          "frame-change-000422",
+          "frame-change-000424",
+          "frame-change-000426",
+          "frame-change-000430",
+          "frame-change-000443",
+          "frame-change-000449",
+          "frame-change-000452",
+          "frame-change-000454",
+          "frame-change-000456",
+          "frame-change-000460",
+          "frame-change-000462",
+          "frame-change-000464",
+          "frame-change-000466"
+        ]
+      },
+      "raw_record_ref": "video-extraction/frames-and-ocr.json",
+      "claim": "Frame changes were read from the downloaded video file. OCR was unavailable, so no screen text was read by OCR; the absence of OCR output does not mean the screen had no text. This is observation of video pixels, not live browser telemetry.",
+      "evidence_id": "ev-observed-video"
+    },
+    {
+      "evidence_type": "narration",
+      "observation_channel": "not_applicable",
+      "rationale_source": "instructor_explicit",
+      "confidence": 0.9,
+      "labels": [
+        "instructor_words"
+      ],
+      "capture_method": "subtitle_with_timestamps",
+      "source_locator": {
+        "start_ms": 40,
+        "end_ms": 235775,
+        "transcript_segment_ids": [
+          "subtitle-00001",
+          "subtitle-00002",
+          "subtitle-00003",
+          "subtitle-00004",
+          "subtitle-00005",
+          "subtitle-00006",
+          "subtitle-00007",
+          "subtitle-00008",
+          "subtitle-00009",
+          "subtitle-00010",
+          "subtitle-00011",
+          "subtitle-00012",
+          "subtitle-00013",
+          "subtitle-00014",
+          "subtitle-00015",
+          "subtitle-00016",
+          "subtitle-00017",
+          "subtitle-00018",
+          "subtitle-00019",
+          "subtitle-00020",
+          "subtitle-00021",
+          "subtitle-00022",
+          "subtitle-00023",
+          "subtitle-00024",
+          "subtitle-00025",
+          "subtitle-00026",
+          "subtitle-00027",
+          "subtitle-00028",
+          "subtitle-00029",
+          "subtitle-00030",
+          "subtitle-00031",
+          "subtitle-00032",
+          "subtitle-00033",
+          "subtitle-00034",
+          "subtitle-00035",
+          "subtitle-00036",
+          "subtitle-00037",
+          "subtitle-00038",
+          "subtitle-00039",
+          "subtitle-00040",
+          "subtitle-00041",
+          "subtitle-00042",
+          "subtitle-00043",
+          "subtitle-00044",
+          "subtitle-00045",
+          "subtitle-00046",
+          "subtitle-00047",
+          "subtitle-00048",
+          "subtitle-00049",
+          "subtitle-00050",
+          "subtitle-00051",
+          "subtitle-00052",
+          "subtitle-00053",
+          "subtitle-00054",
+          "subtitle-00055",
+          "subtitle-00056",
+          "subtitle-00057",
+          "subtitle-00058",
+          "subtitle-00059",
+          "subtitle-00060",
+          "subtitle-00061",
+          "subtitle-00062",
+          "subtitle-00063",
+          "subtitle-00064",
+          "subtitle-00065",
+          "subtitle-00066",
+          "subtitle-00067",
+          "subtitle-00068",
+          "subtitle-00069",
+          "subtitle-00070",
+          "subtitle-00071",
+          "subtitle-00072",
+          "subtitle-00073",
+          "subtitle-00074",
+          "subtitle-00075",
+          "subtitle-00076",
+          "subtitle-00077",
+          "subtitle-00078",
+          "subtitle-00079",
+          "subtitle-00080",
+          "subtitle-00081",
+          "subtitle-00082",
+          "subtitle-00083",
+          "subtitle-00084",
+          "subtitle-00085",
+          "subtitle-00086",
+          "subtitle-00087",
+          "subtitle-00088",
+          "subtitle-00089",
+          "subtitle-00090",
+          "subtitle-00091",
+          "subtitle-00092",
+          "subtitle-00093",
+          "subtitle-00094",
+          "subtitle-00095"
+        ]
+      },
+      "raw_record_ref": "video-extraction/transcript.json",
+      "claim": "Timestamped tutorial narration transcribed from subtitles or ASR. The speaker is not diarized; the words are contextual evidence, not proof that an on-screen action occurred or a business rule.",
+      "evidence_id": "ev-instructor-words"
+    },
+    {
+      "evidence_type": "ui_event",
+      "observation_channel": "inferred_from_video",
+      "rationale_source": "behavioral_inference",
+      "confidence": 0.361,
+      "labels": [
+        "inferred_from_video"
+      ],
+      "capture_method": "cursor-settle heuristic + manual-annotation grounding; model confirmation not done",
+      "source_locator": {
+        "start_ms": 0,
+        "end_ms": 194999,
+        "event_ids": [
+          "inferred-click-0001",
+          "inferred-click-0002",
+          "inferred-click-0003",
+          "inferred-click-0004",
+          "inferred-click-0005",
+          "inferred-click-0006",
+          "inferred-click-0007",
+          "inferred-click-0008",
+          "inferred-click-0009",
+          "inferred-click-0010",
+          "inferred-click-0011",
+          "inferred-click-0012",
+          "inferred-click-0013",
+          "inferred-click-0014",
+          "inferred-click-0015",
+          "inferred-click-0016",
+          "inferred-click-0017",
+          "inferred-click-0018",
+          "inferred-click-0019",
+          "inferred-click-0020",
+          "inferred-click-0021",
+          "inferred-click-0022",
+          "inferred-click-0023"
+        ]
+      },
+      "raw_record_ref": "video-extraction/inferred-actions.json",
+      "claim": "Possible target elements and actions are inferred from cursor candidates, screen changes, narration context, and manually annotated frame grounding. No click telemetry exists in the downloaded video; these are not observed click facts. No grounding model ran; model confirmation not done.",
+      "evidence_id": "ev-inferred-actions"
+    },
+    {
+      "evidence_type": "human_annotation",
+      "observation_channel": "observed_from_video",
+      "rationale_source": "not_applicable",
+      "confidence": 0.9,
+      "labels": [
+        "observed_from_video"
+      ],
+      "capture_method": "Manual grounding benchmark annotation on decoded frame (grounding-benchmark.json t04/t05/t06)",
+      "source_locator": {
+        "start_ms": 40840,
+        "end_ms": 49920,
+        "event_ids": [
+          "frame-change-000077",
+          "frame-change-000079",
+          "frame-change-000085",
+          "frame-change-000092",
+          "frame-change-000094"
+        ]
+      },
+      "raw_record_ref": "grounding-benchmark.json",
+      "claim": "43.0s 帧 frame-000087.jpg 中 Save Draft 按钮 [800,293,861,327]、Preview 按钮 [930,293,979,327]、Publish 对照按钮 [928,533,979,570] 由人工标注确认位置；同一帧显示 Product draft updated。按钮位置为观察，43s 的点击动作为推断；Publish 仅为对照，绝不能与 Save Draft 混淆。",
+      "evidence_id": "ev-grounding-save-draft"
+    },
+    {
+      "evidence_type": "human_annotation",
+      "observation_channel": "observed_from_video",
+      "rationale_source": "not_applicable",
+      "confidence": 0.85,
+      "labels": [
+        "observed_from_video"
+      ],
+      "capture_method": "Manual grounding benchmark annotation on decoded frames (grounding-benchmark.json t01/t02/t03/t07/t08/t09/t10)",
+      "source_locator": {
+        "start_ms": 15400,
+        "end_ms": 186000,
+        "event_ids": [
+          "frame-change-000030",
+          "frame-change-000037",
+          "frame-change-000048",
+          "frame-change-000132",
+          "frame-change-000146",
+          "frame-change-000161",
+          "frame-change-000363",
+          "frame-change-000365",
+          "frame-change-000367"
+        ]
+      },
+      "raw_record_ref": "grounding-benchmark.json",
+      "claim": "人工标注确认：t01 Add new product 菜单 17.0s frame-000035.jpg [112,422,224,448]；t02 产品名字段 28.0s frame-000057.jpg [124,158,778,208]，内含 Backpack；t03 长描述编辑器 28.0s [124,258,779,977]，开头 Stay organized and stylish...；t07 产品类型下拉 67.0s frame-000135.jpg [205,420,361,564]，Simple product 已勾选；t08 Regular price ($) 字段 74.0s frame-000149.jpg [368,510,567,546]，已聚焦；t09 Set product image 链接 28.0s [799,577,878,598]，实际点击约 96-103.7s，28s 帧仅证明同一位置同一链接；t10 短描述编辑器 186.0s frame-000373.jpg [128,362,777,718]，开头 Upgrade your everyday carry...，186s 是帧时间而非输入时间。标注未经模型确认。",
+      "evidence_id": "ev-grounding-product-fields"
+    }
+  ],
+  "review": {
+    "status": "needs_review",
+    "approved_for_training": false,
+    "review_notes": "DRAFT v3，仅整理稿：未批准用于训练；本地验证 held（无模型，全部 unknown）；OCR: missing（Tesseract 未安装，69 帧 0 个 OCR 结果；无 OCR 结果不代表画面无文字）；grounding 为人工标注，未运行 grounding 模型，模型确认未完成；regular_price、sale_price、长/短描述全文、产品图片文件名、SKU、库存数量/重量/尺寸等值: missing；Save Draft 证明为 43s 单次演示，之后步骤无再次保存证据；预览相关讲述延续到约 61.16 秒，但 Preview 无专门结果帧，预览页面状态未独立确认。"
+  },
+  "quality": {
+    "annotation_status": "auto_extracted",
+    "trainable": false,
+    "exclusion_reasons": [
+      "Video-derived operations and cursor clicks are inferences, not direct event telemetry.",
+      "Automatically extracted episode has not been independently reviewed for training.",
+      "DRAFT v3：OCR: missing、grounding 未运行模型、模型确认未完成、本地验证 held。",
+      "价格、描述全文、图片名等关键值: missing。"
+    ]
+  }
+}
