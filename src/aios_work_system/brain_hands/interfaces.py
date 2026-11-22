@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from datetime import UTC, datetime
+from datetime import datetime, UTC
 from typing import Any, Literal, Protocol
 
 
@@ -195,11 +195,15 @@ class OperationDelegation:
         return cls(
             call_id=_non_empty_text(payload.get("call_id"), "call_id"),
             task_id=_non_empty_text(payload.get("task_id"), "task_id"),
-            workflow_id=_non_empty_text(workflow_ref.get("workflow_id"), "workflow_ref.workflow_id"),
+            workflow_id=_non_empty_text(
+                workflow_ref.get("workflow_id"), "workflow_ref.workflow_id"
+            ),
             workflow_version=_non_empty_text(workflow_ref.get("version"), "workflow_ref.version"),
             node_id=_non_empty_text(workflow_ref.get("node_id"), "workflow_ref.node_id"),
             description=_non_empty_text(objective.get("description"), "objective.description"),
-            capability_id=_non_empty_text(objective.get("capability_id"), "objective.capability_id"),
+            capability_id=_non_empty_text(
+                objective.get("capability_id"), "objective.capability_id"
+            ),
             arguments=_object(objective.get("arguments"), "objective.arguments"),
             preconditions=tuple(_object(item, "precondition") for item in preconditions),
             constraints=_object(payload.get("constraints"), "constraints"),
@@ -280,7 +284,9 @@ class ExecutionResult:
             raise ProtocolError("observed_state must be an object")
         for item in (*self.postcondition_results, *self.actions_summary):
             if not isinstance(item, Mapping):
-                raise ProtocolError("postcondition_results and actions_summary must contain objects")
+                raise ProtocolError(
+                    "postcondition_results and actions_summary must contain objects"
+                )
 
     @classmethod
     def from_mapping(cls, payload: Mapping[str, Any]) -> ExecutionResult:
@@ -301,8 +307,13 @@ class ExecutionResult:
             "completed_at",
         }
         if set(payload) - allowed:
-            raise ProtocolError(f"unexpected execution-result fields: {sorted(set(payload) - allowed)}")
-        if payload.get("protocol_version") != "0.1" or payload.get("message_type") != "operation_result":
+            raise ProtocolError(
+                f"unexpected execution-result fields: {sorted(set(payload) - allowed)}"
+            )
+        if (
+            payload.get("protocol_version") != "0.1"
+            or payload.get("message_type") != "operation_result"
+        ):
             raise ProtocolError("expected BrainHandsProtocol v0.1 operation_result")
         postcondition_results = payload.get("postcondition_results")
         actions_summary = payload.get("actions_summary")
@@ -320,7 +331,9 @@ class ExecutionResult:
             status=payload.get("status"),
             result_summary=_non_empty_text(payload.get("result_summary"), "result_summary"),
             observed_state=_object(payload.get("observed_state"), "observed_state"),
-            postcondition_results=tuple(_object(item, "postcondition_result") for item in postcondition_results),
+            postcondition_results=tuple(
+                _object(item, "postcondition_result") for item in postcondition_results
+            ),
             actions_summary=tuple(_object(item, "action_summary") for item in actions_summary),
             error=_object(error, "error") if error is not None else None,
             evidence_refs=tuple(evidence_refs),
