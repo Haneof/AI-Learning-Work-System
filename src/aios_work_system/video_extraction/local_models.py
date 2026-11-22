@@ -232,7 +232,7 @@ class _Qwen2VLGrounder:
         with self.torch.inference_mode():
             generated = self.model.generate(
                 **inputs,
-                max_new_tokens=96,
+                max_new_tokens=48,
                 do_sample=False,
             )
         trimmed = [
@@ -362,7 +362,7 @@ class LocalGGUFDecisionModel:
                 },
             ],
             temperature=0.0,
-            max_tokens=1400,
+            max_tokens=512,
             response_format={"type": "json_object"},
         )
         content = result["choices"][0]["message"]["content"]
