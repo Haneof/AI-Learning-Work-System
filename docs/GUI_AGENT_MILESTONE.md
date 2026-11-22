@@ -34,7 +34,7 @@ The initial page must use loopback HTTP(S) (`localhost`, `127.0.0.1`, or `::1`).
 
 ## Trace format and replay
 
-Each JSONL trace starts with a `gui-trace-v1` header. Every step records before and after PNG frames, DOM and accessibility snapshots, captured pointer/mouse/keyboard/input events, the structured action, expected and observed result, and a `training_example` pair (`observation -> action`). Text and event metadata for password/secret/token inputs are redacted by the event collector.
+Each JSONL trace starts with a `gui-trace-v1` header. Every step records before and after PNG frames, DOM and accessibility snapshots, captured pointer/mouse/keyboard/input events, the structured action, expected and observed result, and a `training_example` pair (`observation -> action`). Text and event metadata for password/secret/token inputs are redacted by the event collector. The GUI trace's `training_example` observation-to-action pair is a runtime Hands operation trace for replay/evaluation; it is not a Brain LoRA decision sample. The Brain training-sample compiler in PR #40 consumes separately reviewed DecisionEpisodes extracted from downloaded tutorial files.
 
 `TraceReplayer` requires the exact recorded local origin and executes steps in order. A malformed step, recorded error, action failure, or verification mismatch raises `ReplayVerificationError` and stops replay immediately.
 
