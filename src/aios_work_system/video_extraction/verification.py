@@ -243,11 +243,17 @@ def training_dataset_admission_status(
             "eligible_for_dataset": False,
             "reason": "PM must independently inspect source evidence and the proposed record.",
         }
-    if (
-        pm_verification.get("status") != "pass"
-        or not pm_verification.get("source_evidence_refs")
-        or not pm_verification.get("proposed_record_evidence_refs")
-    ):
+    source_refs = pm_verification.get("source_evidence_refs")
+    record_refs = pm_verification.get("proposed_record_evidence_refs")
+    valid_refs = (
+        isinstance(source_refs, list)
+        and bool(source_refs)
+        and all(isinstance(ref, str) and ref.strip() for ref in source_refs)
+        and isinstance(record_refs, list)
+        and bool(record_refs)
+        and all(isinstance(ref, str) and ref.strip() for ref in record_refs)
+    )
+    if pm_verification.get("status") != "pass" or not valid_refs:
         return {
             "status": "held_pm_independent_verification",
             "eligible_for_dataset": False,
@@ -464,6 +470,13 @@ class LocalDecisionEpisodeVerifier:
         unknowns = raw.get("unknowns", [])
         if not isinstance(unknowns, list) or not all(isinstance(item, str) for item in unknowns):
             unknowns = ["Malformed unknowns were returned; preserving this as unknown."]
+        if raw["status"] == "pass" and unknowns:
+            return {
+                "status": "unknown",
+                "reasons": reasons + ["The model reported unresolved unknowns; this level cannot pass."],
+                "evidence_refs": sorted(set(refs)),
+                "unknowns": unknowns,
+            }
         return {
             "status": raw["status"],
             "reasons": reasons,
