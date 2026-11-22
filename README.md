@@ -82,6 +82,7 @@ These milestones are real code, but they are not yet a single production-trained
 | [Technology stack](docs/TECH_STACK.md) | Video-file extraction, local models, Brain LoRA, and Hands reuse |
 | [Roadmap](docs/ROADMAP.md) | Stages, deliverables, and exit criteria |
 | [Acquisition pipeline](docs/ACQUISITION_PIPELINE.md) | Tutorial archive, video-file extraction, narration, review, and training |
+| [Downloaded video-file extraction](docs/VIDEO_FILE_EXTRACTION_PIPELINE.md) | Executable extraction, local verification, evidence artifacts, and downstream gates |
 | [Media ingestion](docs/MEDIA_INGEST.md) | Downloaded video-file extraction and evidence generation |
 | [Knowledge and evidence](docs/KNOWLEDGE_EVIDENCE.md) | Provenance, observation channels, rationale sources, and uncertainty |
 | [Core data model](docs/DATA_MODEL.md) | Video sources, extracted evidence, narration, DecisionEpisodes, workflows, and experts |
