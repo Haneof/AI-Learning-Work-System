@@ -380,10 +380,8 @@ def validate_lora_config(config: Mapping[str, Any], *, gpu_profile: str = "t4") 
         raise ValueError("T4 profile requires fp16: true")
     if config.get("bf16") is not False:
         raise ValueError(
-            "NVIDIA T4 (compute capability 7.5) does not support native BF16; set bf16: false"
+            "BF16 is unsupported on the T4 profile (compute capability 7.5); set bf16: false"
         )
-    if gpu_profile == "t4" and config.get("bf16") is True:
-        raise ValueError("BF16 is unsupported on the T4 profile; use FP16")
     if config.get("type_of_model") != "AutoModelForCausalLM":
         raise ValueError("type_of_model must be AutoModelForCausalLM")
 
