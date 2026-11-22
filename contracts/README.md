@@ -47,7 +47,7 @@ Important groups:
 
 Each evidence item has two orthogonal axes:
 
-- observation_channel: direct_capture, inferred_from_video, not_applicable or unknown;
+- observation_channel: direct_capture, observed_from_video, inferred_from_video, not_applicable or unknown;
 - rationale_source: instructor_explicit, behavioral_inference, hybrid, not_applicable or unknown.
 
 It also has confidence in the inclusive range 0–1. This is an annotator/model confidence score, **not a calibrated probability** unless calibration is separately established.
@@ -63,7 +63,7 @@ Interpretation examples:
 | Video pixels suggest a cursor movement, click, or UI target | inferred_from_video | not_applicable | inferred_from_video |
 | Video-derived behavior is used to infer a purpose | inferred_from_video | behavioral_inference | inferred_from_video |
 | Independent live Hands execution evidence verifies a business result | direct_capture | not_applicable | omitted |
-| Instructor explanation and independent behavior both support the same rationale | direct_capture or inferred_from_video, as applicable | hybrid | omitted |
+| Instructor words plus separately referenced video behavior support the same rationale | not_applicable for the narration record; observed_from_video or inferred_from_video for the supporting visual record | hybrid | instructor_words / observed_from_video / inferred_from_video on the corresponding evidence items |
 | Project owner states a workflow rule | not_applicable | not_applicable | user_provided |
 | Source does not establish the fact or reason | unknown | unknown | omitted |
 
