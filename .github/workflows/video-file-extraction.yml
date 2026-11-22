@@ -71,7 +71,7 @@ jobs:
           PY
       - name: Run downloaded video through the extraction pipeline
         env:
-          HF_HOME: \${{ runner.temp }}/huggingface
+          HF_HOME: ${{ runner.temp }}/huggingface
         run: |
           VIDEO_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_path"])')"
           CAPTIONS_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["captions_path"] or "")')"
@@ -81,7 +81,7 @@ jobs:
           if [[ -n "$CAPTIONS_PATH" ]]; then
             ARGS+=(--captions "$CAPTIONS_PATH")
           fi
-          python scripts/run_video_file_pipeline.py "\${ARGS[@]}"
+          python scripts/run_video_file_pipeline.py "${ARGS[@]}"
       - name: Upload per-part breakdown and validated DecisionEpisode
         if: always()
         uses: actions/upload-artifact@v6
