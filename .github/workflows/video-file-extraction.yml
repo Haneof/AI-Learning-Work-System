@@ -63,11 +63,13 @@ jobs:
       - name: Install CPU PyTorch and Qwen3-VL Transformers
         continue-on-error: true
         run: |
-          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch torchvision
           python -m pip install "transformers>=4.57.0,<5" "accelerate>=1,<2"
           python - <<'PY'
           from transformers import Qwen3VLForConditionalGeneration
+          import torchvision
           print("Qwen3-VL Transformers class available:", Qwen3VLForConditionalGeneration.__name__)
+          print("Torchvision version:", torchvision.__version__)
           PY
       - name: Run downloaded video through the extraction pipeline
         env:
