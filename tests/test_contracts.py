@@ -4,7 +4,6 @@ import json
 from pathlib import Path
 
 from aios_work_system.brain_hands import BrainContext, WorkflowBrain, workflow_goal_satisfied
-
 from contracts.validate import (
     validate_episode,
     validate_protocol,
