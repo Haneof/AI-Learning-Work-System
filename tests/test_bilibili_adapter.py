@@ -215,9 +215,7 @@ def test_search_accepts_anonymous_nav_minus_101_when_wbi_image_is_available():
 def test_search_rejects_anonymous_nav_minus_101_without_wbi_image():
     def fake_open(request, *, timeout):
         if request.full_url.startswith(BilibiliPlatformAdapter.NAV_URL):
-            return FakeResponse(
-                {"code": -101, "message": "not logged in", "data": {}}
-            )
+            return FakeResponse({"code": -101, "message": "not logged in", "data": {}})
         return FakeResponse(_payload([_video()]))
 
     adapter = BilibiliPlatformAdapter(http_open=fake_open)
