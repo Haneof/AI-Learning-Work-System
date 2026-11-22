@@ -18,12 +18,12 @@ The shop example is in examples/shop-list-product.episode.json. It is a structur
 
 All three schemas use version **0.1**. Do not relabel this as 1.0.0 or treat it as a stable production standard.
 
-Version 0.1 remains **unvalidated until a real-tutorial end-to-end sample audit** verifies that:
-1. a real tutorial's event stream and narration can be aligned into one or more Decision Episodes;
-2. independent reviewers agree on the decision, evidence axes, conditions and outcome labels;
-3. WorkflowDefinition instances can represent the tutorial's actual alternatives and conditional paths without turning one demonstrated path into the only valid path;
-4. a Brain LoRA training record can be produced without leaking future execution outcomes into the assistant target; and
-5. the Brain-to-Hands request and result can execute and verify a task through a real registered Hands adapter.
+Version 0.1 has implementation and fixture coverage, but it remains **unvalidated as a production standard or trained-expert data contract** until a broader real-tutorial audit verifies that:
+1. downloaded video files can be processed into evidence-grounded DecisionEpisodes across varied tutorials, software, and recording quality;
+2. independent reviewers agree on decision logic, evidence axes, conditions, and outcome labels;
+3. WorkflowDefinition instances represent actual alternatives and conditional paths without turning one demonstrated path into the only valid path;
+4. approved Brain training records can be produced without leaking future execution outcomes into assistant targets; and
+5. a trained Brain can execute and verify tasks through a real registered Hands adapter.
 
 Changes made before that audit should remain within v0.1 and be reviewed against the examples and tests. A version bump should follow the audit and any resulting breaking changes.
 
@@ -58,15 +58,16 @@ Interpretation examples:
 
 | Evidence | observation_channel | rationale_source | labels |
 |---|---|---|---|
-| rrweb / Playwright / Windows UIA event received directly | direct_capture | not_applicable | omitted |
-| Instructor explicitly says why a step is needed | direct_capture (audio/transcript directly captured) | instructor_explicit | omitted |
-| Historical MP4 suggests a click or state change | inferred_from_video | not_applicable | omitted |
-| Historical MP4 behavior is used to infer a purpose | inferred_from_video | behavioral_inference | omitted |
+| Decoded frame, screen change, or OCR region from downloaded tutorial video | observed_from_video | not_applicable | observed_from_video |
+| Timestamped subtitle/ASR segment recording what the instructor said | not_applicable | instructor_explicit | instructor_words |
+| Video pixels suggest a cursor movement, click, or UI target | inferred_from_video | not_applicable | inferred_from_video |
+| Video-derived behavior is used to infer a purpose | inferred_from_video | behavioral_inference | inferred_from_video |
+| Independent live Hands execution evidence verifies a business result | direct_capture | not_applicable | omitted |
 | Instructor explanation and independent behavior both support the same rationale | direct_capture or inferred_from_video, as applicable | hybrid | omitted |
 | Project owner states a workflow rule | not_applicable | not_applicable | user_provided |
 | Source does not establish the fact or reason | unknown | unknown | omitted |
 
-The axes answer different questions. A directly captured click does not prove the instructor's reason. An instructor's spoken claim is directly captured speech, but it is not automatically a verified business rule. A video-inferred state must not be relabelled as a directly collected DOM/UIA event.
+The axes answer different questions. A visible state change in a video does not establish which click caused it. An instructor's spoken claim is source evidence for what was said, not automatically a verified business rule. A video-inferred action must not be relabelled as a directly collected DOM/UIA/mouse/keyboard event.
 
 ### Decision types
 
