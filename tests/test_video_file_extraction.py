@@ -229,4 +229,3 @@ def test_pipeline_endpoint_configuration_does_not_require_a_model_file():
     )
     assert pipeline.decision_verifier_endpoint == "http://127.0.0.1:8089/v1/chat/completions"
     assert pipeline.decision_verifier_model_path is None
-
