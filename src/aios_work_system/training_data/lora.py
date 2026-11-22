@@ -182,7 +182,9 @@ def load_weighted_split(
         if not isinstance(sample_id, str) or not sample_id.strip():
             raise ValueError(f"{expected_partition} sidecar row {index} has no sample_id")
         if sample_id in seen_ids:
-            raise ValueError(\n                f"{expected_partition} sidecar contains duplicate sample_id {sample_id}"\n            )
+            raise ValueError(
+                f"{expected_partition} sidecar contains duplicate sample_id {sample_id}"
+            )
         seen_ids.add(sample_id)
         if metadata.get("partition") != expected_partition:
             raise ValueError(
