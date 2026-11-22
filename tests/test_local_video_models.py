@@ -8,6 +8,7 @@ from pathlib import Path
 from aios_work_system.video_extraction.episode import build_decision_episode
 from aios_work_system.video_extraction.local_models import parse_normalized_point
 from aios_work_system.video_extraction.model_router import (
+    _build_episode_synthesis_context,
     _decision_quality_check,
     evaluate_grounder,
     route_ui_grounder,
@@ -319,6 +320,45 @@ def test_decision_quality_gate_rejects_unknown_evidence_refs(tmp_path):
     )
     assert not valid
     assert any("evidence references" in error for error in errors)
+
+
+def test_synthesis_context_uses_bounded_ocr_near_grounded_changed_frames(tmp_path):
+    episode = _episode(tmp_path / "video.webm")
+    selected = [
+        {"timestamp_ms": 100, "text": "Save title " * 80},
+        {"timestamp_ms": 200, "text": "Title field " * 80},
+    ]
+    unrelated = [
+        {"timestamp_ms": 10_000 + index * 2_000, "text": "unrelated OCR " * 100}
+        for index in range(80)
+    ]
+    transcript = [
+        {
+            "segment_id": f"subtitle-{index}",
+            "start_ms": index * 100,
+            "end_ms": index * 100 + 90,
+            "text": "instructor instruction " * 30,
+        }
+        for index in range(100)
+    ]
+    context = _build_episode_synthesis_context(
+        episode=episode,
+        transcript=transcript,
+        frames=_frames(),
+        ocr_records=unrelated + selected,
+        cursor_events=[],
+        grounding_results=[
+            {"timestamp_ms": 100, "point_norm": [0.5, 0.5]},
+            {"timestamp_ms": 200, "point_norm": [0.5, 0.5]},
+        ],
+        allowed_ids={"ev-observed-video"},
+    )
+    assert len(context["ocr_observations"]) == 2
+    assert [item["timestamp_ms"] for item in context["ocr_observations"]] == [100, 200]
+    assert all(len(item["visible_text"]) <= 320 for item in context["ocr_observations"])
+    assert len(context["instructor_words"]) <= 48
+    assert all(len(item["text"]) <= 220 for item in context["instructor_words"])
+    assert len(json.dumps(context, ensure_ascii=False)) < 16_000
 
 
 def test_aurum_4b_pass_prevents_deepseek_9b_escalation(tmp_path, monkeypatch):

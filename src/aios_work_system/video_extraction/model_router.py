@@ -636,6 +636,110 @@ def _decision_quality_check(
     return not errors, errors
 
 
+def _compact_synthesis_text(value: Any, maximum_chars: int) -> str:
+    return " ".join(str(value or "").split())[:maximum_chars]
+
+
+def _build_episode_synthesis_context(
+    *,
+    episode: dict[str, Any],
+    transcript: list[dict[str, Any]],
+    frames: list[dict[str, Any]],
+    ocr_records: list[dict[str, Any]],
+    cursor_events: list[dict[str, Any]],
+    grounding_results: list[dict[str, Any]],
+    allowed_ids: set[str],
+) -> dict[str, Any]:
+    """Build a bounded, evidence-linked context instead of dumping every OCR frame."""
+    changed_frames = [frame for frame in frames if frame.get("is_change")]
+    observed_frame_changes = [
+        {
+            "event_id": f"frame-change-{int(frame['frame_index']):06d}"
+            if frame.get("frame_index") is not None
+            else f"frame-change-{int(frame['timestamp_ms']):09d}",
+            "timestamp_ms": int(frame["timestamp_ms"]),
+        }
+        for frame in changed_frames[:64]
+    ]
+
+    grounding_timestamps = [
+        int(item["timestamp_ms"])
+        for item in grounding_results
+        if item.get("timestamp_ms") is not None
+    ]
+    if not grounding_timestamps:
+        grounding_timestamps = [
+            int(frame["timestamp_ms"]) for frame in changed_frames[:12]
+        ]
+
+    ocr_observations: list[dict[str, Any]] = []
+    seen_ocr_timestamps: set[int] = set()
+    for frame_timestamp in grounding_timestamps[:16]:
+        record = _nearest_ocr_record(ocr_records, frame_timestamp)
+        if record is None:
+            continue
+        record_timestamp = int(record["timestamp_ms"])
+        if record_timestamp in seen_ocr_timestamps:
+            continue
+        visible_text = _compact_synthesis_text(record.get("text", ""), 320)
+        if not visible_text:
+            continue
+        seen_ocr_timestamps.add(record_timestamp)
+        ocr_observations.append(
+            {
+                "timestamp_ms": record_timestamp,
+                "observed_for_frame_ms": frame_timestamp,
+                "visible_text": visible_text,
+            }
+        )
+
+    return {
+        "source_id": episode.get("source", {}).get("source_id"),
+        "duration_ms": episode.get("source", {}).get("source_duration_ms"),
+        "observed_frame_changes": observed_frame_changes,
+        "ocr_observations": ocr_observations,
+        "inferred_cursor_actions": [
+            {
+                "event_id": item.get("event_id"),
+                "timestamp_ms": item.get("timestamp_ms"),
+                "certainty": "inferred_from_video",
+                "confidence": item.get("confidence"),
+            }
+            for item in cursor_events[:24]
+        ],
+        "ui_target_hypotheses": [
+            {
+                "event_id": item.get("event_id"),
+                "timestamp_ms": item.get("timestamp_ms"),
+                "point_norm": item.get("point_norm"),
+                "visible_ui_element": _compact_synthesis_text(
+                    item.get("visible_ui_element"), 120
+                ),
+                "matched_ocr_text": _compact_synthesis_text(
+                    item.get("matched_ocr_text"), 160
+                ),
+                "model_id": item.get("model_id"),
+                "certainty": "inferred_from_video",
+            }
+            for item in grounding_results[:24]
+        ],
+        "instructor_words": [
+            {
+                "segment_id": item.get("segment_id"),
+                "start_ms": item.get("start_ms"),
+                "end_ms": item.get("end_ms"),
+                "text": _compact_synthesis_text(item.get("text"), 220),
+            }
+            for item in transcript[:48]
+        ],
+        "evidence_ids": sorted(allowed_ids),
+        "default_decision": episode.get("decision"),
+        "business_constraints": [],
+        "outcome_status": "not_verified",
+        "operation_execution_status": "not_observed",
+    }
+
+
 def synthesize_episode_decision(
     *,
     episode: dict[str, Any],
@@ -651,60 +755,18 @@ def synthesize_episode_decision(
 ) -> tuple[dict[str, Any], dict[str, Any]]:
     """Measure local Aurum-4B first; 9B fallback requires a generated, invalid 4B response."""
     allowed_ids = {item["evidence_id"] for item in episode.get("evidence", [])}
-    structured_context = {
-        "source_id": episode.get("source", {}).get("source_id"),
-        "duration_ms": episode.get("source", {}).get("source_duration_ms"),
-        "observed_frame_changes": [
-            {
-                "event_id": f"frame-change-{int(frame['frame_index']):06d}",
-                "timestamp_ms": int(frame["timestamp_ms"]),
-            }
-            for frame in frames
-            if frame.get("is_change")
-        ],
-        "ocr_observations": [
-            {
-                "timestamp_ms": int(record["timestamp_ms"]),
-                "visible_text": str(record.get("text", ""))[:1200],
-            }
-            for record in ocr_records[:80]
-        ],
-        "inferred_cursor_actions": [
-            {
-                "event_id": item.get("event_id"),
-                "timestamp_ms": item.get("timestamp_ms"),
-                "certainty": "inferred_from_video",
-                "confidence": item.get("confidence"),
-            }
-            for item in cursor_events[:40]
-        ],
-        "ui_target_hypotheses": [
-            {
-                "event_id": item.get("event_id"),
-                "timestamp_ms": item.get("timestamp_ms"),
-                "point_norm": item.get("point_norm"),
-                "visible_ui_element": item.get("visible_ui_element"),
-                "matched_ocr_text": item.get("matched_ocr_text"),
-                "model_id": item.get("model_id"),
-                "certainty": "inferred_from_video",
-            }
-            for item in grounding_results[:40]
-        ],
-        "instructor_words": [
-            {
-                "segment_id": item.get("segment_id"),
-                "start_ms": item.get("start_ms"),
-                "end_ms": item.get("end_ms"),
-                "text": item.get("text"),
-            }
-            for item in transcript[:100]
-        ],
-        "evidence_ids": sorted(allowed_ids),
-        "default_decision": episode.get("decision"),
-        "business_constraints": [],
-        "outcome_status": "not_verified",
-        "operation_execution_status": "not_observed",
-    }
+    structured_context = _build_episode_synthesis_context(
+        episode=episode,
+        transcript=transcript,
+        frames=frames,
+        ocr_records=ocr_records,
+        cursor_events=cursor_events,
+        grounding_results=grounding_results,
+        allowed_ids=allowed_ids,
+    )
+    structured_context_chars = len(
+        json.dumps(structured_context, ensure_ascii=False, separators=(",", ":"))
+    )
     report: dict[str, Any] = {
         "small_model_first": True,
         "primary_model_id": EPISODE_SMALL_MODEL_ID,
@@ -716,6 +778,11 @@ def synthesize_episode_decision(
         "inference_backend": "llama.cpp local GGUF",
         "local_only": True,
         "external_inference_provider_calls": 0,
+        "input_context_chars": structured_context_chars,
+        "input_context_policy": (
+            "OCR is selected only near grounded changed frames; transcript, cursor, and "
+            "grounding context are bounded before local 4B synthesis."
+        ),
         "primary_attempt": None,
         "fallback_attempt": None,
         "selected_model_id": None,
