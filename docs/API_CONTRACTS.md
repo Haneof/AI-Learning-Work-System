@@ -5,9 +5,9 @@ These logical contracts do not imply that every service is implemented.
 
 ## 1. General conventions
 
-- JSON UTF-8; timestamps use ISO 8601 UTC or integer milliseconds relative to a recording session, as declared by the schema.
+- JSON UTF-8; timestamps use ISO 8601 UTC or integer milliseconds relative to the source video timeline, as declared by the schema.
 - IDs use UUID or stable source-scoped identifiers.
-- Long-running download, capture, alignment, extraction, review, and training operations return job/task IDs.
+- Long-running download, extraction, alignment, review, and training operations return job/task IDs.
 - Writes support idempotency keys; retries must not duplicate side effects.
 - Every response includes request_id; background jobs also include trace_id.
 - Secrets, credentials, private source URLs, and tokens must not appear in ordinary logs.
@@ -22,13 +22,13 @@ These logical contracts do not imply that every service is implemented.
 - A record is required for every downloaded video and must preserve source_url and platform.
 - The archive destination is Google Drive under platform/creator/series-or-course.
 
-### Register a direct event recording
+### Register a tutorial video file
 
-- POST /v1/source-assets/{source_asset_id}/event-recordings
-- Input: source/session ID, recorder type (rrweb or Windows UI Automation), recorder version, application/software version, session clock metadata, and the event stream or durable event-stream reference.
-- Output: recording_id, accepted event count, capture status, warnings, and source references.
-- Events contain timestamp, event type, page/window identity, target/element reference where available, and relevant before/after value or state.
-- The service must preserve the original event payload and record capture gaps/provider limitations.
+- POST /v1/source-assets/{source_asset_id}/video
+- Input: downloadable/local video-file reference, source URL, platform, source hash, duration metadata when available, and optional subtitle-file references.
+- Output: video_asset_id, media probe status, file metadata, and source references.
+- Preserve the original file and any supplied SRT/WebVTT file. Record extraction provenance against the source file and its time range.
+- This contract does not register a live rrweb or Windows UI Automation event stream. The live event-collector proposal was cancelled on 2026-11-21 and remains historical only.
 
 ### Register narration and align transcript
 
@@ -38,14 +38,14 @@ These logical contracts do not imply that every service is implemented.
 - Use existing subtitles first. ASR is a fallback only when usable subtitles are unavailable.
 - Word-level alignment is preferred when supported and reliable; otherwise return segment-level timing with its granularity and uncertainty.
 
-### Start decision extraction
+### Start video-file extraction
 
 - POST /v1/source-assets/{source_asset_id}/decision-extraction-jobs
-- Input: event-recording reference, narration-record reference, extraction profile, and extraction-model revision.
-- Output: job_id, state.
-- The extraction service aligns semantic UI changes with instructor narration and produces Decision Episodes. It does not need a video-frame sequence as its primary input.
-- For legacy MP4 sources without direct event telemetry, reconstructed events must be marked inferred_from_video and retain source time references.
-- Every decision-driving fact and rationale must reference event, narration, project-owner, or other declared evidence.
+- Input: downloaded video-file reference, optional subtitle-file reference, extraction profile, and local extraction-model revisions/configuration.
+- Output: job_id, state, stage reports, and artifact references.
+- The extractor prefers usable timed subtitles and otherwise runs local ASR. It decodes sampled frames from the file, detects screen changes, runs OCR and local cursor/UI-target inference on selected frames, aligns narration to visual events, builds DecisionEpisodes, and performs contract validation.
+- All inferred cursor/click/target information must remain labelled inferred_from_video. Video-derived observations must not be presented as native DOM/UIA/mouse/keyboard telemetry.
+- The selected process operates on downloaded files; it does not play the video in real time or require a live event collector.
 
 ### Register or update a workflow definition
 
