@@ -295,14 +295,22 @@ class VideoExtractionPipeline:
             2,
         )
         _write_json(output / "ui-grounding.json", grounding_results)
-        if stages["ui_grounding"].get("selected_evaluation"):
+        if stages["ui_grounding"].get("selected_model_evaluation"):
             _write_json(
                 output / "ui-grounding-model-evaluation.json",
                 {
                     "primary_evaluation": stages["ui_grounding"].get("primary_evaluation"),
-                    "fallback_evaluation": stages["ui_grounding"].get("fallback_evaluation"),
+                    "secondary_small_evaluation": stages["ui_grounding"].get(
+                        "secondary_small_evaluation"
+                    ),
+                    "large_fallback_evaluation": stages["ui_grounding"].get(
+                        "large_fallback_evaluation"
+                    ),
                     "selected_model_id": stages["ui_grounding"].get("selected_model_id"),
                     "selection_reason": stages["ui_grounding"].get("selection_reason"),
+                    "selected_model_evaluation": stages["ui_grounding"].get(
+                        "selected_model_evaluation"
+                    ),
                 },
             )
 
