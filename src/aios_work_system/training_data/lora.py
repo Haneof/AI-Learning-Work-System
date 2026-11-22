@@ -182,7 +182,7 @@ def load_weighted_split(
         if not isinstance(sample_id, str) or not sample_id.strip():
             raise ValueError(f"{expected_partition} sidecar row {index} has no sample_id")
         if sample_id in seen_ids:
-            raise ValueError(f"{expected_partition} sidecar contains duplicate sample_id {sample_id}")
+            raise ValueError(\n                f"{expected_partition} sidecar contains duplicate sample_id {sample_id}"\n            )
         seen_ids.add(sample_id)
         if metadata.get("partition") != expected_partition:
             raise ValueError(
@@ -397,7 +397,7 @@ def validate_lora_config(config: Mapping[str, Any], *, gpu_profile: str = "t4") 
             or not dataset["path"].strip()
         ):
             raise ValueError(
-                f"{dataset_key} must use a local path with type: chat_template ({expected_partition})"
+                f"{dataset_key} must use a local path with type: chat_template "\n                f"({expected_partition})"
             )
 
 
