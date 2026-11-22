@@ -427,8 +427,7 @@ def validate_training_sample(sample: Mapping[str, Any]) -> None:
     if [message.get("role") for message in messages if _is_mapping(message)] != expected_roles:
         raise ValueError("training sample message roles must be system, user, assistant")
     if not all(
-        _is_mapping(message) and isinstance(message.get("content"), str)
-        for message in messages
+        _is_mapping(message) and isinstance(message.get("content"), str) for message in messages
     ):
         raise ValueError("each message must have a string content")
 
