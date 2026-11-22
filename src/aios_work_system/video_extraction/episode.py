@@ -138,7 +138,9 @@ def build_decision_episode(
                 "rationale_source": "instructor_explicit",
                 "confidence": 0.9,
                 "labels": ["instructor_words"],
-                "capture_method": transcript[0].get("transcript_method", "unknown") + "_with_timestamps",
+                "capture_method": (
+                    transcript[0].get("transcript_method", "unknown") + "_with_timestamps"
+                ),
                 "source_locator": {
                     "start_ms": start_ms,
                     "end_ms": end_ms,
@@ -165,7 +167,9 @@ def build_decision_episode(
                 "rationale_source": "behavioral_inference",
                 "confidence": min(0.49, max(confidence_values + [0.0])),
                 "labels": ["inferred_from_video"],
-                "capture_method": "cursor-settle heuristic and Qwen3-VL grounding on changed frames only",
+                "capture_method": (
+                    "cursor-settle heuristic and Qwen3-VL grounding on changed frames only"
+                ),
                 "source_locator": {
                     "start_ms": 0,
                     "end_ms": duration_ms,
@@ -212,7 +216,8 @@ def build_decision_episode(
         )
     else:
         selected_strategy = (
-            "Record the visible screen changes; no UI action could be grounded with sufficient evidence."
+            "Record the visible screen changes; no UI action could be grounded "
+            "with sufficient evidence."
         )
         basis = ["unknown"]
         rationale = (
@@ -262,12 +267,21 @@ def build_decision_episode(
         },
         "task": {
             "business_domain": "software_tutorial",
-            "goal": "Identify UI state changes and likely demonstrated operations from a downloaded tutorial video.",
-            "user_request": "Extract timestamped narration, visible UI text, screen changes, cursor candidates, and grounded action hypotheses.",
+            "goal": (
+                "Identify UI state changes and likely demonstrated operations "
+                "from a downloaded tutorial video."
+            ),
+            "user_request": (
+                "Extract timestamped narration, visible UI text, screen changes, "
+                "cursor candidates, and grounded action hypotheses."
+            ),
             "success_criteria": [
                 {
                     "criterion_id": "evidence-aligned-ui-operation",
-                    "description": "A timestamped UI operation hypothesis is linked to visual and narration evidence, or explicitly left unknown.",
+                    "description": (
+                        "A timestamped UI operation hypothesis is linked to visual "
+                        "and narration evidence, or explicitly left unknown."
+                    ),
                     "verification_type": "state_check",
                 }
             ],
@@ -289,13 +303,19 @@ def build_decision_episode(
             "applicable_conditions": [],
             "selected_next_step": {
                 "action": "ask_user",
-                "objective": "Review the video-grounded UI operation hypothesis before accepting it as a workflow step.",
-                "question": "Does the inferred UI target and action match the demonstrated operation?",
+                "objective": (
+                    "Review the video-grounded UI operation hypothesis before "
+                    "accepting it as a workflow step."
+                ),
+                "question": (
+                    "Does the inferred UI target and action match the demonstrated operation?"
+                ),
             },
             "alternatives_considered": [],
             "uncertainties": [
                 "A downloaded video contains no native click or DOM event telemetry.",
-                "Cursor locations and click actions, when present, are inferred and must not be treated as observed facts.",
+                "Cursor locations and click actions, when present, are inferred and must not "
+                "be treated as observed facts.",
                 "One tutorial demonstration does not establish a general business rule.",
             ],
             "evidence_refs": evidence_refs,
@@ -315,19 +335,25 @@ def build_decision_episode(
             },
             "postcondition_checks": [],
             "next_action": "ask_user",
-            "next_step_reason": "Visual tutorial evidence is not a live-system postcondition check.",
+            "next_step_reason": (
+                "Visual tutorial evidence is not a live-system postcondition check."
+            ),
         },
         "evidence": evidence,
         "review": {
             "status": "needs_review",
             "approved_for_training": False,
-            "review_notes": "Automatically extracted from one downloaded tutorial video; inferred operations need independent review.",
+            "review_notes": (
+                "Automatically extracted from one downloaded tutorial video; "
+                "inferred operations need independent review."
+            ),
         },
         "quality": {
             "annotation_status": "auto_extracted",
             "trainable": False,
             "exclusion_reasons": [
-                "Video-derived operations and cursor clicks are inferences, not direct event telemetry.",
+                "Video-derived operations and cursor clicks are inferences, "
+                "not direct event telemetry.",
                 "Automatically extracted episode has not been independently reviewed for training.",
             ],
         },

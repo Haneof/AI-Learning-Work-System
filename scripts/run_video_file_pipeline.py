@@ -10,7 +10,7 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline
+from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline  # noqa: E402
 
 
 def main() -> int:
