@@ -26,7 +26,7 @@ procedure.json uses schema version 2.0 and stores suggested_steps, an optional r
 - Evidence kind must match the source segment modality, and timestamps must fall inside the referenced locator.
 - Every package evidence reference must be supported by a selected knowledge item; CONTEXT and CONTRADICTS links do not count as support.
 - Direct observations and inferred claims must remain separately typed. Inferred coordinates, intent, or causality cannot be written as observed historical events.
-- GPT performs the first validation: evidence match, trajectory/time consistency, before/after UI state, uncertainty, and observed/inferred separation.
+- The local open-weight verifier performs the first validation: extraction fidelity, decision validity, and outcome validity. Each level returns pass/fail/unknown with reasons and evidence references; local PASS alone does not approve training.
 - PM Sangou independently verifies the candidate against original video evidence and relevant tests.
 - There is no separate human-review queue. Both gates must pass before a package is eligible for the approved SQLite corpus or LoRA training snapshot.
 - Rejected, conflicting, and unresolved packages remain traceable and cannot be promoted by the compiler.
