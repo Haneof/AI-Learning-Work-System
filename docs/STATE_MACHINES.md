@@ -1,16 +1,16 @@
 # Core State Machines
 
-Version: V1.1  
-Status: target logical definitions; implementation must enforce transitions in code and tests.
+**Version:** 0.1 design update  
+**Status:** target logical definitions; implementation must enforce transitions in code and tests.
 
 ## 1. Acquisition and download
 
-```text
+~~~text
 DISCOVERED -> SELECTED -> DOWNLOADING -> DOWNLOADED -> ARCHIVED
                   |             |
                   |             +-> FAILED
                   +-> REJECTED
-```
+~~~
 
 - DISCOVERED: tutorial candidate found with source URL and platform.
 - SELECTED: selected for download.
@@ -21,78 +21,99 @@ DISCOVERED -> SELECTED -> DOWNLOADING -> DOWNLOADED -> ARCHIVED
 
 Every video record retains its original URL and platform, including videos later rejected by the pre-filter.
 
-## 2. Clean / pre-filter
+## 2. Direct event capture
 
-```text
-SUBTITLE_CHECK -> TEXT_READY -> PREFILTERING -> PREFILTER_PASSED
-       |                         |
-       +-> ASR_FALLBACK -> TEXT_READY
-                                 +-> PREFILTER_REJECTED
-```
+~~~text
+SESSION_CREATED -> CAPTURE_READY -> CAPTURING_EVENTS -> EVENT_STREAM_CLOSED
+                         |                  |
+                         +-> CAPTURE_BLOCKED +-> PARTIAL / CAPTURE_FAILED
+~~~
 
+- SESSION_CREATED: source asset and recording session are registered.
+- CAPTURE_READY: rrweb or Windows UI Automation is configured and the session clock is available.
+- CAPTURING_EVENTS: semantic UI events are persisted with timestamps and source/session identity.
+- EVENT_STREAM_CLOSED: recording ended and the event stream is finalized.
+- PARTIAL: some event providers or controls were unsupported, or a capture gap occurred; the limitations are recorded.
+- CAPTURE_FAILED: event capture did not produce a usable stream.
+
+For legacy MP4 sources without event telemetry, a separate reconstruction path creates inferred_from_video event candidates. It must not enter the direct-capture state.
+
+## 3. Narration transcription and alignment
+
+~~~text
+AUDIO_REGISTERED -> SUBTITLE_CHECK -> TRANSCRIPT_READY -> ALIGNING -> ALIGNED
+                         |                |                 |
+                         +-> ASR_FALLBACK +-> ALIGNMENT_FAILED
+~~~
+
+- AUDIO_REGISTERED: original instructor audio and synchronization metadata are stored.
 - SUBTITLE_CHECK: inspect embedded and sidecar subtitles.
-- TEXT_READY: usable existing subtitles extracted, or ASR transcript created only when no usable subtitle exists.
-- ASR_FALLBACK: produce timestamped subtitles when source subtitles are absent.
-- PREFILTERING: classify tutorial status and target-vertical relevance.
-- PREFILTER_PASSED: eligible for full multimodal understanding.
-- PREFILTER_REJECTED: retain record and reason; do not run expensive full extraction.
+- TRANSCRIPT_READY: usable subtitles are selected, or ASR output is created only when no usable source subtitle exists.
+- ALIGNING: word/segment timestamps are aligned to the audio and recording timeline.
+- ALIGNED: text segments can be correlated with UI events.
+- ALIGNMENT_FAILED: timing confidence is insufficient; keep uncertainty and do not invent event/rationale links.
 
-## 3. Full multimodal extraction
+## 4. Decision Episode extraction and workflow construction
 
-```text
-PREFILTER_PASSED -> UNDERSTANDING -> GROUNDING -> TRAJECTORY_READY
-                         |              |
-                         +-> FAILED     +-> PARTIAL / NEEDS_EVIDENCE
-```
+~~~text
+EVENTS_AND_NARRATION_READY -> EPISODE_EXTRACTION -> EPISODES_DRAFT
+                                      |                  |
+                                      +-> NEEDS_EVIDENCE +-> WORKFLOW_DRAFT
+~~~
 
-The understanding stage uses Qwen3-VL or Mage-VL to interpret video/audio, operation, intent, UI state changes, and outcome. The grounding stage uses Magma to produce candidate target regions, click points, or trajectories. Their outputs have separate contracts and evaluation metrics.
+The extraction stage aligns event and narration records to produce Decision Episodes. It distinguishes instructor-explicit statements from behavioral inference and keeps unknown facts explicit.
 
-Trajectory steps must retain time/frame/audio evidence and observed/inferred labels. Missing or ambiguous historical click evidence cannot be upgraded into an observed event.
+Workflow construction groups episodes into HTN task/method structures and conditional branches. Hard dependencies, soft preferences, invariants, and recovery paths remain explicit. A tutorial's demonstrated order is not automatically the only valid workflow.
 
-## 4. Deduplication and review
+## 5. Deduplication and review
 
-```text
-TRAJECTORY_READY -> HASH_DEDUPED -> GPT_REVIEW_PASSED -> PM_VERIFIED -> APPROVED
-                          |                 |                 |
-                          +-> DUPLICATE     +-> REJECTED      +-> REJECTED
-                          +-> CONFLICTS_RETAINED
-```
+~~~text
+WORKFLOW_DRAFT -> HASH_DEDUPED -> FIRST_REVIEW_PASSED -> PM_VERIFIED -> APPROVED
+                       |                  |                 |
+                       +-> DUPLICATE      +-> REJECTED      +-> REJECTED
+                       +-> CONFLICTS_RETAINED
+~~~
 
-- Exact duplicate video content is linked by SHA-256 and is not redundantly extracted.
-- Conflicting knowledge statements coexist and retain separate evidence; no overwrite.
-- GPT checks evidence match, trajectory consistency, UI-state changes, and observed/inferred separation.
-- PM Sangou independently checks the original video evidence and relevant tests.
-- There is no separate external human-review queue.
-- Only items passing both gates become APPROVED and enter SQLite verified storage/training snapshots.
+- Exact duplicate source content is linked by SHA-256 and not redundantly reprocessed.
+- Conflicting workflows coexist with their source/software-version/applicability scope.
+- First review checks event/narration evidence, decision logic, conditions, workflow consistency, and uncertainty.
+- PM Sangou independently checks the source tutorial and relevant tests.
+- Only items passing both review gates and the separate quality/trainable gate become APPROVED and enter SQLite verified storage/training snapshots.
 
-## 5. LoRA dataset and training
+## 6. Brain dataset and training
 
-```text
-APPROVED -> DATASET_SNAPSHOTTED -> TRAINING_QUEUED -> TRAINING -> ADAPTER_READY
-                                                        |              |
-                                                        +-> FAILED     +-> EVALUATING
-```
+~~~text
+APPROVED -> DATASET_SNAPSHOTTED -> TRAINING_QUEUED -> TRAINING -> BRAIN_ADAPTER_READY
+                                                        |                |
+                                                        +-> FAILED       +-> EVALUATING
+~~~
 
-A dataset snapshot is immutable and contains only double-approved knowledge packages. Record the base-model revision, dataset hash, training parameters, GPU, peak resource use, and adapter hash.
+A dataset snapshot is immutable, grouped by tutorial/course/source, and contains only eligible decision examples. The assistant target ends at the Brain's next decision; future execution outcomes are excluded. Record the base-model revision, dataset hash, training parameters, GPU, peak resource use, and adapter hash.
 
-Planning capacity: 4B BF16 LoRA on a 16GB T4; 9B on a 24GB+ GPU. Treat measured training logs as authoritative over this estimate.
+## 7. Brain-to-Hands operation and expert evaluation
 
-## 6. Expert evaluation and lifecycle
+~~~text
+BRAIN_PLANNED -> DELEGATION_SENT -> HANDS_EXECUTING -> HANDS_RESULT_RECEIVED -> BRAIN_VERIFIES
+                                                                                   |
+                                        +------------------------------------------+
+                                        |
+             CONTINUE / BRANCH / RECOVER / REPLAN / ASK / APPROVAL / FINISH / STOP
+~~~
 
-```text
-ADAPTER_READY -> SANDBOX_EVALUATION -> GUI_EVALUATION -> READY
-                       |                    |
-                       +-> FAILED           +-> FAILED / NEEDS_REVISION
-```
+The Brain supplies a high-level capability request. The Hands adapter calls the existing operation model and returns status, observed state, postcondition checks, error details, and evidence references. The Brain then makes the next decision.
 
-Evaluation checks the expert's ability to understand goals, select actions based on current UI state, verify results, handle exceptions, and generalize to unseen variations. Passing a fixed replay alone is insufficient.
+A successful tool call or click alone does not establish a successful business result. Evaluation must cover changed initial states, alternative methods, partial failures, and unseen tasks.
 
-## 7. State transition requirements
+## 8. State transition requirements
 
 - All state changes use a controlled transition function/domain service.
 - Each transition records source state, target state, actor/model, guard, input hashes, output references, and failure reason.
 - Illegal transitions are rejected and audited.
 - Retries are bounded and idempotent; source hash and operation configuration form part of task identity.
 - Review decisions and dataset membership are immutable once snapshotted.
-- A failed or pending item cannot be included in an approved LoRA training dataset.
-- Expert release requires passing sandbox and GUI operation loop evaluations.
+- Pending, rejected, or quality-excluded items cannot enter an approved Brain training dataset.
+- Expert release requires both Brain decision evaluation and Brain-to-Hands sandbox/GUI validation.
+
+## Historical experiment status
+
+The Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected. The frame-based extraction route was rejected as the primary tutorial-learning method.

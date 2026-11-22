@@ -6,7 +6,7 @@ The GUI Agent provides a downstream validation loop for a trained vertical exper
 
 The target product is a 4B base model with a vertical LoRA adapter trained on double-verified knowledge packages. After adapter loading, the GUI loop tests whether the expert can use the learned principles to complete a goal in a live controlled interface, observe the resulting state, recover from unexpected changes, and generalize beyond the tutorial's exact route.
 
-This loop can capture actual pointer, mouse, keyboard, and input events while the agent is operating in the controlled environment. Those runtime events are different from inferred historical actions in a source tutorial.
+This loop can capture actual pointer, mouse, keyboard, and input events while the existing Hands model is operating in the controlled environment. Those runtime observations are different from the semantic event stream captured while recording a new tutorial, and different again from inferred historical actions reconstructed from a prerecorded MP4.
 
 ## Scope
 

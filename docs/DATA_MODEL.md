@@ -1,22 +1,25 @@
-# Core Data Model for Tutorial Learning and LoRA Experts
+# Core Data Model for Tutorial Workflow Learning and LoRA Experts
 
-Version: V1.1  
-Status: target logical model; implementation and migrations must be versioned separately.
+**Version:** 0.1 design update  
+**Status:** target logical model; implementation and migrations must be versioned separately.
 
 ## 1. Design rules
 
-- Every acquired video has a download record with original source link and platform.
-- Video assets are grouped by creator and series/course in Google Drive.
-- SHA-256 identifies exact duplicate video content. A duplicate links to the existing asset; it does not erase its acquisition record.
-- Conflicting knowledge and different applicability/version claims coexist; never overwrite one with another.
-- Every trajectory step links to source video identity, time range, and supporting frames/audio/text.
-- Direct observations and model inferences are stored separately.
-- Only knowledge packages passing both GPT review and PM Sangou's independent verification enter the approved SQLite training corpus.
-- LoRA training runs, base-model revisions, training-data snapshots, and adapter artifacts are immutable/versioned lineage.
+- Every acquired tutorial has a download record with original source link and platform.
+- Original videos are grouped by creator and series/course in Google Drive.
+- SHA-256 identifies exact duplicate source content. A duplicate links to the canonical source but does not erase its acquisition record.
+- New tutorials capture semantic UI events directly; legacy MP4 reconstructions are explicitly inferred.
+- Instructor narration is preserved and aligned to the same timeline as UI events.
+- Each Decision Episode records the business decision point, not just a UI click.
+- HTN workflows retain conditions, dependencies, branches, alternatives, and recovery paths.
+- Conflicting workflows and different applicability/software versions coexist; never overwrite one another.
+- Only records passing both review gates and the quality/trainable gate enter the approved Brain training corpus.
+- Dataset snapshots, base revisions, LoRA runs, and adapter artifacts are immutable/versioned lineage.
 
 ## 2. Core entities
 
 ### download_record
+
 - id (UUID, PK)
 - source_url, platform (required)
 - creator, series_or_course, title
@@ -26,87 +29,166 @@ Status: target logical model; implementation and migrations must be versioned se
 - license_value, license_source, license_status
 - download_status, failure_reason
 - duplicate_of_download_id (nullable FK)
+- course_group_id (nullable)
 - metadata_json
 
-Every video gets a record even when later rejected by the clean/pre-filter stage.
+Every downloaded video gets a record, including items later rejected by the text pre-filter.
 
-### source_video
+### source_asset
+
 - id (UUID, PK)
 - download_record_id (FK)
-- content_sha256 (unique per exact content)
+- content_sha256
 - storage_uri (Google Drive)
 - creator, series_or_course, platform
-- source_version, applicability_scope
-- lifecycle_state (DOWNLOADED / PREFILTERED / REJECTED / READY_FOR_EXTRACTION / EXTRACTED)
+- source_kind (NEW_EVENT_RECORDING / LEGACY_VIDEO / LIVE_TASK_TRACE)
+- software_name, software_version
+- session_id, session_clock_metadata_json
+- lifecycle_state (DOWNLOADED / PREFILTERED / REJECTED / EVENT_CAPTURED / DECISIONS_EXTRACTED)
 
-### subtitle_transcript
+### ui_event
+
 - id (UUID, PK)
-- source_video_id (FK)
-- origin (EMBEDDED_SUBTITLE / SIDECAR_SUBTITLE / ASR)
-- language, text, start_ms, end_ms
-- model_name, model_version, configuration_json
-- selected_for_prefilter (bool), quality_status
+- source_asset_id (FK)
+- event_sequence_no
+- timestamp_ms, end_timestamp_ms (when an interval is available)
+- event_type (DOM_MUTATION / CLICK / POINTER_MOVE / INPUT / FOCUS / BLUR / SCROLL / NAVIGATION / UIA_PROPERTY_CHANGE / UIA_STRUCTURE_CHANGE / UIA_FOCUS / OTHER)
+- observation_channel (DIRECT_CAPTURE / INFERRED_FROM_VIDEO / UNKNOWN)
+- application_id, page_or_window_id
+- target_element_ref, parent_element_ref
+- control_type, accessible_name
+- before_value_json, after_value_json
+- event_payload_json
+- capture_tool, capture_tool_version
+- confidence, source_locator_json
+- raw_event_ref
 
-Prefer existing subtitles. ASR-generated subtitles are a fallback only when no usable subtitle source exists.
+New tutorial recordings should populate directly captured events through rrweb or Windows UI Automation. Legacy MP4 reconstruction must use INFERRED_FROM_VIDEO and retain the source time range and reconstruction evidence.
 
-### source_segment
+### narration_segment
+
 - id (UUID, PK)
-- source_video_id (FK)
-- segment_type (TIME_RANGE / FRAME / AUDIO_RANGE / SUBTITLE_RANGE)
-- locator_json (start_ms/end_ms/frame_timestamp_ms/frame_index)
-- media_uri, text_content, content_hash
-- parser_or_model_name, version, created_at
+- source_asset_id (FK)
+- speaker_role
+- text, language
+- start_ms, end_ms
+- transcript_origin (EMBEDDED_SUBTITLE / SIDECAR_SUBTITLE / ASR / HUMAN_TRANSCRIPT)
+- alignment_method, alignment_model, alignment_version
+- word_timestamps_json (nullable)
+- alignment_confidence, quality_status
+- raw_audio_ref, transcript_ref
 
-### trajectory_step
+Prefer usable existing subtitles; use ASR only when subtitle sources are unavailable. Preserve whether the timing is word-level or segment-level.
+
+### decision_episode
+
 - id (UUID, PK)
-- source_video_id (FK)
-- sequence_no, start_ms, end_ms
-- action_description, target_element, candidate_coordinates_json
-- intent_description, expected_outcome, observed_outcome
-- pre_ui_state_json, post_ui_state_json
-- observed_evidence_json (directly visible video or synchronized event telemetry)
-- inferred_claims_json (predicted action/intent/causality, confidence, alternatives)
-- evidence_segment_ids_json, model_name, model_version
-- epistemic_status (OBSERVED / INFERRED / MIXED / UNKNOWN)
-- review_state, created_at
+- expert_id, workflow_id, workflow_version
+- source_asset_id (FK)
+- task_goal, success_criteria_json
+- state_before_json, state_after_json
+- narration_segment_ids_json
+- relevant_ui_event_ids_json
+- decision_type
+- selected_strategy, rationale_summary
+- decision_basis_json, applicable_conditions_json
+- selected_next_step_json
+- operation_capability_id, operation_arguments_json
+- operation_status
+- postcondition_checks_json
+- outcome_status, next_action, next_step_reason
+- evidence_refs_json, uncertainties_json
+- review_status, approved_for_training
+- annotation_status, trainable, exclusion_reasons_json
+- created_at, reviewed_at
 
-A coordinate predicted by an action-grounding model is inference unless the actual click is visibly evidenced or captured by synchronized input-event telemetry.
+A Decision Episode must describe the goal/state/reason/decision/operation/result/next-decision relationship. A plain click list is not a Decision Episode.
 
-### knowledge_package
+### workflow_definition
+
 - id (UUID, PK)
-- expert_id, vertical_id
-- package_version, package_hash
-- purpose, conditions_json, judgement_criteria_json
-- success_failure_experience_json, counterexamples_json, recovery_json
-- trajectory_step_ids_json, evidence_refs_json
-- lifecycle_state (CANDIDATE / GPT_PASSED / PM_VERIFIED / APPROVED / REJECTED / SUPERSEDED)
-- applicability_scope, created_at
+- expert_id, workflow_id, version
+- name, domain, goal
+- applicability_json (software versions, business context, conditions)
+- success_conditions_json
+- tasks_json (compound and primitive HTN tasks)
+- methods_json (applicability conditions and subtask decomposition)
+- edges_json (HARD_DEPENDENCY / SOFT_PREFERENCE)
+- ordering_constraints_json
+- invariants_json
+- transitions_json
+- recovery_rules_json
+- capability_registry_version
+- evidence_refs_json
+- lifecycle_status
+- created_at
+
+A workflow is scoped by source, software version, and applicability conditions. Conflicting variants coexist.
+
+### operation_capability
+
+- capability_id (PK)
+- version
+- description
+- hands_adapter_id
+- argument_schema_json
+- preconditions_json
+- expected_postconditions_json
+- risk_level
+- idempotent
+- availability_status
+
+Primitive HTN tasks map to registered capabilities. The capability registry is an integration contract with the existing Hands model, not a new low-level GUI agent.
 
 ### review_event
+
 - id (UUID, PK)
-- knowledge_package_id (FK)
-- gate (GPT_FIRST_PASS / PM_INDEPENDENT_VERIFICATION)
+- decision_episode_id or workflow_definition_id
+- gate (FIRST_REVIEW / PM_INDEPENDENT_VERIFICATION)
 - decision (PASS / REJECT / NEEDS_EVIDENCE)
-- reviewer_identity (GPT model/version or PM identity)
-- checks_json (evidence_match, trajectory_consistency, UI_state_match, epistemic_separation, test_results)
+- reviewer_identity and model/version where applicable
+- checks_json (evidence resolution, event/narration alignment, decision/condition logic, uncertainty, test results)
 - comments, created_at
 
-No separate manual-reviewer role is part of this workflow. The required sequence is GPT check first, then PM Sangou independently verifies the original video evidence and relevant tests.
+There is no additional external manual-reviewer queue. Both required gates must pass.
+
+### training_example
+
+- id (UUID, PK)
+- decision_episode_id (FK)
+- sample_type (NORMAL_DECISION / ERROR_RECOVERY)
+- messages_json (system/user/assistant)
+- source_decision_point_ref
+- split_group_id (tutorial/course/source grouping key)
+- train_or_test_partition
+- created_at
+
+Assistant targets contain the Brain's next decision only. They must not contain future Hands execution outcomes.
+
+### training_meta
+
+- training_example_id (FK)
+- evidence_tier
+- rationale_loss_weight (nullable)
+- sidecar_version
+
+This sidecar is not fed to the model. It is stored separately from the conversational messages.
 
 ### training_dataset_snapshot
+
 - id (UUID, PK)
-- vertical_id
-- dataset_version, dataset_hash
-- approved_knowledge_package_ids_json
+- expert_id, dataset_version, dataset_hash
+- approved_decision_episode_ids_json
+- training_example_ids_json
 - included_source_hashes_json
+- split_manifest_json (grouped by tutorial/course/source)
 - exclusions_json
 - created_at, created_by
 
-Only knowledge packages with both required PASS review events may be included.
-
 ### lora_training_run
+
 - id (UUID, PK)
-- vertical_id, training_dataset_snapshot_id (FK)
+- expert_id, training_dataset_snapshot_id (FK)
 - base_model_id, base_model_revision
 - adapter_id, adapter_revision
 - training_config_json
@@ -115,43 +197,55 @@ Only knowledge packages with both required PASS review events may be included.
 - peak_vram_gb, metrics_json, artifact_uri, adapter_sha256
 
 ### expert
+
 - id (UUID, PK)
 - name, vertical_id, description
-- base_model_id, base_model_revision
-- active_adapter_id, adapter_revision
+- brain_base_model_id, base_model_revision
+- active_lora_adapter_id, adapter_revision
+- hands_adapter_id, capability_registry_version
 - lifecycle_state (DATASET_READY / TRAINING / EVALUATING / READY / SUSPENDED)
 - created_at, updated_at
 
-The expert is the trained base-plus-LoRA model; the knowledge package is its provenance-backed training material.
+An expert is the Brain base-plus-LoRA paired with a configured Hands integration. Decision Episodes and WorkflowDefinitions are training and runtime knowledge assets.
 
 ## 3. Relationships
 
-- download_record 1:1 source_video; duplicate download records may refer to a canonical source_video.
-- source_video 1:N subtitle_transcript / source_segment / trajectory_step.
-- trajectory_step N:M source_segment through evidence_segment_ids/evidence links.
-- knowledge_package 1:N trajectory_step (or references steps from multiple source videos when explicitly designed).
-- knowledge_package 1:N review_event.
-- training_dataset_snapshot N:M approved knowledge_package.
+- download_record 1:1 source_asset; duplicate acquisition records may refer to a canonical source_asset.
+- source_asset 1:N ui_event and narration_segment.
+- source_asset 1:N decision_episode.
+- decision_episode N:M ui_event and narration_segment through evidence references.
+- decision_episode N:1 workflow_definition version.
+- workflow_definition N:M operation_capability through primitive task mappings.
+- decision_episode/workflow_definition 1:N review_event.
+- training_example N:1 decision_episode; training_meta 1:1 training_example.
+- training_dataset_snapshot N:M approved training_example and decision_episode.
 - training_dataset_snapshot 1:N lora_training_run.
-- lora_training_run produces a versioned adapter mounted on a base-model revision.
-- expert references one base model and one active vertical adapter.
+- lora_training_run produces a versioned Brain adapter.
+- expert references one Brain base, one active vertical adapter, and one Hands adapter/capability registry.
 
 ## 4. Required constraints
 
-1. An approved knowledge package has evidence references and both required review events.
-2. Observed claims have direct video or synchronized telemetry evidence; inferred claims carry confidence and supporting observations.
-3. Hash-equal content is not redundantly re-extracted; conflicting knowledge is never silently overwritten.
-4. Dataset snapshot membership is immutable and excludes rejected, pending, or superseded content.
-5. Every adapter is traceable to a base revision, training dataset hash, and configuration.
-6. Changing the base, adapter, or dataset creates a new version, not an in-place mutation.
-7. SQLite is the selected store for structured pipeline records and review/training metadata. Large video objects remain in Google Drive.
-8. Secrets, personal credentials, and private tokens are not included in records or logs.
+1. Every referenced evidence ID resolves to a source event, narration segment, or other declared evidence record.
+2. Timestamps are ordered and remain within the source duration when known.
+3. Directly captured UI events and legacy-video inferences remain distinguishable.
+4. Instructor-explicit rationale, behavioral inference, project-owner-provided rules, and unknown information remain distinguishable.
+5. A successful operation outcome requires evidence-backed postcondition verification.
+6. Hard dependencies and hard ordering constraints must not contain cycles.
+7. Every primitive workflow task maps to a registered operation capability.
+8. Invariants must be present in the guarded tasks' preconditions and cannot be bypassed.
+9. Training samples contain only information available at their decision point. Future execution outcomes are excluded from the assistant target.
+10. Train/test splitting is grouped by tutorial/course/source so near-duplicate fragments cannot cross partitions.
+11. Only examples passing both review gates and the quality/trainable gate may be included in an approved dataset snapshot.
+12. A Hands capability call must resolve against the configured capability registry.
+13. SQLite is the selected store for structured pipeline records and lineage metadata. Large original tutorial files remain in Google Drive.
+14. Secrets, personal credentials, and private tokens are excluded from records and logs.
 
 ## 5. Deferred
 
 - Distributed multi-region storage.
-- Advanced graph database and cross-expert automatic knowledge sharing.
-- Automated compliance retention policy engine.
+- Automated workflow conflict resolution across all software versions.
 - Large-scale vector-index sharding.
+- Automatic cross-expert workflow sharing.
+- A replacement page-perception/action model.
 
-These are not prerequisites for the first vertical LoRA expert.
+These are not prerequisites for the first Brain LoRA expert.

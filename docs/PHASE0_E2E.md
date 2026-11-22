@@ -27,9 +27,10 @@ The command refuses to overwrite a non-empty output directory. It creates a smal
 
 This is a deterministic contract fixture, not an AI learning demonstration or the target tutorial pipeline. It does not:
 - search for or download tutorials into Google Drive;
-- inspect embedded subtitles or run real ASR pre-filtering;
-- call Qwen3-VL, Mage-VL, or Magma;
-- understand video actions, intentions, UI state transitions, or click coordinates;
+- capture rrweb or Windows UI Automation event streams from a real tutorial;
+- align real instructor narration or run real subtitle/ASR alignment;
+- produce Decision Episodes or HTN workflow definitions;
+- train or evaluate a Brain LoRA, call an existing Hands operation model, or run Brain-to-Hands delegation;
 - perform the GPT + PM double-review workflow;
 - train or load a LoRA expert;
 - parse real PDF/video, run real OCR/ASR/FFmpeg in this command, or start a Docker container.
@@ -40,4 +41,4 @@ This harness remains useful for deterministic contract and safety regression. It
 
 ## Required end-to-end acceptance
 
-The full target pipeline is documented in [ACQUISITION_PIPELINE.md](ACQUISITION_PIPELINE.md). Final acceptance requires a licensed tutorial corpus, subtitle-first filtering, real video understanding and action grounding, evidence-linked observed/inferred trajectories, GPT review plus PM verification, SQLite approved knowledge storage, a verified LoRA training snapshot, and trained-expert evaluation in Docker sandbox and the GUI operation loop.
+The full target pipeline is documented in [ACQUISITION_PIPELINE.md](ACQUISITION_PIPELINE.md). Final acceptance requires licensed tutorials, direct semantic UI event capture for new recordings, aligned instructor narration, source-grounded Decision Episodes, HTN workflows with conditional branches and recovery, GPT review plus PM verification, SQLite approved knowledge storage, a Brain LoRA training snapshot, and Brain-to-Hands evaluation in Docker sandbox and the live GUI operation loop. Legacy MP4 reconstructions must remain labelled inferred_from_video.

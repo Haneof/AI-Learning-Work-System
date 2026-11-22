@@ -1,116 +1,151 @@
-# 阶段 0：技术验证执行计划
+# Phase 0: Technical Validation Plan
 
-版本：V1.1  
-状态：模型对比与管线验证基线  
-目标：先证明系统能准确理解教程操作并提取可信知识，再验证大规模处理效率。质量第一、效率第二。
+**Version:** 0.1 design update  
+**Status:** validation baseline; a real-tutorial end-to-end audit is still required  
+**Priority:** prove that tutorials teach transferable workflow decisions to the Brain before optimizing throughput.
 
-## 1. 阶段目标
+## 1. Phase objective
 
-阶段 0 验证一个最小端到端纵向切片：
+Validate a minimal vertical slice that converts a tutorial's semantic UI event stream and instructor narration into workflow decision supervision, trains or evaluates a Brain model, and verifies that the Brain can direct an existing Hands operation model.
 
-1. 将目标垂直教程下载到 5TB Google Drive，按创作者/系列分组并留下源链接与平台记录。
-2. 提取已有字幕；缺少字幕时才调用 ASR；用文本预筛掉非教程或非目标垂直素材。
-3. 对通过预筛的视频进行完整多模态理解，生成与原视频时间戳、关键画面和音频证据关联的操作轨迹与知识。
-4. 将 observed 和 inferred 明确分开，保留不确定性、矛盾和来源。
-5. 去重后经 GPT 初审、PM Sangou 对照视频和测试独立验证，只有双重通过的知识进入 SQLite。
-6. 用已验证知识包训练首个 4B LoRA 专家，并在 Docker 沙箱和 GUI 操作闭环中验证。
+The target slice is:
 
-本阶段不把语音转写、OCR 文本、视频摘要或固定步骤复述当作学习完成。
+1. Acquire licensed tutorials and preserve their source/course metadata.
+2. For new recordings, capture timestamped semantic UI events directly: rrweb for web applications and Windows UI Automation for Windows desktop applications.
+3. Preserve the original instructor audio. Prefer supplied subtitles; use ASR only when usable subtitles are unavailable, then align the transcript to the audio with word- or segment-level timestamps.
+4. Align UI events and narration into Decision Episodes: goal, current business state, reason, chosen strategy, delegated operation, verified result, and next decision.
+5. Build HTN workflows with conditional branches, hard dependencies, soft preferences, preconditions, postconditions, and recovery paths.
+6. Review evidence and annotations, create Brain LoRA training examples without leaking future execution outcomes, and preserve a separate training-metadata sidecar.
+7. Train/evaluate the Brain and connect it to the existing Hands model through a versioned delegation/result protocol.
+8. Test changed initial states, alternative paths, Hands failures, and unseen tasks in a sandbox.
 
-## 2. 工作包与顺序
+A transcript, UI event dump, video summary, button recognition result, or replay of one fixed click sequence does not constitute successful learning.
 
-### WP0：环境与数据源基线
+## 2. Scope and architecture boundaries
 
-- 固定 Python、FFmpeg、依赖版本和日志/配置约定。
-- 确认云端下载器能直接把文件落入 Google Drive 目标目录。
-- 确认 5TB Drive 的 creator/series 目录规范、下载记录字段和重复检测策略。
-- 记录原始链接、平台、创作者、系列、内容哈希和许可状态。
+### Brain — the learning target
 
-出口：能可靠归档并重新定位源视频；重复素材可通过内容哈希识别；下载记录不丢失。
+The Brain is the language model plus a vertical LoRA. It must learn:
+- decomposition of a business goal into subgoals;
+- task ordering and dependencies;
+- condition and branch selection;
+- the purpose and constraints behind business actions;
+- selecting an available operation capability;
+- verifying postconditions from Hands feedback;
+- diagnosing failures, recovering, replanning, asking the user, requesting approval, or stopping;
+- applying the learned workflow principles to different starting states and valid alternative paths.
 
-### WP1：视频理解模型盲测
+### Hands — reused execution infrastructure
 
-- 候选理解模型：Qwen3-VL 与 Mage-VL。当前 Colab T4 16GB 盲测正在进行，不预设胜者。
-- 使用同一组代表性教程、相同时间范围和尽可能一致的提示/输出契约。
-- 评测它们是否理解人做了什么、为什么做、操作目标、前后 UI 状态、结果、前置条件和异常分支。
-- 检查时间定位和证据引用，统计幻觉步骤、遗漏步骤、错误因果和 observed/inferred 混淆。
-- 不用 ASR 准确率、视频摘要流畅度或吞吐量代替操作理解质量。
+The Hands model is an existing open-source GUI operation model (for example, UI-TARS) and its adapter. It handles live page perception, UI element localization, and low-level operation. Building a replacement page-recognition or mouse-control model is outside this phase. The Brain delegates high-level capability requests; the Hands adapter maps them to the operation model and returns structured results.
 
-出口：形成可复现盲测集、人工标注基准、逐项评分和错误案例；只有达到质量门槛后再决定主理解模型。
+### Tutorial evidence input
 
-### WP2：动作 grounding 独立评测
+The primary input for new tutorials is the semantic UI event stream plus the instructor's voice narration. No sparse- or dense-frame extraction pipeline is planned as the primary learning path.
 
-- 单独评估 Magma 的点击坐标、目标区域和动作轨迹输出。
-- 用有真实坐标/事件标注的样本评分，区分视频中可见的指针/点击与模型预测坐标。
-- 评估点击点误差、目标命中率、动作顺序和时间对齐。
-- 不用理解模型的文本质量替代 Magma 的定位精度。
+Legacy MP4 tutorials may be reconstructed when direct recording telemetry does not exist. Any reconstructed mouse/UI event must be labelled as inferred from video and must not be upgraded to directly captured evidence.
 
-出口：明确 Magma 在动作 grounding 上的适用边界、失败类型和置信度处理方式。
+## 3. Work packages and sequence
 
-### WP3：字幕预筛与完整提取管线
+### WP0 — Recording and source baseline
 
-- 下载后优先抽取嵌入字幕/sidecar 字幕；没有字幕时才 ASR。
-- 运行目标垂直教程分类；拒绝项记录原因，不送入昂贵的完整提取队列。
-- 只对通过预筛的视频调用理解模型。使用关键片段/帧序列和音频上下文，而非无差别逐帧通用 VLM 调用。
-- 输出时间对齐的操作步骤、意图、操作目标、UI 前后状态、结果、前置条件/例外/恢复信息及证据定位。
-- 为每个主张标记 observed 或 inferred，保留不确定性和来源模型版本。
+- Define a recording profile that starts event capture before the tutorial begins.
+- Capture rrweb events for web tutorials, including DOM changes, interaction events, focus, scrolling, input state changes, and timestamps.
+- Capture Windows UI Automation events and element state changes for desktop tutorials.
+- Keep stable source/session IDs, application/software version, event timestamps, and source hashes.
+- Record instructor audio on the same session clock or preserve synchronization metadata.
+- Retain the original tutorial and all source metadata in the creator/course archive.
 
-出口：代表性样本能生成可复核轨迹；字幕预筛结果与完整提取结果不混淆；真实 ASR 与视频理解能力分开验收。
+**Exit:** a new tutorial recording has a complete, timestamped event stream, original audio, source/session metadata, and a reproducible synchronization reference. Event gaps and unsupported controls are explicit.
 
-### WP4：哈希去重、双重审核与 SQLite
+### WP1 — Narration transcription and alignment
 
-- 按视频 SHA-256 处理完全重复内容；相互冲突的知识条目并存，不覆盖。
-- GPT 首轮检查证据匹配、时序/因果一致性、UI 状态变化和 observed/inferred 标签。
-- PM Sangou 独立查看原始视频证据并运行相关验证测试。没有额外人工审核队列。
-- 仅双重通过的内容标记为 verified 并写入 SQLite 正式知识/训练集。失败项保留状态、原因和证据，但不得进入正式训练集。
+- Extract existing subtitles first and preserve their language and timecodes.
+- Run ASR only when usable subtitles are unavailable.
+- Align the transcript to the original audio. Preserve word-level timestamps when reliable, otherwise retain segment-level timestamps and mark the granularity.
+- Distinguish instructor-explicit reasons and rules from behavioral inference.
+- Do not convert narration into an approved business rule solely because the instructor said it; keep provenance and review state.
 
-出口：审核决定和版本可追踪；未经双重通过的知识无法成为训练样本。
+**Exit:** the narration is time-aligned to the event stream, and every explanatory claim can be traced to an audio/transcript segment.
 
-### WP5：4B LoRA 训练与专家验证
+### WP2 — Decision Episode and HTN workflow extraction
 
-- 以已验证知识包构建有版本的训练数据集。
-- 云端 GPU 训练 4B BF16 LoRA；规划资源基线为 T4 16GB。若选 9B，采用 24GB+ GPU。
-- 记录基础模型 revision、数据快照、训练参数、GPU、实际峰值显存、训练时长和评测结果。
-- 下载 adapter 并挂载到 4B base，形成首个垂直专家。
-- 通过 Docker 沙箱和 GUI 操作循环验证知识使用、动作决策、界面状态检查、异常恢复及未见任务迁移。
+- Align page/navigation changes, control state changes, mouse/input events, and narration on one timeline.
+- Extract episodes that contain the task goal, state known at the decision point, relevant conditions, instructor rationale, chosen operation, resulting state, and next decision.
+- Separate directly captured events, legacy-video inferences, instructor-explicit rationale, behavioral inference, project-owner-provided rules, and unknowns.
+- Compile episodes into HTN workflows and conditional graphs. Preserve alternative methods, hard dependencies, soft preferences, workflow applicability, software version, and recovery rules.
+- Never assume the instructor's demonstrated path is the only valid path.
 
-出口：adapter 可复现加载；模型在冻结评测和未见任务集达标；不能只凭复述训练视频或固定步骤重放宣布成功。
+**Exit:** representative episodes and workflows are independently reviewable and preserve their evidence, conditions, uncertainties, and source/tutorial grouping.
 
-## 3. 质量门槛（先于性能优化）
+### WP3 — Review, quality gates, and training data
 
-至少测量：
+- Deduplicate exact source content by SHA-256 while retaining every acquisition record.
+- Preserve conflicts from different tutorials, application versions, and applicability conditions; do not overwrite.
+- Require the agreed review approval switch and quality/trainable gate before formal training.
+- Generate conversational JSONL examples with system/user/assistant messages. Keep evidence tier and rationale loss-weight metadata in a separate sidecar, never in the model input.
+- Produce normal-decision and error-recovery examples. For recovery, place the prior Hands result in the user input; the assistant target must stop before the future execution outcome.
+- Split by tutorial/course/source group so near-duplicate fragments cannot cross train and test partitions.
 
-- 操作步骤精确率/召回率与顺序正确率。
-- 动作目标定位准确率、点击点偏差和时间偏差。
-- UI 前后状态识别正确率。
-- 意图解释与因果关系正确率。
-- 操作结果判断准确率。
-- observed/inferred 分类正确率和无证据断言率。
-- 证据覆盖率、来源时间定位准确度、冲突保留率。
-- 专家对未见界面变化的适应和恢复能力。
+**Exit:** an auditable dataset snapshot contains only eligible examples, with provenance and leakage checks.
 
-质量阈值应在查看最终盲测结果之前冻结。任何关键维度不过关，样本不得进入训练集。只有质量达标后，才记录和优化视频小时/GPU 小时、排队等待、GPU 利用率和成本。
+### WP4 — Brain LoRA training and standalone decision evaluation
 
-## 4. 资源与运行策略
+- Use a fixed base-model revision and a versioned workflow-training dataset.
+- Train the first vertical Brain LoRA on cloud GPU. Current capacity planning assumes 4B BF16 LoRA on a T4 16GB; 9B planning requires 24GB+ GPU. These are assumptions until verified with actual training logs.
+- Provide the relevant local HTN workflow slice in the runtime prompt so volatile business rules can be updated in workflow data without retraining the LoRA.
+- Evaluate the Brain with a simulated Hands executor before connecting a live operation model.
+- Test task decomposition, branch selection, precondition checks, capability selection, asking for missing inputs, safe stop, and recovery from success/failure/partial-success/blocked/ambiguous Hands results.
 
-- 本地 RTX 3070 8GB 用于开发、FFmpeg 预处理和轻量验证。
-- Qwen3-VL/Mage-VL 的当前比较环境为 Colab T4 16GB。
-- 4B BF16 LoRA 以 T4 16GB 为规划配置；9B 使用 24GB+ GPU。实际峰值显存必须测量。
-- 先单任务验证正确性，再增加并行度；错误样本进入隔离/复核，不能自动重试后盲目放行。
-- 视频素材存 Google Drive；SQLite 保存索引、证据、轨迹、审核和训练集关系。
-- 每项任务记录模型、工具、输入哈希、配置、耗时、资源、输出版本和错误原因。
+**Exit:** the Brain chooses correct next decisions under controlled state variations, without needing to perform button recognition itself.
 
-## 5. 阶段退出条件
+### WP5 — Brain-to-Hands integration and expert validation
 
-全部满足才可把该垂直领域作为正式 LoRA 专家训练目标：
+- Connect the Brain to the existing Hands model through the versioned delegation/result contract.
+- Require each delegation to include objective, capability, arguments, constraints, expected postconditions, and observation requirements.
+- Require Hands to return a structured status, observed state, postcondition checks, error category, and evidence references.
+- Verify business postconditions rather than accepting a successful click or tool call as proof.
+- Use the Docker sandbox and GUI operation loop to test realistic tasks, alternative paths, failures, recovery, and safe stop behavior.
 
-- 下载记录和 Drive 课程结构完整。
-- 字幕优先、ASR fallback 和预筛流程经样本验证。
-- 理解模型通过操作/意图/UI 状态质量门槛。
-- Magma grounding 通过独立坐标/动作门槛，或明确将不可靠字段标为推断/未知。
-- 轨迹证据完整，observed/inferred 清晰，冲突未被覆盖。
-- GPT 与 PM 双重门禁有效，SQLite 中正式训练数据均为双重通过项。
-- 4B LoRA 训练和 adapter 加载可复现。
-- 沙箱及 GUI 操作环验证训练后的专家，包含未见任务与异常恢复测试。
-- 性能数据来自实测，不能以估算替代实测吞吐。
+**Exit:** the end-to-end Brain + existing Hands pair completes or safely stops unseen variations and records why.
 
+## 4. Quality gates
+
+Freeze thresholds before a held-out evaluation. At minimum measure:
+
+- decision accuracy at each decision point;
+- task decomposition and dependency/order correctness;
+- conditional branch selection under changed initial states;
+- business-rationale fidelity and provenance correctness;
+- precondition and postcondition verification accuracy;
+- capability selection and safe delegation;
+- Hands result interpretation;
+- error diagnosis, recovery, replan, and stop decisions;
+- successful completion of held-out business goals;
+- transfer to alternative valid workflows and unseen conditions;
+- evidence coverage, unsupported-claim rate, and direct/inferred label accuracy;
+- safety violations (must be zero).
+
+Do not substitute text fluency, video QA scores, button detection accuracy, or raw throughput for Brain workflow competence.
+
+## 5. Historical tutorial handling
+
+For legacy MP4 files without direct UI telemetry:
+- retain the original video and narration;
+- reconstruct only events supported by the recording;
+- mark reconstructed event observations as inferred_from_video;
+- mark instructor words separately from behavior-based rationale inference;
+- leave hidden clicks, keyboard events, and ambiguous state changes unknown;
+- use frame inspection only as a fallback for human/model reconstruction, not as the primary training input route.
+
+## 6. Compute and operations
+
+- Local RTX 3070 8GB: development and lightweight processing; not assumed to be the primary 4B BF16 LoRA trainer.
+- Cloud GPU: LoRA training and heavier validation.
+- T4 16GB for 4B BF16 LoRA and 24GB+ for 9B are planning assumptions. Record actual model revision, context length, batch, optimizer, peak VRAM, and run time.
+- Keep original tutorial assets in Google Drive; store event/narration metadata, decisions, workflows, reviews, and dataset lineage in SQLite or the versioned structured store.
+- Measure cost and throughput only after the quality thresholds are met.
+
+## 7. Historical model experiment status
+
+The earlier Qwen3-VL-4B vs Mage-VL-4B blind test on Colab T4 was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. The comparison was not completed as a validated winner-selection benchmark. The frame-based extraction route was rejected as the primary tutorial-learning method; the event-stream plus narration route is the current design.

@@ -1,67 +1,56 @@
-# Media Ingestion and Intelligent Video Extraction
+# Media Ingestion and Tutorial Event Learning
 
 ## Current implementation boundary
 
 The repository currently provides:
+- source registration and SHA-256 hashing;
+- FFmpeg probing, audio extraction, proxy transcoding, and utility frame extraction;
+- ASRAdapter and OCRAdapter Protocol interfaces;
+- StaticASRAdapter and StaticOCRAdapter deterministic fixtures;
+- a basic VideoLearningPipeline that invokes injected adapters and writes timestamped evidence artifacts.
 
-- Source registration and SHA-256 hashing.
-- FFmpeg probing, audio extraction, proxy transcoding, and sampled-frame extraction.
-- `ASRAdapter` and `OCRAdapter` Protocol interfaces.
-- `StaticASRAdapter` and `StaticOCRAdapter` deterministic fixtures.
-- A basic `VideoLearningPipeline` that invokes injected adapters and writes timestamped evidence artifacts.
+The static adapters are supplied-text stand-ins, not real ASR or OCR inference. The current knowledge extractor interface is too narrow to represent business decisions and conditional workflows. A prior end-to-end test used an externally supplied SRT file; it proved orchestration and provenance, not real transcription or workflow understanding.
 
-The static adapters are supplied-text stand-ins, not real ASR or OCR inference. The current knowledge extractor interface is too narrow to represent a video-grounded sequence of actions, intent, and UI state transitions. A prior end-to-end test used an externally supplied SRT file; that proved orchestration and provenance, not model transcription or semantic video understanding.
+## Selected target ingestion path
 
-## Target video pipeline
+The primary input to tutorial learning is a **semantic UI operation event stream plus instructor narration**.
 
-The target workflow is defined in [ACQUISITION_PIPELINE.md](ACQUISITION_PIPELINE.md):
+### New recordings
 
-1. Archive tutorial videos directly to Google Drive, organized by creator and course/series, with one source-link/platform download record per video.
-2. **Clean before expensive extraction**: extract existing subtitle tracks/files first; when unavailable, transcribe audio using ASR. Use the resulting text to filter out videos that are not tutorials in the target vertical.
-3. Only matching tutorials undergo full multimodal understanding. The understanding model watches frames/clips and listens to audio; it extracts actions, intent, interface elements, before/after UI state, outcomes, preconditions, and recovery knowledge. Magma separately grounds candidate action coordinates/trajectories.
-4. Distinguish directly observed evidence from inferred actions or intent.
-5. Deduplicate by content hash, pass GPT review and PM Sangou's independent video-evidence/test verification, then store approved knowledge in SQLite.
-6. Use verified knowledge packages as LoRA training data, then validate the trained expert in a sandbox and GUI operation loop.
+- Web applications: capture rrweb snapshots and incremental events from the start of the tutorial. Keep DOM changes, interaction events, focus, scroll, input changes, event timestamps, page/session identity, and available element references.
+- Windows desktop applications: capture supported Windows UI Automation events and relevant AutomationElement properties/state changes with timestamps and window/application identity.
+- Audio: preserve the instructor's original voice recording and synchronization metadata.
+- Text: extract usable subtitles first. Use ASR only when subtitles are unavailable, then align the transcript to the audio with word- or segment-level timestamps.
 
-A transcript or OCR dump alone is not a valid extraction result. Quality takes priority over throughput.
+### Legacy MP4 recordings
 
-## Model responsibilities
+An old MP4 does not contain the original DOM or UI Automation event log. If these recordings are retained, reconstruct only what can be supported by reviewing the recording and narration. Mark reconstructed UI actions and state changes as inferred_from_video. Hidden clicks and uncertain actions remain unknown.
 
-- **Qwen3-VL and Mage-VL** are video-understanding candidates. Their task is to watch/understand and produce text output: events, intent, UI state changes, result, and evidence-linked explanations. They are being compared in a blind Colab T4 test; no winner is recorded here.
-- **Magma** is an action-grounding candidate. Its task is to produce coordinate/action-oriented output such as click points, target regions, and candidate trajectories. Evaluate it separately from the semantic understanding models.
+Frame extraction is not the primary event-generation or Brain-training approach. Existing FFmpeg frame utilities may support legacy inspection or component tests, but a sampled frame sequence is not a substitute for direct event capture.
 
-The models' roles are complementary. A predicted coordinate is a model inference, not a historical click observation unless the original video visibly records it or synchronized input-event telemetry exists.
+## From event stream and voice to workflow knowledge
 
-## Cheap text pre-filter details
+Normalize the recorded events into page changes, control changes, mouse/input interactions, focus, navigation, and state transitions. Align them with transcript segments and, where reliable, word timestamps.
 
-For each downloaded video:
+A Decision Episode must explain:
+- the task goal and current situation;
+- what the instructor said and why, if explicitly stated;
+- what behavior was directly captured or reconstructed;
+- the strategy or decision demonstrated;
+- the resulting UI/business state and whether it was verified;
+- what should happen next, including conditional branches and recovery.
 
-- Inspect embedded and sidecar subtitle availability.
-- Prefer source-provided subtitles and preserve their language and timecodes.
-- If subtitles are absent, call the configured ASR adapter to generate a timestamped transcript.
-- Classify whether the content is a tutorial and belongs to the configured vertical.
-- Retain rejected source/download metadata and a rejection reason; do not send rejected videos to expensive full extraction.
+The output is a source-linked Decision Episode and workflow knowledge, not a screenshot sequence or transcript-only summary.
 
-ASR is therefore a pre-filter dependency first. It is not the main learning objective and cannot by itself satisfy the video knowledge extraction requirement.
+## Brain and Hands separation
 
-## Structured trajectory requirements
+The language-model Brain learns workflow planning, preconditions, conditions, business reasoning, capability choice, verification, and recovery. Existing Hands models handle page perception and concrete UI actions. The Brain delegates high-level capability tasks; Hands returns execution status and observed state; the Brain chooses the next decision.
 
-A full extraction result must contain ordered, time-aligned steps. Each step should record at least:
+Do not train the Brain to reproduce mouse coordinates or button-recognition behavior that belongs to the Hands layer.
 
-- action description and target element;
-- source start/end time and supporting frame/transcript references;
-- pre-action UI state and post-action UI state;
-- observed action evidence and/or inferred action hypothesis;
-- user's apparent intent and the evidence for that interpretation;
-- expected outcome and whether it is visible;
-- uncertainty/confidence and unresolved alternatives;
-- relevant preconditions, exceptions, and recovery observations.
+## Existing FFmpeg API and legacy utilities
 
-Store factual observations and inferences in separate typed fields. Do not collapse a predicted click coordinate into an observed click event.
-
-## Existing FFmpeg API and retry
-
-The existing processor can still be used for media metadata, audio extraction, proxy generation, and bounded frame extraction:
+The current processor remains useful for metadata probing, audio extraction, proxy generation, and legacy video inspection:
 
 ~~~python
 from aios_work_system.media import FFmpegProcessor, register_source
@@ -71,16 +60,23 @@ source = register_source("samples/lesson.mp4", "VIDEO")
 metadata = processor.probe("samples/lesson.mp4")
 audio = processor.extract_audio("samples/lesson.mp4", "artifacts/lesson.wav")
 proxy = processor.create_proxy("samples/lesson.mp4", "artifacts/lesson-proxy.mp4")
-frames = processor.extract_frames("samples/lesson.mp4", "artifacts/frames", 5)
 source.save("artifacts/lesson.manifest.json")
 ~~~
 
-The FFmpeg layer is a media preparation utility, not a video-understanding model. It does not infer user intent or reconstruct missing input events.
+The existing extract_frames helper remains available for legacy MP4 inspection and component-level experiments. Its output must not be treated as the primary operational trajectory input or direct event telemetry.
+
+The FFmpeg layer is a media preparation utility. It does not capture rrweb/Windows UIA events, infer business intent, or recover hidden input logs from an MP4.
 
 TaskJournal remains useful for bounded retry/resume. Task IDs should include source content hash and operation configuration so retries cannot reuse stale outputs.
 
 ## Acceptance boundary
 
-A component-level media smoke test proves only that media can be read and artifacts can be produced. It does not prove that the procedure is correctly understood. Acceptance requires labeled operation intervals, UI-state transitions, action targets, intent, observed/inferred classification, and expert-level GUI tests. See [TEST_PLAN.md](TEST_PLAN.md) and [SOFTWARE_TUTORIAL_BENCHMARK.md](SOFTWARE_TUTORIAL_BENCHMARK.md).
+A component-level media smoke test proves only that media can be read and artifacts can be produced. It does not prove that the workflow has been understood. Acceptance requires:
+- timestamped semantic event records for direct recordings, or explicitly inferred historical-video reconstructions;
+- narration aligned to the event timeline;
+- Decision Episodes with goals, states, reasons, decisions, outcomes, and next steps;
+- HTN workflow definitions with conditional branches and recovery paths;
+- provenance and uncertainty labels;
+- Brain decision tests and Brain-to-Hands execution tests.
 
-The full multimodal extraction engine, real video-understanding adapters, action-grounding adapter, trajectory schema, review workflow, and LoRA training pipeline are not yet implied by the existing media interfaces.
+The full direct event recorder, narration alignment, Decision Episode extraction, workflow learning, Brain LoRA training, and runtime delegation pipeline are not yet implied by the existing media interfaces.

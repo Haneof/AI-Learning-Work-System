@@ -1,6 +1,6 @@
 # Real Media, ASR, and OCR Component Smoke Tests
 
-This document records existing component-level integration tests on an openly licensed tutorial recording. These jobs exercise FFmpeg, faster-whisper, and Tesseract. They are useful for media I/O and subtitle/OCR plumbing, but they are **not** the target intelligent tutorial-extraction pipeline and do not prove that a model understands the demonstrated operation.
+This document records existing component-level integration tests on an openly licensed tutorial recording. These jobs exercise FFmpeg, faster-whisper, and Tesseract. The sampled-frame extraction and OCR steps are retained only as legacy media-component tests. They are **not** the selected tutorial-learning route and must not be treated as the primary operational event stream or Brain training input. New tutorials should capture semantic rrweb or Windows UI Automation events directly and align them with the instructor's voice narration.
 
 ## Sample and attribution
 
@@ -55,7 +55,7 @@ In the target design, subtitles are a **cheap pre-filter**:
 - otherwise use ASR to produce timestamped subtitles;
 - reject non-tutorial or wrong-vertical videos before full GPU extraction.
 
-Only pre-filter-passed videos go to the full video-understanding path. Qwen3-VL and Mage-VL are evaluated for understanding actions, intent, UI transitions, and outcomes. Magma is evaluated separately for action grounding and candidate click coordinates/trajectories. The full output must distinguish observed evidence from inferred claims and be reviewed by GPT, then independently verified by PM Sangou.
+For newly recorded tutorials, the target path is direct semantic UI event capture (rrweb for web applications, Windows UI Automation for Windows desktop applications) plus aligned instructor narration. These become Decision Episodes describing goal, current state, instructor-explicit rationale, selected operation, outcome, and next decision. Legacy MP4 files may be reconstructed only as a fallback; reconstructed interactions must be labelled inferred_from_video. The earlier Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected, and the frame-based route was rejected as the primary learning method.
 
 Therefore this existing smoke test does not establish:
 - correct operation-step or intent extraction;
@@ -93,4 +93,4 @@ python scripts/validate_ocr_sample.py --input artifacts/real-media/LibreOffice_W
 
 ## Acceptance still required
 
-The target pipeline still requires blind video-understanding evaluation, independent action-grounding evaluation, trajectory/UI-state labels, observed/inferred checks, GPT + PM dual review, SQLite verified storage, and LoRA expert validation in sandbox and GUI operation loop. Throughput or smoke-test PASS status cannot substitute for those gates.
+The target pipeline still requires direct event-capture validation, narration synchronization and alignment, Decision Episode and HTN workflow quality checks, evidence labels, GPT + PM dual review, SQLite verified storage, Brain LoRA training, simulated-Hands decision evaluation, and Brain-to-Hands validation in the sandbox and live GUI operation loop. Throughput or media-smoke-test PASS status cannot substitute for those gates.

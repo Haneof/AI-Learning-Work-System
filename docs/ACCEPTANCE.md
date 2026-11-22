@@ -1,62 +1,77 @@
 # Acceptance Criteria
 
-Version: V1.1  
-The pipeline is accepted on quality and verified expert behavior, not on transcript volume or raw throughput.
+**Version:** 0.1 design update  
+The pipeline is accepted on evidence quality, Brain workflow competence, and verified business outcomes—not transcript volume, screenshot count, or raw throughput.
 
 ## Step 1 — Download and archive
 
-- Every selected video has a download record with source link and platform.
-- Creator/series grouping is preserved in the 5TB Google Drive archive.
+- Every selected tutorial has a download record with source link and platform.
+- Creator/series/course grouping is preserved in the 5TB Google Drive archive.
 - Original metadata and license uncertainty are not fabricated.
 - SHA-256 is recorded to identify exact duplicate content.
 
-## Step 2 — Clean and extract
+## Step 2 — Capture semantic UI events and narration
 
+- New web tutorials capture rrweb events directly from recording start.
+- New Windows desktop tutorials capture supported Windows UI Automation events and record provider limitations.
+- Event timestamps, application/page/window identity, target references, and before/after state changes are retained where available.
+- Instructor audio is preserved and synchronized with the event stream.
 - Existing subtitles are used first; ASR runs only when usable subtitles are unavailable.
-- The transcript/text pre-filter identifies both tutorial content and relevance to the target vertical.
-- Rejected videos retain their source/download record and rejection reason; they do not enter full extraction.
-- Full extraction watches relevant frames/clips and listens to audio.
-- Output explains actions, intent, target controls/coordinates, pre/post UI states, visible changes, expected outcomes, preconditions, exceptions, and recovery evidence.
-- Transcription-only, OCR-only, or a fluent generic summary does not pass.
-- Every step has source/time evidence and separate observed/inferred fields.
-- No predicted action is mislabeled as a directly recorded historical click.
+- Narration is aligned at word or segment granularity, with method and uncertainty recorded.
+- Legacy MP4 reconstruction is explicitly labelled inferred_from_video; it is not treated as direct telemetry.
+- Sparse/dense frame extraction is not used as the primary tutorial-learning input.
 
-## Step 3 — Deduplicate, review, and store
+## Step 3 — Decision Episodes and workflows
 
-- Exact duplicate video content is identified by SHA-256.
-- Conflicting claims and different applicability/version records coexist; no overwrite.
-- GPT first checks evidence match, trajectory consistency, state changes, and epistemic labels.
-- PM Sangou independently verifies the candidate against source video evidence and relevant tests.
-- No separate human-review queue is introduced.
-- Only candidates passing both gates enter the approved SQLite store and training dataset snapshot.
-- Failed or uncertain candidates retain traceable rejection/hold reasons and cannot enter the training snapshot.
+- Each Decision Episode records goal, decision-time state, rationale source, chosen strategy, operation, result, and next decision.
+- Instructor-explicit statements are separated from behavioral inference and project-owner-provided rules.
+- Every decision-driving fact and rationale has evidence or is explicitly unknown.
+- HTN workflows include compound/primitive tasks, methods, conditions, dependencies, preferences, ordering constraints, invariants, transitions, and recovery rules.
+- Conflicting workflows from different tutorials, application versions, or applicability conditions coexist; no overwrite.
+- A single tutorial's path is not assumed to be the only valid path.
 
-## Step 4 — LoRA and expert validation
+## Step 4 — Review and training data
 
-- Training dataset contains only double-approved knowledge packages.
-- Every dataset snapshot and training run records sample hashes, base revision, configuration, compute/GPU, and output adapter hash.
-- The 4B BF16 LoRA path is planned for a T4 16GB cloud GPU; the 9B path requires 24GB+.
-- The adapter is loaded on the designated 4B base model.
-- The trained expert is tested in Docker sandbox and the GUI operation loop.
-- Passing requires flexible task completion under changed UI states and unseen variations, not only replaying memorized tutorial steps.
-- Unsafe actions, unsupported claims, or unverified outcomes block acceptance.
+- Exact duplicate source content is identified by SHA-256.
+- The first review checks evidence resolution, event/narration alignment, workflow consistency, and uncertainty.
+- PM Sangou independently verifies source evidence and relevant tests.
+- Both review.status=approved/approved_for_training and quality.trainable gates must pass.
+- Conversational JSONL examples and the separate training_meta sidecar are consistent.
+- Normal-decision and error-recovery examples use only information available at that decision point.
+- Future Hands execution outcomes do not leak into the assistant target.
+- Train/test split is grouped by tutorial/course/source.
+- Only eligible examples enter the immutable training dataset snapshot.
+
+## Step 5 — Brain LoRA and Brain-to-Hands validation
+
+- Every dataset snapshot and training run records example/source hashes, base revision, configuration, compute/GPU, and adapter hash.
+- The 4B BF16 LoRA path is planned for a T4 16GB cloud GPU; the 9B path requires 24GB+ planning capacity. Actual usage must be measured.
+- Runtime prompts include the applicable local HTN workflow slice.
+- Brain decisions are first evaluated with a simulated Hands executor.
+- The real existing Hands model is connected through a capability adapter; no new button-recognition or low-level operation model is required.
+- Hands returns structured status, observed state, postcondition results, errors, and evidence references.
+- Passing requires business postcondition verification, branch handling, and safe recovery—not a successful click alone.
+- The Brain handles success, failure, partial success, blocked, and ambiguous operation results.
+- Evaluation includes unseen tasks, changed initial states, alternative valid routes, missing information, and error recovery.
 
 ## Quality metrics
 
-Freeze thresholds before the final blind test. At minimum, measure:
+Freeze thresholds before held-out evaluation. At minimum measure:
+- decision accuracy at each decision point;
+- task decomposition and dependency/order correctness;
+- conditional branch selection;
+- business rationale and evidence provenance correctness;
+- precondition and postcondition verification;
+- capability selection and safe delegation;
+- Hands result interpretation;
+- recovery/replan/stop decision quality;
+- held-out business-goal completion and transfer to alternative routes;
+- evidence coverage and unsupported-claim rate;
+- direct-capture versus inferred-from-video classification accuracy;
+- safety violations (must be zero).
 
-- action-step precision/recall, order, and temporal localization;
-- intent and causal explanation correctness;
-- UI element and before/after state correctness;
-- action outcome correctness;
-- coordinate/target grounding accuracy;
-- evidence-match rate and unsupported-claim rate;
-- observed/inferred classification accuracy;
-- generalization to unseen initial states, interface changes, and alternative valid routes;
-- sandbox safety and GUI operation success.
-
-Throughput, GPU utilization, cost per source hour, and GB/video hours are optimized only after the quality gates pass.
+Throughput and cost are optimized only after the quality gates pass.
 
 ## Release blocking
 
-Any missing critical evidence, false observed-action claim, material trajectory inconsistency, unreviewed training sample, model/version provenance gap, or critical sandbox/GUI safety failure blocks release.
+Any fabricated instructor reason, unsupported business rule, false direct-capture claim, unresolved critical evidence, material workflow inconsistency, future-outcome leakage, unreviewed training example, unregistered capability call, or critical sandbox/Hands safety failure blocks release.

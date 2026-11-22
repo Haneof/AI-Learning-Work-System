@@ -14,7 +14,7 @@ AI-Learning/
         <video-file>
 ```
 
-Each video must also have a download record containing at least its original source link and platform. Keep creator, series/course, title, download time, Drive file ID/link/path, content SHA-256, size, and license metadata when available. A missing series may use an explicit `未分组` folder, but the record should preserve the unknown value rather than inventing a course name.
+Each video must also have a download record containing at least its original source link and platform. Keep creator, series/course, title, download time, Drive file ID/link/path, content SHA-256, size, and license metadata when available. A missing series may use an explicit `unassigned` folder, but the record should preserve the unknown value rather than inventing a course name.
 
 ## Current API authorization helper
 

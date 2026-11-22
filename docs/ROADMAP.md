@@ -1,49 +1,89 @@
-# 研发路线图
+# Engineering Roadmap
 
-版本：V1.1。阶段顺序服从质量门槛；未通过质量出口，不以提升吞吐为理由继续放大数据量。
+**Version:** 0.1 design update  
+Stage order is governed by evidence and quality gates. Do not scale tutorial volume to compensate for a weak learning signal.
 
-## 阶段 0：工程与数据归档基线
+## Stage 0 — Source and recording baseline
 
-交付：仓库/运行基线、云端下载器到 5TB Google Drive 的验证、creator/series 归档规则、逐视频下载记录与 SHA-256。
+**Deliverables**
+- Tutorial discovery and cloud download into the 5TB Google Drive.
+- Creator/series/course archive layout and one source-link/platform record per video.
+- Recording profile for new tutorials with rrweb web-event capture or Windows UI Automation event capture.
+- Synchronized instructor audio and source/session metadata.
 
-出口：视频可追溯至原始链接/平台/创作者/系列和 Drive 文件；重复内容有稳定标识。
+**Exit criteria**
+- Directly captured event records have stable timestamps, source/session references, and enough context to reconstruct UI state changes.
+- Capture gaps, unsupported controls, and provider limitations are recorded rather than silently ignored.
 
-## 阶段 1：模型职责与理解质量验证
+## Stage 1 — Narration alignment and Decision Episode extraction
 
-交付：
-- Qwen3-VL vs Mage-VL 视频理解盲测（当前在 Colab T4 16GB 上进行）。
-- Magma 动作 grounding 独立评测。
-- 统一标注样本、证据对齐和 observed/inferred 评估。
-- 字幕提取优先、无字幕才 ASR 的文本预筛。
+**Deliverables**
+- Existing-subtitle-first workflow; ASR fallback only when usable subtitles are absent.
+- Word- or segment-level narration alignment to the recording timeline.
+- Decision Episodes joining goal, state, instructor explanation, behavioral inference, selected operation, result, and next decision.
+- Evidence labels separating direct capture, legacy-video inference, instructor-explicit rationale, behavioral inference, user-provided rules, and unknown information.
 
-出口：理解模型在操作、意图、UI 状态和结果上的准确性达到冻结门槛；grounding 模型在坐标/动作任务上独立达标。不得把不同模型职责揉成单一分数。
+**Exit criteria**
+- Independent reviewers can trace each important claim to a source event or narration segment.
+- The dataset does not invent spoken reasons or upgrade reconstructed video events to directly captured telemetry.
+- Decision Episodes represent decision points, not just a replayable click list.
 
-## 阶段 2：智能教程提取与双重审核
+## Stage 2 — HTN workflow construction and review
 
-交付：目标领域预筛、视频/音频多模态理解、时间对齐操作轨迹、UI 状态变化、意图和结果、证据链、内容哈希去重、冲突并存、GPT 首轮质量检查、PM Sangou 独立视频/测试验证、SQLite 正式知识库。
+**Deliverables**
+- Hierarchical tasks, methods, conditional branches, hard dependencies, soft preferences, and explicit ordering constraints.
+- Preconditions, postconditions, invariants, operation capabilities, transitions, and recovery rules.
+- Source/tutorial/software-version/applicability scope for each workflow.
+- Duplicate handling and conflict coexistence.
+- Dual review and quality/trainable gates.
 
-出口：只有双重通过的条目进入 verified 数据集；每个动作都能回溯证据，并标明 observed 或 inferred。
+**Exit criteria**
+- Workflow semantics survive changes in starting state and alternative valid paths.
+- No conflicting tutorial or software-version workflow is silently overwritten.
+- Only examples passing both gates enter the approved training snapshot.
 
-## 阶段 3：垂直 LoRA 专家训练
+## Stage 3 — Brain LoRA training
 
-交付：版本化知识训练集、4B BF16 LoRA 云端训练、adapter 与 base revision 追踪、adapter 下载/加载流程、训练报告。
+**Deliverables**
+- Versioned Brain training dataset in conversational JSONL.
+- Separate training_meta sidecar for evidence_tier and rationale_loss_weight.
+- Normal-decision and error-recovery samples.
+- Tutorial/course/source-level train/test split.
+- Cloud LoRA training, adapter lineage, and reproducible loading.
 
-规划资源：4B BF16 LoRA 使用 T4 16GB；9B 需要 24GB+ GPU。训练实测优先于预估。
+**Exit criteria**
+- Training targets contain only the Brain's next decision, not future Hands execution outcomes.
+- The Brain can decompose tasks, check workflow preconditions, choose branches, select capabilities, ask for missing information, and recover from simulated Hands errors.
+- Volatile workflow rules are supplied in the runtime HTN slice rather than memorized as immutable weights.
 
-出口：adapter 在目标 4B base 上可复现加载；训练/验证集隔离；未通过双重审核的数据无法进入训练快照。
+## Stage 4 — Brain-to-Hands integration and expert validation
 
-## 阶段 4：专家行为验证与改进
+**Deliverables**
+- Versioned delegation and execution-result JSON contracts.
+- Hands adapter to the existing GUI operation model (do not build a replacement operation model).
+- Simulated executor for Brain-only decision testing.
+- Docker sandbox and live GUI operation loop for end-to-end tests.
 
-交付：技能包编译器作为知识/训练材料结构检查；Docker sandbox 作为隔离验证环境；GUI 操作循环用于测试目标理解、动作执行、状态核验、异常恢复和未见场景泛化。
+**Exit criteria**
+- Business postconditions are verified; low-level action success alone is insufficient.
+- The Brain handles success, failure, partial success, blocked, and ambiguous Hands results.
+- Tests cover unseen tasks, alternative valid paths, changed UI/business states, recovery, safe stop, and unauthorized side-effect prevention.
 
-出口：专家不仅能复述教程，还能根据不同初始状态和界面变化选择合适操作；关键失败能安全停止或恢复；评估可重复。
+## Stage 5 — Multiple vertical experts
 
-## 阶段 5：多垂直专家
+**Deliverables**
+- Shared base model with separate vertical LoRA adapters.
+- Versioned local workflow libraries and capability registries.
+- Independent held-out evaluation and controlled expert coordination.
 
-交付：共享 4B base、不同垂直 LoRA、隔离知识/数据快照、独立评测基线和受控专家协作。
+**Exit criteria**
+- Each vertical expert can be independently evaluated, upgraded, rolled back, and scoped.
+- Cross-expert workflow sharing is explicit and provenance-preserving.
 
-出口：不同专家能力可独立验证、升级和回滚；跨专家共享需显式授权。
+## Historical model experiment
 
-## 研发管理
+The earlier Colab T4 blind comparison of Qwen3-VL-4B and Mage-VL-4B was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. It did not produce a validated model winner. The frame-based extraction route was rejected; the semantic event-stream plus narration route is the current design.
 
-每个功能拆成可独立验收的 Issue/PR。任务写明目标、范围、模型职责、输入输出、质量指标、证据来源、测试方法、资源测量、风险和回滚。不能以代码已提交或吞吐较高代替质量验收。
+## Engineering management
+
+Every implementation task must state objective, scope, model role, input/output contract, quality metrics, evidence source, tests, resource measurement, risk, and rollback plan. A merged commit or high throughput is not a quality acceptance result.

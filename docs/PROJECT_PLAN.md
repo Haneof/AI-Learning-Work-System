@@ -1,70 +1,97 @@
-# 产品立项与总体计划
+# Product Charter and Project Plan
 
-版本：V1.1（学习管线与 LoRA 目标）
+**Version:** 0.1 design update
 
-## 产品定义
+## Product definition
 
-建设通用型 AI 自主学习与工作系统，批量收集目标垂直领域的教程视频，理解其中真实展示的操作、决策意图、界面状态和结果，将经过证据核验的知识包作为 LoRA 训练数据，培养能够灵活完成领域任务的专业 AI 专家。
+Build a general-purpose AI learning and work system that turns professional tutorials into evidence-grounded workflow knowledge and trains domain-specific language-model experts with LoRA.
 
-**核心产品是训练完成的领域专家，不是字幕库、视频摘要、知识包或固定操作脚本。** 使用一个共享 4B 基础模型，通过不同垂直领域 LoRA 形成多个专家。
+The core product is a trained **Brain**: a language model that understands a business objective, decomposes the work, selects a path under current conditions, explains its decision, delegates operations, verifies results, and recovers from errors. Existing GUI operation models are the **Hands**. They perceive the live page and perform concrete UI interactions; this project reuses them rather than building a replacement.
 
-## 目标管线
+The product is not a subtitle archive, video summary, knowledge package, or fixed action script. The same base model can host different vertical LoRA adapters, with each expert supported by versioned workflow data and evidence.
 
-### Step 1 — 下载与归档
+## Target learning pipeline
 
-在网上搜索目标领域教程，使用云端下载器直接下载到 5TB Google Drive，按创作者和系列/课程分组。每个视频必须保留源链接和平台的下载记录，并保存内容哈希和 Drive 位置等元数据。
+### Step 1 — Acquire and archive
 
-### Step 2 — 清洗与智能提取
+Search for tutorials in the target vertical and use a cloud downloader to store them directly in the 5TB Google Drive. Preserve creator and series/course grouping. Every video keeps an acquisition record with the original source link and platform, plus content hash, Drive location, source metadata, and license status when available.
 
-先提取视频现有字幕；没有字幕时才用 ASR 生成时间戳字幕。先通过字幕文本判断内容是否是目标垂直领域的教程，不匹配的素材不进入昂贵的完整视觉理解流程。
+### Step 2 — Capture semantic operation events and narration
 
-通过预筛的视频进入多模态理解：模型观看帧/片段并听取音频，理解人做了什么、为什么这样做、操作目标在哪里、界面如何变化、前后 UI 状态是什么、操作是否达成结果。纯语音转文字不符合提取要求。
+For newly recorded tutorials, collect the semantic UI event stream at recording time:
+- Web applications: rrweb events for DOM mutations, interaction events, focus, scroll, input changes, and timestamps.
+- Windows desktop applications: Windows UI Automation events, element identities, property/state changes, and timestamps.
+- Voice: original instructor audio plus subtitles where available; when subtitles are unavailable, use ASR and time alignment.
 
-视频理解模型 Qwen3-VL 与 Mage-VL 输出带时间定位的文本理解；Magma 输出候选点击坐标、目标区域和动作轨迹。三者的职责不能混淆，模型按自己的任务分别评估。所有输出区分 observed 与 inferred，推断不能伪装成真实录制事件。
+The event stream describes what changed and when. The instructor's narration describes the goal, reason, constraint, and business context. Neither channel is sufficient alone; they must be aligned to produce decision demonstrations.
 
-质量优先于效率。吞吐优化只能在操作、意图、UI 状态和证据质量达到门槛后进行。
+Legacy MP4 tutorials may be used when no event telemetry exists. Reconstruct events only when supported by the recording and label them as inferred from video. Frame extraction is not the primary extraction or training route.
 
-### Step 3 — 去重、双重审核和存储
+### Step 3 — Build and review workflow knowledge
 
-按视频内容 SHA-256 去重。冲突知识、不同版本和不同适用范围的条目共存，不能覆盖。
+Create Decision Episodes rather than plain step lists. Each episode records:
+- the task goal and known state at the decision point;
+- conditions and business constraints;
+- instructor-explicit rationale and separately labelled behavioral inference;
+- the selected strategy and delegated capability;
+- operation result and verified postconditions;
+- the next step, branch, recovery, question, approval request, or stop decision;
+- source references, timestamps, evidence channel, and confidence.
 
-GPT 先核对证据匹配、轨迹时序/逻辑一致性、界面前后状态和 observed/inferred 标签；PM Sangou 再独立对照原始视频证据及测试验证。没有额外人工审核队列。只有通过 GPT 与 PM 两道门禁的知识包才进入 SQLite 认可存储和正式训练集快照。
+Compose episodes into HTN workflows with compound/primitive tasks, methods, hard dependencies, soft preferences, explicit ordering constraints, conditional transitions, invariants, and recovery rules.
 
-### Step 4 — LoRA 训练与专家验证
+Deduplicate by content hash. Conflicting workflows from different tutorials, software versions, or applicability conditions coexist and retain their sources. Only examples passing both the review approval gate and the quality/trainable gate enter the formal Brain training set.
 
-已验证知识包是 LoRA 训练数据，不是最终产物。使用云 GPU 训练 adapter，带回部署环境并挂载到 4B 基础模型。不同垂直领域使用不同 LoRA，构成独立专家。
+### Step 4 — Train the Brain and validate Brain-to-Hands
 
-技能包编译器、静态验证器和 Docker 沙箱是训练材料与模型行为的验证工具，不是目的地。每个训练后的专家必须在沙箱和 GUI 操作闭环中测试，覆盖目标理解、动态界面、动作选择、结果核验、异常恢复和未见场景泛化。
+Generate conversational training samples for the Brain. The LoRA learns task decomposition, sequencing, branch decisions, business constraints, capability selection, postcondition checks, error interpretation, recovery, and safe stopping.
 
-## 模型与资源基线
+Keep volatile rules in versioned workflow data. At runtime, give the Brain the relevant local HTN slice so workflow rules can change without retraining the LoRA. The Brain emits a high-level delegation request; the existing Hands model performs page operations and returns observed results; the Brain then chooses the next decision.
 
-- 视频理解候选：Qwen3-VL、Mage-VL，职责是看懂视频并输出文本理解。两者正在 Colab T4 (16GB) 上进行盲测，当前没有胜出结论。
-- 动作 grounding：Magma，职责是预测点击点、目标区域和坐标/动作轨迹，单独评估。
-- 首个训练基座：4B。规划假设是 16GB T4 可承载 4B BF16 LoRA；9B 需要 24GB 或更高显存。正式训练前须确认模型 revision、上下文长度、batch、优化器、gradient checkpointing 和实际峰值显存。
-- 已有本地 GPU 为 RTX 3070 8GB，主要承担开发、媒体预处理和轻量验证；云 GPU 用于 LoRA 训练和更重的多模态任务。
-- 5TB Google Drive 是视频归档目标；SQLite 是结构化知识、轨迹、审核和训练集元数据存储。
+Validate first with a simulated Hands executor, then with the real existing operation model in a sandbox and GUI loop. Passing requires success on changed states and unseen variations—not replay of one tutorial.
 
-## 产品目标
+## Architecture and model status
 
-- 大规模组织并归档目标垂直教程。
-- 以字幕/ASR 文本预筛降低完整模型处理成本。
-- 提取与时间戳和原视频证据对齐的动作、意图、UI 状态变化和结果。
-- 严格分开直接观察和推断，保留不确定性与矛盾。
-- 通过 GPT 初审和 PM 独立验证构建高质量训练集。
-- 训练可根据目标和变化灵活行动的领域 LoRA 专家。
-- 使用沙箱和 GUI 操作闭环验证专家能力，并以未见任务检验泛化。
+- **Brain:** language model plus vertical LoRA; the primary training target.
+- **Hands:** existing GUI operation model and adapter (for example, UI-TARS); reuse as the execution layer.
+- **Event capture:** rrweb for web tutorials; Windows UI Automation for Windows desktop tutorials.
+- **Narration:** supplied subtitles first; ASR fallback and timestamp alignment when needed.
+- **Workflow representation:** HTN plus conditional-branch graph and registered operation capabilities.
+- **Training:** conversational JSONL with a separate training-metadata sidecar; no future execution-outcome leakage in assistant targets.
 
-## 当前非目标
+The earlier Qwen3-VL-4B/Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected. The frame-based extraction route was rejected as the primary learning method; event streams plus instructor narration are the current input design.
 
-- 不把 ASR/OCR 输出或视频摘要当作最终学习结果。
-- 不以视频逐帧调用通用 VLM 的方式无差别处理数百 GB 视频。
-- 不为追求吞吐而放宽动作/意图/界面状态准确性门槛。
-- 不把推断的鼠标点击描述成已记录的真实事件。
-- 不把技能编译器或 Docker 沙箱当作最终产品。
-- 不训练通用基础模型，也不从未经双重审核的资料直接训练 LoRA。
+## Compute and storage assumptions
 
-## 核心资产与指标
+- Initial Brain base model: 4B.
+- Planning assumption: 4B BF16 LoRA on T4 16GB; 9B needs a 24GB+ GPU. Confirm actual fit and performance with a fixed model revision and recorded run configuration.
+- Local RTX 3070 8GB: development and light validation, not assumed as the BF16 LoRA training device.
+- Google Drive: original tutorial archive.
+- SQLite: source/event metadata, narration alignment, Decision Episodes, workflow versions, reviews, dataset snapshots, and training lineage.
 
-核心资产是每个垂直领域的 LoRA 专家及其可追溯训练数据。质量指标包括操作步骤正确率、意图解释正确率、目标/坐标定位准确率、UI 状态变化一致性、时间定位误差、observed/inferred 分类准确率、证据支持率、知识冲突保留率、专家在未见场景中的任务成功率和安全违规率。性能指标包括每视频时长的处理成本、GPU 利用率、队列吞吐、失败恢复和每个已验证训练样本的成本。
+## Project objectives
 
-质量门槛先冻结，达标后再优化吞吐。
+- Build repeatable direct event capture for new tutorials.
+- Align semantic UI event streams with instructor narration.
+- Create source-grounded Decision Episodes and conditional HTN workflows.
+- Train a Brain LoRA that can adapt to different states and valid workflow paths.
+- Integrate with existing Hands through a clear delegation/result interface.
+- Verify business postconditions, failure recovery, safe stop, and unseen-task transfer.
+- Preserve provenance, conflicts, software versions, and review decisions.
+
+## Non-goals
+
+- Rebuilding a GUI page-recognition or low-level operation model.
+- Using sparse or dense frame extraction as the primary tutorial learning input.
+- Treating ASR, OCR, video summaries, or click replay as learned workflow competence.
+- Training a universal foundation model from scratch.
+- Training on evidence that has not passed both review gates.
+- Optimizing throughput before decision quality is measured.
+
+## Core assets and metrics
+
+The core assets are vertical Brain LoRA experts, their reviewed Decision Episode datasets, versioned HTN workflows, and measured Brain-to-Hands task results.
+
+Quality metrics include decision correctness, task decomposition, dependency/order correctness, branch accuracy, rationale provenance, precondition/postcondition verification, capability selection, recovery/stop quality, held-out goal completion, evidence coverage, and safety. Operational metrics include training cost, runtime delegation reliability, time/cost per verified training example, queue throughput, and recovery from infrastructure failure.
+
+Quality gates are frozen before held-out evaluation. A high completion rate on memorized tutorial paths is not evidence of generalization.
