@@ -9,7 +9,7 @@
 - Original videos are grouped by creator and series/course in Google Drive.
 - SHA-256 identifies exact duplicate source content. A duplicate links to the canonical source but does not erase its acquisition record.
 - Tutorial learning starts from downloaded video files; visible observations and inferred interactions are separately labelled.
-- Instructor narration is preserved and aligned to the same timeline as UI events.
+- Instructor narration is preserved and aligned to timestamped visual observations extracted from the video file.
 - Each Decision Episode records the business decision point, not just a UI click.
 - HTN workflows retain conditions, dependencies, branches, alternatives, and recovery paths.
 - Conflicting workflows and different applicability/software versions coexist; never overwrite one another.
@@ -226,9 +226,9 @@ An expert is the Brain base-plus-LoRA paired with a configured Hands integration
 
 ## 4. Required constraints
 
-1. Every referenced evidence ID resolves to a source event, narration segment, or other declared evidence record.
+1. Every referenced evidence ID resolves to a timestamped video observation, narration segment, or other declared evidence record.
 2. Timestamps are ordered and remain within the source duration when known.
-3. Directly captured UI events and legacy-video inferences remain distinguishable.
+3. Video-visible observations and inferred interaction hypotheses remain distinguishable; native tutorial UI telemetry is not assumed.
 4. Instructor-explicit rationale, behavioral inference, project-owner-provided rules, and unknown information remain distinguishable.
 5. A successful operation outcome requires evidence-backed postcondition verification.
 6. Hard dependencies and hard ordering constraints must not contain cycles.
