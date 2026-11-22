@@ -1,4 +1,4 @@
-# Phase 0 End-to-End Fixture Harness
+# Phase 0 Synthetic Contract Harness
 
 ## Run
 
@@ -14,10 +14,10 @@ The command refuses to overwrite a non-empty output directory. It creates a smal
 
 ## What this proves
 
-- A source file is hashed and registered.
+- A source file can be hashed and registered.
 - A segment keeps a stable source ID and timestamp locator.
 - Knowledge approval requires a valid supporting evidence link.
-- A direct quote is checked against the source segment text.
+- A direct quote is checked against source segment text.
 - An ungrounded approved knowledge item is rejected.
 - A skill package is statically validated and its immutable package hash is registered.
 - A skill containing a blocked network import is rejected.
@@ -25,6 +25,19 @@ The command refuses to overwrite a non-empty output directory. It creates a smal
 
 ## What this does not prove
 
-This is a deterministic contract-integration fixture, not an AI learning demonstration. It does not call the selected Qwen model, extract knowledge from an actual lesson, parse real PDF/video, run OCR/ASR/FFmpeg, or start a Docker container. The sandbox status in the report is explicitly `NOT_EXECUTED`. The image digest is a placeholder used only to validate command construction; it is not a real trusted image.
+This is a deterministic contract fixture, not an AI learning demonstration or the target tutorial pipeline. It does not:
+- search for or download tutorials into Google Drive;
+- inspect embedded subtitles or run real ASR pre-filtering;
+- call Qwen3-VL, Mage-VL, or Magma;
+- understand video actions, intentions, UI state transitions, or click coordinates;
+- perform the GPT + PM double-review workflow;
+- train or load a LoRA expert;
+- parse real PDF/video, run real OCR/ASR/FFmpeg in this command, or start a Docker container.
 
-For final Issue #6 acceptance, add licensed representative samples (narrated screen recording, text-heavy video, table PDF), real parser and model adapters, a real preloaded sandbox image, malicious prompt-injection samples, and measured runtime/resource data. Never mark this issue complete from the synthetic fixture alone.
+The sandbox status in the report is explicitly NOT_EXECUTED. The image digest is a placeholder used only to validate command construction; it is not a real trusted image.
+
+This harness remains useful for deterministic contract and safety regression. It is not the final product and must not be used as evidence that a vertical expert has learned or generalized.
+
+## Required end-to-end acceptance
+
+The full target pipeline is documented in [ACQUISITION_PIPELINE.md](ACQUISITION_PIPELINE.md). Final acceptance requires a licensed tutorial corpus, subtitle-first filtering, real video understanding and action grounding, evidence-linked observed/inferred trajectories, GPT review plus PM verification, SQLite approved knowledge storage, a verified LoRA training snapshot, and trained-expert evaluation in Docker sandbox and the GUI operation loop.

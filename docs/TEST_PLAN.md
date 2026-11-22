@@ -1,68 +1,94 @@
-# 测试计划与质量门禁
+# Test Plan and Quality Gates
 
-版本：V1.0  
-适用：阶段 0 技术验证与后续 MVP。
+Version: V1.1  
+Applies to acquisition, tutorial understanding, action grounding, LoRA training, and expert validation.
 
-## 1. 测试层级
+## 1. Test layers
 
-- 单元测试：schema、状态迁移、权限判定、哈希、幂等和解析器适配。
-- 契约测试：API 请求/响应、错误码、版本兼容和权限拒绝。
-- 集成测试：数据库、文件存储、队列、模型适配和媒体处理。
-- 端到端测试：资料到知识、技能、沙箱报告的完整闭环。
-- 安全测试：提示注入、路径穿越、越权、网络外联、密钥泄露和审批重放。
-- 性能/资源测试：VRAM、RAM、CPU、吞吐、延迟、长任务和断点续跑。
-- 回归测试：固定数据集、固定期望结果和版本化评分。
+- Unit/contract tests: schemas, state transitions, hashing, adapter boundaries, timestamp alignment, and epistemic labels.
+- Acquisition integration: cloud download to Drive, creator/series grouping, record completeness, and resume behavior.
+- Prefilter tests: embedded/sidecar subtitle extraction, ASR fallback only when subtitles are absent, and tutorial/vertical classification.
+- Video-understanding tests: event segmentation, action sequence, intent, UI before/after state, outcome, evidence alignment, and hallucination detection.
+- Action-grounding tests: click point/target area accuracy, trajectory order, temporal alignment, and uncertainty on ambiguous actions.
+- Review/storage tests: GPT first review, PM independent verification, SHA-256 deduplication, conflicts coexist, and SQLite persistence.
+- LoRA training tests: immutable dataset snapshot, base revision lineage, adapter artifact checks, and reproducible loading.
+- Expert evaluation: sandbox execution, GUI operation loop, unseen tasks, UI variants, recovery, and safe stop behavior.
+- Performance/resource tests: source-hour processing time, GPU/VRAM/RAM, queue utilization, failure recovery, and cost after quality passes.
 
-## 2. 固定测试样本
+## 2. Labeled evaluation corpus
 
-阶段 0 建立小型、可公开或合成的样本集：
-- 中文/英文混合录屏，含旁白和屏幕文字。
-- 有滚动、弹窗、小字体的操作视频。
-- 含表格、图片、页码的 PDF。
-- 同一资料的重复副本和改名副本。
-- 互相矛盾、过期和缺少来源的知识样本。
-- 合法技能包、缺字段包、路径穿越包、超时脚本和请求网络的脚本。
+Build representative tutorials with PM-verified labels for:
+- action steps and time intervals;
+- the visible target/control and candidate coordinates;
+- pre/post UI state;
+- whether the click/key input is directly visible, inferred, or unknown;
+- stated intent versus inferred intent;
+- expected and observed result;
+- important preconditions, branches, exceptions, and recovery behavior.
 
-样本需记录来源、许可、SHA-256、预期解析结果和人工标注。不得把用户私密资料提交到公开测试集。
+Include duplicate files with different names, conflicting instructions, outdated UI versions, missing subtitles, subtitle timing errors, non-tutorial clips, and tutorials outside the selected vertical.
 
-## 3. 关键验收指标
+Keep source links, platform, license/attribution, SHA-256, and model revision with every sample.
 
-指标阈值在首轮基线测试后冻结，禁止看完结果再随意调整门槛。至少记录：
-- 媒体解析成功率、任务恢复率、时间戳定位误差。
-- OCR/ASR 人工抽样准确性。
-- 知识证据覆盖率、错误引用率、事实/推断分类正确率。
-- 技能 schema 通过率、沙箱测试通过率、未授权动作拦截率。
-- 端到端成功率、人工介入次数、失败可诊断率。
-- 模型首 token 延迟、总耗时、tokens/s、峰值 VRAM/RAM。
-- 任务超时、崩溃和重复执行率。
+## 3. Separate model evaluations
 
-安全门槛中，越权和未审批高风险动作的允许发生率为 0。
+### Video-understanding candidates: Qwen3-VL and Mage-VL
 
-## 4. 发布门禁
+Use the same blind set and compare:
+- step/action correctness and completeness;
+- intent and reason accuracy;
+- UI-state transition accuracy;
+- outcome judgement;
+- temporal localization;
+- evidence support and unsupported details;
+- observed/inferred classification;
+- long-context consistency and robustness.
 
-必须同时满足：
-1. 所有单元与契约测试通过。
-2. 核心集成/端到端测试通过，已知失败有明确阻断或降级策略。
-3. 安全测试无未处理 Critical/High 问题。
-4. 依赖许可与模型权重许可有记录。
-5. 关键操作具备审计，敏感字段已脱敏。
-6. 可从干净环境按文档复现。
-7. 变更包含测试证据、资源数据和回滚说明。
+The Colab T4 16GB blind test is currently running. Do not predeclare a winner. A fluent answer or high throughput does not establish understanding quality.
 
-## 5. 缺陷分级
+### Action-grounding model: Magma
 
-- P0：越权、凭据泄露、数据破坏、不可控外部副作用；立即阻断发布。
-- P1：核心流程不可用、证据链错误、技能误执行；阻断相关模块发布。
-- P2：非核心功能缺陷或性能退化；评估后排期。
-- P3：体验、文档和低影响问题；进入常规迭代。
+Evaluate separately:
+- click point error and target-region hit rate;
+- trajectory/action ordering;
+- alignment to the relevant frames;
+- coordinate stability under scale, scrolling, and UI movement;
+- ability to express uncertainty when the historical click is not visible.
 
-## 6. 测试报告模板
+Do not combine Magma coordinate scores with Qwen3-VL/Mage-VL semantic scores in one blended score that hides task-specific failure.
 
-每次测试保存：
-- commit_sha、branch、测试日期、OS/硬件。
-- Python/依赖/模型/解析器/沙箱版本。
-- 测试集版本、命令、环境变量（不含秘密）。
-- 总数、通过、失败、跳过、耗时。
-- 资源峰值、日志和报告位置。
-- 失败复现步骤、风险等级、责任 Issue。
-- 是否满足发布门禁及签字/批准记录。
+## 4. Review quality
+
+GPT first-pass checks evidence match, time/causal consistency, UI-state transition, uncertainty, and observed/inferred separation.
+
+PM Sangou independently verifies against the original video evidence and relevant tests. No additional manual-reviewer role or queue is required. Record both decisions and reasons. Only double-pass entries are eligible for SQLite approved storage and LoRA training snapshots.
+
+## 5. LoRA and expert behavior tests
+
+- Training data snapshot contains only approved packages and is immutable.
+- Base model revision, training parameters, GPU and adapter hash are recorded.
+- 4B BF16 LoRA planning target is T4 16GB; 9B requires 24GB+.
+- Test adapter loading on the 4B base and verify the expected expert identity.
+- Validate the expert in Docker sandbox and GUI operation loop.
+- Test multiple initial UI states, alternative menus/routes, missing controls, unexpected dialogs, partial failures, and recovery.
+- Include unseen tasks that require applying learned principles rather than repeating a memorized action list.
+- Confirm unsafe or unsupported actions are rejected or safely stopped.
+
+## 6. Quality-before-throughput metrics
+
+Freeze acceptance thresholds before blind evaluation. Record:
+- operation precision/recall/order;
+- intent accuracy;
+- UI-state and outcome accuracy;
+- action target/coordinate error;
+- timestamp error;
+- observed/inferred classification accuracy;
+- evidence coverage and unsupported-claim rate;
+- unseen-task completion and recovery success;
+- safety violations (must be zero).
+
+After quality gates pass, record videos/hour, source-hours/hour, GPU-hours, peak VRAM/RAM, per-video cost, queue wait, retries, and failure rate. Do not claim throughput without the hardware, model revision, input duration, sample policy, and quality level used.
+
+## 7. Reports
+
+Every test report records commit SHA, branch, test date, OS/hardware, model and adapter revision, dataset snapshot, tool versions, configuration, commands, total/pass/fail/skip, duration, measured resource use, artifacts, failure examples, and gate decision.

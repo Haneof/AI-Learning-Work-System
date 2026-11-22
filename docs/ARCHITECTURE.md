@@ -1,50 +1,63 @@
-# 系统架构
+# System Architecture
 
-版本：V1.0
+## Product architecture
 
-## 分层结构
-1. 资料接入：视频、录屏、PDF、Office、图片、网页、操作日志和历史任务。
-2. 资料处理：识别、去重、切分、OCR、ASR、关键帧、时间戳和元数据。
-3. 知识学习：提取事实、概念、流程、条件、例外和风险；保留证据并识别冲突。
-4. 技能编译：将知识转成包含步骤、判断、异常处理、输出和验证的技能。
-5. 专业记忆：知识、技能、任务、决策、成功经验和失败经验分开管理。
-6. 执行层：通过 API、浏览器 DOM、Accessibility Tree、GUI、Shell/Python 等执行。
-7. 评估进化：评估知识、技能、技能组合、迁移能力、异常处理和真实任务表现。
-8. 调度治理：管理专家生命周期、任务队列、权限、人工审批、审计和资源调度。
+The system's primary product is a set of domain experts: one shared 4B base model with different vertical LoRA adapters. Verified tutorial knowledge is the training data used to produce those adapters. A transcript, summary, compiled skill package, or sandbox report is not the final product.
 
-## 核心数据流
-资料导入 → 原始文件登记 → 多模态解析 → 带证据知识条目 → 冲突处理/审核 → 技能候选 → 沙箱测试 → 技能版本发布 → 任务执行 → 结果验证 → 经验沉淀 → 能力缺口识别 → 新学习任务。
+## Four-step data flow
 
-每个阶段记录状态、输入输出、模型与工具版本、耗时、错误和重试信息。
+1. **Download**: web-search target-vertical tutorials; use a cloud downloader to place them directly in the 5TB Google Drive; group by creator and series/course; retain one download record per video with source link and platform.
+2. **Clean and extract**:
+   - extract existing subtitles first, or use ASR to create timestamped subtitles only when none are available;
+   - pre-filter by text to retain only tutorials relevant to the selected vertical;
+   - run full multimodal extraction only on matches. Qwen3-VL/Mage-VL understand video and audio and produce evidence-linked text; Magma grounds candidate click points and action trajectories;
+   - represent each action, intent, UI state transition, and result with time-linked evidence, separating observed facts from inference.
+3. **Deduplicate, review, store**: deduplicate by content hash; preserve conflicts without overwrite; GPT reviews evidence match, trajectory consistency, and epistemic labels; PM Sangou independently verifies against video evidence and tests; only candidates passing both gates enter SQLite.
+4. **Train and validate LoRA**: verified knowledge packages become LoRA training data. Train on cloud GPU, bring the adapter back, and mount it on the 4B base. One base plus different vertical adapters yields different experts. Validate trained experts in the Docker sandbox and GUI operation loop.
 
-## 技能数据契约
-每项技能至少包含：唯一 ID、名称、版本、状态、目标、适用范围、前置条件、输入输出结构、执行步骤、成功判据、条件分支、异常恢复、工具与权限、风险说明、来源定位、测试用例、测试结果、创建和变更记录。
+## Model boundaries
 
-建议技能包采用目录结构：SKILL.md、scripts、references、assets、tests 和 metadata。具体 schema 后续独立版本化。
+| Model family | Architectural responsibility | Output contract |
+|---|---|---|
+| Qwen3-VL | Video understanding | Time-grounded text: what happened, why, visible state changes, outcome, evidence |
+| Mage-VL | Alternative video understanding candidate | Same semantic/text task, independently benchmarked against Qwen3-VL |
+| Magma | Action grounding | Coordinate/action-oriented candidates: click points, regions, trajectories |
 
-## 专家状态机
-CREATED → INGESTING → LEARNING → TRAINING → EVALUATING → READY → WORKING。
-异常状态包括 BLOCKED、NEEDS_REVIEW、SUSPENDED、DEGRADED。状态变化必须由明确事件触发并记录原因，不得由模型自行宣称晋级。
+These responsibilities are separate. The understanding candidates must be tested for semantic correctness, action/intent interpretation, and state-transition understanding. Magma must be tested for coordinate/action grounding. No single aggregate score may conceal a failure in either role. Qwen3-VL vs Mage-VL blind evaluation on Colab T4 is ongoing; the architecture records no result or winner.
 
-## 服务边界
-- Model Gateway：统一模型调用、版本、上下文和能力声明。
-- Ingestion Worker：文件登记、拆分和解析队列。
-- Media Pipeline：FFmpeg、ASR、OCR、抽帧和时间轴对齐。
-- Knowledge Service：知识、证据、冲突、版本和审核。
-- Skill Compiler：技能生成、静态检查和依赖清单。
-- Sandbox Runner：隔离运行脚本与工具调用。
-- Evaluation Service：测试集、评分、回归和晋级决策。
-- Memory Service：专家隔离的记忆读写与检索。
-- Agent Runtime：计划、工具路由、执行、观察和恢复。
-- Orchestrator / Audit：专家调度、权限审批和审计。
+## Evidence and epistemic boundary
 
-MVP 可先采用模块化单体，避免过早拆分微服务。
+For each extracted step, preserve source video identity/hash, time interval, frame references, transcript references, model/version, and review state. Use `observed` only for information directly visible in the video or captured by synchronized input-event logs. Use `inferred` for model-interpreted actions, hidden clicks, intent, or causality. A predicted Magma coordinate is a candidate inference, not proof of an actual click. Uncertainty and conflicts remain explicit.
 
-## 存储建议
-原始媒体使用文件/对象存储；结构化元数据优先 PostgreSQL，原型可用 SQLite；向量检索评估 Qdrant；技能和配置用 Git 版本管理；任务状态和审计以关系型数据库为准。
+## Layered services
 
-## 模型与资源
-主模型候选为本地无审查 Qwen 3.5 4B/9B，统一测试后定默认版本。必须登记精确模型 ID、权重来源、量化、上下文、视觉能力、后端和许可。视觉、OCR、ASR、视频理解作为专用模块按需加载或异步处理。8GB VRAM / 16GB RAM 下必须限制并发、分辨率和缓存。
+- **Acquisition service**: web search, platform adapters, cloud download, course grouping, download records, Drive archive.
+- **Pre-filter service**: subtitle discovery/extraction, ASR fallback, tutorial/vertical text classification.
+- **Multimodal understanding service**: video/audio context, temporal event segmentation, semantic action/intent/UI-state extraction.
+- **Action-grounding service**: candidate target regions, click coordinates, and trajectories.
+- **Review and knowledge service**: content-hash deduplication, conflicts, evidence validation, GPT review, PM verification, SQLite persistence.
+- **Training service**: verified dataset snapshot, LoRA training jobs, adapter/model lineage, evaluation reports.
+- **Validation harness**: skill-package compiler, static checks, Docker sandbox, and GUI operation loop for testing trained experts.
+- **Orchestrator and audit**: task state, resource scheduling, authorization, retries, logs, and provenance.
 
-## 可观测性
-任务记录 trace_id、expert_id、task_id、source_id、skill_id/version、模型与工具版本、权限判定、结果验证、耗时、资源占用和错误码。敏感数据按策略脱敏。
+MVP may remain a modular monolith with separate worker processes; do not turn every logical boundary into a microservice prematurely.
+
+## Storage
+
+- Google Drive: original tutorial videos, organized by platform/creator/series, plus large derived media when needed.
+- SQLite: download metadata, hashes, subtitle/pre-filter decisions, trajectory steps, evidence links, conflicts, GPT/PM review decisions, verified knowledge packages, and training-dataset membership.
+- Training artifacts: versioned cloud output, base-model revision, adapter weights, run configuration, and benchmark report.
+- Git: documentation, schemas, validation rules, and code; never commit source videos, secrets, or model weights.
+
+SQLite is the selected structured store for this pipeline. The previous generic suggestion of PostgreSQL for future multi-user production does not change this project decision.
+
+## Compute strategy and assumptions
+
+- Video understanding candidate selection is currently a blind Colab T4 (16GB) comparison between Qwen3-VL and Mage-VL.
+- Cloud GPU is the primary execution environment for LoRA training.
+- Planning assumption: 4B BF16 LoRA fits a 16GB T4; 9B needs a 24GB+ GPU. Validate exact revision, sequence length, batch, optimizer, and peak VRAM before treating the estimate as measured.
+- The existing RTX 3070 8GB local GPU is useful for development, FFmpeg preprocessing, and lightweight checks, not as the primary 4B BF16 LoRA trainer.
+
+## Existing implementation boundary
+
+The repository has real FFmpeg media operations, ASR/OCR Protocols with static test adapters, a basic video-learning provenance path, SQLite-backed components in the skill/knowledge area, a GUI Agent, and an OpenAI-compatible GUI decision adapter. It does not yet contain the complete cloud-download/pre-filter/model-understanding/action-grounding/review/LoRA-training pipeline. Do not describe interface stubs or supplied-caption integration tests as real model extraction.

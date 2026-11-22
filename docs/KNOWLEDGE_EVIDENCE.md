@@ -1,41 +1,65 @@
-# Knowledge and Evidence Contract
+# Knowledge, Trajectory, and Evidence Contract
 
 ## Purpose
 
-Represent extracted knowledge separately from its source evidence. Knowledge statements are typed as direct quote, extracted fact, inference, or recommendation. Evidence links identify the source segment and whether it supports, contradicts, or contextualizes the statement.
+Represent extracted tutorial knowledge separately from the source evidence and from model interpretation. The system's useful output is a verified, time-aligned operation trajectory and a reusable knowledge package—not a transcript.
 
-## Rules
+Each package explains what a person did, the apparent purpose, what changed on screen, where an action was directed, whether the expected result occurred, and under which conditions the knowledge applies.
 
-- Every knowledge item belongs to one expert scope.
-- Source segments retain source ID and a page/time/frame locator.
-- APPROVED items require at least one valid SUPPORTS link.
-- DIRECT_QUOTE items require an excerpt that exactly occurs in the referenced segment text.
-- An evidence link must reference an existing segment and matching source ID.
-- Cross-expert evidence is denied unless the source segment explicitly lists the target expert in its sharing allowlist.
-- Duplicate statements are identified by normalized SHA-256 within the same expert and epistemic type.
-- Different statements with the same conflict key coexist; both move to REVIEW_REQUIRED instead of overwriting each other.
+## Four-step provenance path
 
-## Video evidence provenance
+1. Download record: original video URL and platform, creator, series/course, Drive location, content hash.
+2. Prefilter record: subtitle source (embedded/sidecar or ASR fallback), language, timecodes, vertical/tutorial classification, and rejection reason if not selected.
+3. Extraction record: source video intervals, frame/audio evidence, understanding model and version, action-grounding model and version, trajectory steps, and uncertainty.
+4. Review/training lineage: GPT first review, PM Sangou independent evidence/test verification, SQLite approval, and the immutable LoRA training dataset snapshot.
 
-The video-ingestion path creates one CANDIDATE direct-quote item per non-empty timestamp window.
-Each item has a SUPPORTS link whose excerpt exactly matches the stored source-segment text.
-Its provenance record includes:
+## Observed versus inferred
 
-- Original source filename, file URI and SHA-256 digest.
-- Source version (capture date/release supplied by the caller).
-- Source segment ID and start_ms / end_ms locator.
-- Knowledge version and explicit applicability scope.
-- Expert scope plus ASR, OCR, chunker and extractor identities/versions.
+Every action/knowledge claim must declare its epistemic source:
 
-The current schema adds optional provenance fields to SourceSegment and an optional
-applicability_scope to KnowledgeItem. Existing document/PDF callers remain compatible.
-Evidence remains CANDIDATE until reviewed; the pipeline never auto-approves instructions
-or claims old screencast UI instructions apply to current software.
+- **OBSERVED**: directly visible in the source video or captured in synchronized screen/input event telemetry. Cite the exact frames/time range or event record.
+- **INFERRED**: reasoned from visible pointer movement, UI feedback, spoken explanation, surrounding context, model prediction, or before/after states. Store confidence and the observations supporting it.
+- **MIXED**: the step combines direct observations and explicitly separated inferences.
+- **UNKNOWN**: the video does not provide enough evidence.
 
-## Current implementation boundary
+Do not label a predicted coordinate as an actual mouse click unless the click is visibly evidenced or synchronized event telemetry exists. Do not represent inferred intent as a spoken statement. Keep alternate interpretations when ambiguity remains.
 
-The current registry is an in-memory PoC. It validates contracts and access scope but is not a database, authentication system, or production authorization service. The API layer must derive expert identity from authenticated context rather than trusting caller-supplied IDs. The JSON evidence file is a portable export, not a transactional database or immutable audit store.
+## Trajectory evidence contract
 
-## Test coverage
+Each step should identify:
 
-Tests cover missing support evidence, incorrect quotes, cross-expert access, explicit sharing, duplicate normalization, and conflicting source statements. Video tests additionally verify timestamp grouping, source file/hash/version provenance, knowledge version, applicability scope, and exact quote linkage. Source storage, database transactions, reviewer workflows, and durable audit events remain subsequent integration work.
+- source video ID/hash and start/end milliseconds;
+- pre-action and post-action UI state;
+- visible application, page, dialog, control, and text evidence;
+- action description and target element;
+- observed pointer/click/keyboard evidence, when actually present;
+- inferred target point/coordinates and inference confidence, when predicted;
+- spoken instruction or explanation with subtitle/audio timecode;
+- apparent intent and whether it was stated or inferred;
+- expected outcome and whether the outcome is visible;
+- relevant preconditions, software/version scope, exceptions, and recovery evidence;
+- understanding/grounding model identities and versions.
+
+Textual explanation, coordinates, UI state, and visual references must remain linked to the same temporal event. An unsupported or conflicting claim is not silently normalized into a clean instruction.
+
+## Knowledge typing and conflicts
+
+Knowledge statements distinguish direct quote, extracted fact, inference, and recommendation. Support, contradict, and context evidence links remain separately represented.
+
+- Exact duplicate video content is identified by SHA-256.
+- Duplicate statements may be linked to canonical content within the relevant expert/vertical.
+- Conflicting claims, versions, and applicability conditions coexist and retain their original evidence.
+- A newer claim does not overwrite older claims merely because it was extracted later.
+- Approved items require valid source evidence and both review gates.
+
+## Review gates
+
+GPT reviews first for evidence match, temporal/causal trajectory consistency, UI before/after consistency, observed/inferred separation, uncertainty, and unsupported claims.
+
+PM Sangou then independently checks the original video evidence and relevant tests. There is no additional external or general manual-review queue. A package is eligible for approved storage and LoRA training only after both gates pass.
+
+## Storage and implementation boundary
+
+SQLite is the selected structured store for download records, content hashes, transcripts, trajectory steps, evidence references, conflicts, review events, approved packages, and training-dataset membership. Original videos are archived in Google Drive.
+
+The existing repository has knowledge/evidence contract code and SQLite-oriented repository components in the skill/knowledge area, but the complete video trajectory schema and dual review workflow are still target design. Existing timestamped quote extraction must not be described as full operation understanding.

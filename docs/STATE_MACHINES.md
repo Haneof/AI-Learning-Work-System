@@ -1,97 +1,98 @@
-# 核心状态机
+# Core State Machines
 
-版本：V1.0  
-状态：逻辑定义，实施时必须以代码枚举、迁移校验和测试固化。
+Version: V1.1  
+Status: target logical definitions; implementation must enforce transitions in code and tests.
 
-## 1. 资料导入与解析
-
-```text
-REGISTERED -> QUEUED -> PROCESSING -> COMPLETED
-                              |-> PARTIAL
-                              |-> FAILED
-QUEUED -> CANCELLED
-```
-
-- REGISTERED：元数据登记完成，原文件只读。
-- QUEUED：等待处理。
-- PROCESSING：解析器正在执行。
-- COMPLETED：所有必需处理步骤成功。
-- PARTIAL：部分产物成功，存在可恢复警告。
-- FAILED：不可恢复错误或重试耗尽。
-- CANCELLED：用户/系统取消。
-
-重试规则：仅对可重试错误执行；重试次数有上限；每次尝试独立记录 parser_version、attempt 和错误。
-
-## 2. 知识生命周期
+## 1. Acquisition and download
 
 ```text
-CANDIDATE -> REVIEW_REQUIRED -> APPROVED
-     |              |             |
-     |              +-> REJECTED  +-> SUPERSEDED
-     +-> REJECTED
+DISCOVERED -> SELECTED -> DOWNLOADING -> DOWNLOADED -> ARCHIVED
+                  |             |
+                  |             +-> FAILED
+                  +-> REJECTED
 ```
 
-- 自动抽取结果默认 CANDIDATE。
-- 缺证据、来源冲突或高影响知识进入 REVIEW_REQUIRED。
-- APPROVED 只能由有权限的审核事件触发。
-- 旧知识被新版本取代时标记 SUPERSEDED，保留历史和证据。
-- 不允许模型直接写入 APPROVED 状态。
+- DISCOVERED: tutorial candidate found with source URL and platform.
+- SELECTED: selected for download.
+- DOWNLOADING: cloud download to Google Drive is active.
+- DOWNLOADED / ARCHIVED: file is present in the creator/series course folder and the per-video download record is persisted.
+- REJECTED: not selected for acquisition.
+- FAILED: download or archive operation failed; retry is bounded and logged.
 
-## 3. 技能生命周期
+Every video record retains its original URL and platform, including videos later rejected by the pre-filter.
+
+## 2. Clean / pre-filter
 
 ```text
-DRAFT -> VALIDATING -> APPROVED -> DEPRECATED
-  |          |
-  |          +-> DRAFT (修订新版本)
-  +-> SUSPENDED
-APPROVED -> SUSPENDED
+SUBTITLE_CHECK -> TEXT_READY -> PREFILTERING -> PREFILTER_PASSED
+       |                         |
+       +-> ASR_FALLBACK -> TEXT_READY
+                                 +-> PREFILTER_REJECTED
 ```
 
-- DRAFT：候选技能。
-- VALIDATING：静态检查和沙箱测试中。
-- APPROVED：满足策略和测试门槛的特定不可变版本。
-- DEPRECATED：不再推荐新任务使用。
-- SUSPENDED：发现安全问题或回归失败，立即停止调度。
-- 任何内容变更创建新 skill_version；旧版本保留。
-- APPROVED 不等于获得 L3 权限。
+- SUBTITLE_CHECK: inspect embedded and sidecar subtitles.
+- TEXT_READY: usable existing subtitles extracted, or ASR transcript created only when no usable subtitle exists.
+- ASR_FALLBACK: produce timestamped subtitles when source subtitles are absent.
+- PREFILTERING: classify tutorial status and target-vertical relevance.
+- PREFILTER_PASSED: eligible for full multimodal understanding.
+- PREFILTER_REJECTED: retain record and reason; do not run expensive full extraction.
 
-## 4. 任务生命周期
+## 3. Full multimodal extraction
 
 ```text
-QUEUED -> RUNNING -> SUCCEEDED
-            |-----> FAILED
-            |-----> WAITING_APPROVAL -> RUNNING
-            |-----> CANCELLED
+PREFILTER_PASSED -> UNDERSTANDING -> GROUNDING -> TRAJECTORY_READY
+                         |              |
+                         +-> FAILED     +-> PARTIAL / NEEDS_EVIDENCE
 ```
 
-- WAITING_APPROVAL 时暂停外部副作用，不得在后台继续执行该动作。
-- 审批通过只对已绑定 action_hash 生效；参数变化须重新审批。
-- 终态 SUCCEEDED / FAILED / CANCELLED 不允许直接回到 RUNNING。
-- 重试创建新 attempt 或新 task，并关联 parent_task_id。
+The understanding stage uses Qwen3-VL or Mage-VL to interpret video/audio, operation, intent, UI state changes, and outcome. The grounding stage uses Magma to produce candidate target regions, click points, or trajectories. Their outputs have separate contracts and evaluation metrics.
 
-## 5. 专家生命周期
+Trajectory steps must retain time/frame/audio evidence and observed/inferred labels. Missing or ambiguous historical click evidence cannot be upgraded into an observed event.
+
+## 4. Deduplication and review
 
 ```text
-CREATED -> INGESTING -> LEARNING -> TRAINING -> EVALUATING -> READY
-                                                        |        |
-                                                        +-> BLOCKED
-READY -> WORKING -> READY
-  |         |
-  +-> SUSPENDED <-+
-  +-> DEGRADED
+TRAJECTORY_READY -> HASH_DEDUPED -> GPT_REVIEW_PASSED -> PM_VERIFIED -> APPROVED
+                          |                 |                 |
+                          +-> DUPLICATE     +-> REJECTED      +-> REJECTED
+                          +-> CONFLICTS_RETAINED
 ```
 
-实际状态按能力阶段与运行状态分离实现，避免单一枚举混合“培养阶段”和“是否正在执行”。建议字段：
-- capability_stage：P1 / P2 / P3 / P4
-- operational_state：IDLE / BUSY / BLOCKED / SUSPENDED / DEGRADED
+- Exact duplicate video content is linked by SHA-256 and is not redundantly extracted.
+- Conflicting knowledge statements coexist and retain separate evidence; no overwrite.
+- GPT checks evidence match, trajectory consistency, UI-state changes, and observed/inferred separation.
+- PM Sangou independently checks the original video evidence and relevant tests.
+- There is no separate external human-review queue.
+- Only items passing both gates become APPROVED and enter SQLite verified storage/training snapshots.
 
-阶段晋级必须由评估服务基于冻结测试集、阈值和人工批准（如策略要求）产生事件。
+## 5. LoRA dataset and training
 
-## 6. 状态机实现要求
+```text
+APPROVED -> DATASET_SNAPSHOTTED -> TRAINING_QUEUED -> TRAINING -> ADAPTER_READY
+                                                        |              |
+                                                        +-> FAILED     +-> EVALUATING
+```
 
-- 所有状态迁移走统一 transition 函数或领域服务。
-- 每条迁移定义允许的 source state、target state、actor、guard、side effects。
-- 非法迁移返回稳定错误码并写审计。
-- 事件写入与状态更新需保证一致性；MVP 可使用数据库事务与 outbox 模式。
-- 并发更新使用版本号/乐观锁。
-- 每个状态机必须覆盖合法路径、非法路径、重复事件、重试、取消和崩溃恢复测试。
+A dataset snapshot is immutable and contains only double-approved knowledge packages. Record the base-model revision, dataset hash, training parameters, GPU, peak resource use, and adapter hash.
+
+Planning capacity: 4B BF16 LoRA on a 16GB T4; 9B on a 24GB+ GPU. Treat measured training logs as authoritative over this estimate.
+
+## 6. Expert evaluation and lifecycle
+
+```text
+ADAPTER_READY -> SANDBOX_EVALUATION -> GUI_EVALUATION -> READY
+                       |                    |
+                       +-> FAILED           +-> FAILED / NEEDS_REVISION
+```
+
+Evaluation checks the expert's ability to understand goals, select actions based on current UI state, verify results, handle exceptions, and generalize to unseen variations. Passing a fixed replay alone is insufficient.
+
+## 7. State transition requirements
+
+- All state changes use a controlled transition function/domain service.
+- Each transition records source state, target state, actor/model, guard, input hashes, output references, and failure reason.
+- Illegal transitions are rejected and audited.
+- Retries are bounded and idempotent; source hash and operation configuration form part of task identity.
+- Review decisions and dataset membership are immutable once snapshotted.
+- A failed or pending item cannot be included in an approved LoRA training dataset.
+- Expert release requires passing sandbox and GUI operation loop evaluations.

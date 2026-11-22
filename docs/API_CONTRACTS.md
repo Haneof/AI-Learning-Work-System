@@ -1,101 +1,104 @@
-# API 契约（MVP）
+# API Contracts for Tutorial Learning (Logical MVP)
 
-版本：V1.0  
-状态：逻辑契约；具体 HTTP 框架与路径前缀由实现 ADR 决定。
+Version: V1.1  
+Status: target logical contracts; these definitions do not imply every service is implemented.
 
-## 1. 通用约定
+## 1. General conventions
 
-- JSON UTF-8；时间统一 ISO 8601 UTC。
-- ID 使用 UUID；分页使用 cursor/limit。
-- 所有异步操作返回 task_id 或 job_id，不在 HTTP 请求中长时间阻塞。
-- 写请求支持 Idempotency-Key；重复请求不得重复创建副作用。
-- 每个响应包含 request_id；后台任务另含 trace_id。
-- 错误统一结构：
+- JSON UTF-8; timestamps use ISO 8601 UTC.
+- IDs use UUID; list pagination uses cursor/limit.
+- Long-running download, prefilter, extraction, review, and training operations return job/task IDs.
+- Writes support idempotency keys; retries must not duplicate side effects.
+- Every response includes request_id; background jobs also include trace_id.
+- Secrets, credentials, private source URLs, and tokens must not appear in ordinary logs.
 
-```json
-{
-  "error": {
-    "code": "VALIDATION_ERROR",
-    "message": "Human-readable summary",
-    "details": {},
-    "retryable": false
-  },
-  "request_id": "uuid"
-}
-```
+## 2. Pipeline contracts
 
-## 2. 核心接口草案
+### Register a tutorial download
 
-### 健康检查
-- GET /health
-- 返回服务状态、版本和依赖可用性摘要；不得泄露密钥或内部路径。
+- POST /v1/experts/{expert_id}/downloads
+- Input: source_url, platform, creator, series_or_course, title, discovered_at, license_metadata.
+- Output: download_record_id, state.
+- A record is required for every downloaded video and must preserve source_url and platform.
+- The archive destination is Google Drive under platform/creator/series-or-course. The cloud downloader writes directly to Drive.
 
-### 登记资料
+### Start clean and pre-filter
+
+- POST /v1/downloads/{download_record_id}/prefilter-jobs
+- Input: target_vertical, subtitle_preferences, prefilter_profile.
+- Output: job_id, state.
+- Extract embedded/sidecar subtitles when usable. Run ASR only when source subtitles are unavailable.
+- Classify whether the item is a tutorial in the target vertical.
+- Rejected videos retain the download record and rejection reason and must not enter full extraction.
+
+### Start full multimodal extraction
+
+- POST /v1/source-videos/{source_video_id}/trajectory-extraction-jobs
+- Input: understanding_model_id/revision, grounding_model_id/revision, extraction_profile.
+- Output: job_id, state.
+- The understanding model (Qwen3-VL or Mage-VL candidate) receives video frame/clip evidence and audio/subtitle context and returns time-grounded text understanding.
+- The action-grounding model (Magma) returns candidate coordinates/target regions/action trajectories.
+- These outputs must remain separate and must include source/time/frame references.
+- Every action claim distinguishes observed evidence from inference.
+
+### Query pipeline job
+
+- GET /v1/pipeline-jobs/{job_id}
+- Return stage, state, progress, warnings, error_code, output references, model/tool versions, timestamps, and measured resource metrics when available.
+
+### Review a knowledge package
+
+- POST /v1/knowledge-packages/{package_id}/reviews
+- Input: gate (GPT_FIRST_PASS / PM_INDEPENDENT_VERIFICATION), decision (PASS / REJECT / NEEDS_EVIDENCE), comments, evidence/test references.
+- Output: review_event_id, new_state.
+- GPT checks first; PM Sangou independently verifies the original video evidence and relevant tests.
+- No separate manual-review queue. A package cannot become approved unless both required gates pass.
+
+### Freeze a LoRA training dataset
+
+- POST /v1/verticals/{vertical_id}/training-datasets
+- Input: approved_package_ids, dataset_version, base_model_id.
+- Output: dataset_snapshot_id, dataset_hash.
+- The server must reject any package without both review PASS events. Dataset snapshots are immutable.
+
+### Start LoRA training
+
+- POST /v1/training-datasets/{dataset_snapshot_id}/lora-training-jobs
+- Input: base_model_id/revision, adapter_config, compute_profile.
+- Output: training_job_id, state.
+- Training targets 4B BF16 LoRA on a cloud T4 16GB planning profile; 9B requires a 24GB+ profile. Actual capacity is verified from run metadata.
+
+### Evaluate a trained expert
+
+- POST /v1/experts/{expert_id}/evaluation-runs
+- Input: adapter_revision, sandbox_profile, gui_test_suite, unseen_task_suite.
+- Output: evaluation_run_id, state.
+- Validation includes Docker sandbox execution and the GUI operation loop. A replay-only pass is insufficient.
+
+## 3. Existing generic interfaces
+
+### Register source
+
 - POST /v1/experts/{expert_id}/sources
-- 输入：source_type、original_name、storage_uri/upload_ref、sha256、mime_type、size_bytes、metadata。
-- 输出：source_id、ingest_state、duplicate_of（如重复）。
-- 只登记元数据和受控文件引用；上传通道由部署环境决定。
+- Input: source_type, original_name, storage_uri/upload_ref, sha256, mime_type, size_bytes, metadata.
+- Output: source_id, ingest_state, duplicate_of (when exact content already exists).
 
-### 启动解析
-- POST /v1/sources/{source_id}/ingestion-jobs
-- 输入：parser_profile、options、idempotency_key。
-- 输出：job_id、state。
-- 解析完成生成 source_segment，不覆盖原始资料。
+### Query parsing result
 
-### 查询解析结果
 - GET /v1/ingestion-jobs/{job_id}
-- 返回 state、progress、warnings、error_code、segment_count、resource_metrics。
+- Return state, progress, warnings, error_code, segment_count, and measured resource metrics.
 
-### 创建知识候选
-- POST /v1/experts/{expert_id}/knowledge-items
-- 输入：knowledge_type、statement、epistemic_type、confidence_label、evidence_refs[]。
-- 输出：knowledge_item_id、lifecycle_state。
-- 缺少证据时只能进入 CANDIDATE / REVIEW_REQUIRED，不得自动 APPROVED。
+## 4. Access control and integrity
 
-### 审核知识
-- POST /v1/knowledge-items/{knowledge_item_id}/reviews
-- 输入：decision（APPROVE / REJECT / REQUEST_CHANGES）、comment。
-- 输出：review_id、new_state。
-- 调用者权限由服务端判定，不接受模型自报审批身份。
+- Every resource access validates expert/vertical scope.
+- Hash-identical video content is deduplicated; conflicting knowledge is retained as separate records, never overwritten.
+- The store derives reviewer identity from trusted runtime context; caller-provided identity strings are not authorization.
+- Approval requires both review gates; training dataset membership is server-enforced.
+- Model/tool outputs are untrusted until evidence checks pass.
+- High-risk external effects remain subject to the separate authorization policy.
 
-### 创建技能候选
-- POST /v1/experts/{expert_id}/skills
-- 输入：slug、name、description、package_manifest、source_evidence_refs[]。
-- 输出：skill_id、version_id、validation_state。
+## 5. Version policy
 
-### 验证技能
-- POST /v1/skill-versions/{version_id}/validation-runs
-- 输入：test_suite_ref、sandbox_profile。
-- 输出：test_run_id、state。
-- 沙箱策略由服务端强制；调用者不能通过请求体关闭隔离。
-
-### 创建任务
-- POST /v1/experts/{expert_id}/tasks
-- 输入：goal、input、allowed_tools、requested_permission_scope。
-- 输出：task_id、state。
-- requested scope 是申请，不是授权；实际权限取服务端策略与审批交集。
-
-### 查询任务
-- GET /v1/tasks/{task_id}
-- 返回 state、events cursor、result、approval_required、failure_reason。
-
-### 审批高风险动作
-- POST /v1/approvals/{approval_id}/decision
-- 输入：decision、approved_action_hash、comment。
-- 输出：approval_state。
-- 只允许具备审批权限的真实用户调用；审批必须绑定具体动作和参数摘要。
-
-## 3. 访问控制要求
-
-- 所有资源访问都校验 expert scope。
-- 不信任客户端传入的 actor、role、approval_state 或权限等级。
-- 工具权限由后端策略引擎计算，默认拒绝。
-- 列表接口不得跨专家泄露存在性、数量或内容。
-- 审批接口必须防重放并记录审计事件。
-
-## 4. 版本策略
-
-- API 采用 /v1 前缀；破坏性契约变更升级主版本。
-- schema 变更需兼容性测试和迁移说明。
-- OpenAPI 文件由实现代码生成或与实现同步，不维护脱节的手写副本。
-- 本文为实现前契约，不代表接口已经实现。
+- API uses /v1; breaking contract changes require a major version.
+- Schema changes require compatibility tests and migration notes.
+- This document is a target contract, not a claim that the API endpoints already exist.

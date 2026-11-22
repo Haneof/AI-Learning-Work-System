@@ -1,173 +1,114 @@
-# Video Acquisition Pipeline MVP
+# Tutorial Acquisition and Learning Pipeline
 
-## Scope
+## Purpose and priority
 
-The acquisition package provides the first YouTube path:
+This document defines the target pipeline for collecting hundreds of gigabytes of tutorials and turning them into verified, reusable training knowledge for vertical LoRA experts.
 
-1. Search with the yt-dlp expression \`ytsearchN:<keyword>\`.
-2. Normalize results into \`VideoCandidate\` records (URL, platform, uploader, title,
-   duration, series/playlist, license metadata).
-3. Select videos through the \`VideoSelector\` contract. The MVP ships a deterministic
-   title/series/duration/license selector; a model-backed selector can implement the
-   same interface later without changing the pipeline.
-4. Download a selected item with yt-dlp, preferring MP4 video/audio up to 720p.
-5. Upload it through the real Google Drive v3 API to
-   \`AI-Learning/<platform>/<uploader>/<series-or-未分组>/<filename>\`.
-6. Delete the downloader staging copy, download a fresh working copy from Drive,
-   verify SHA-256, call the evidence-extractor interface, and delete the Drive working
-   copy in a \`finally\` block. File absence is checked after deletion.
-7. Persist one current record per video in \`artifacts/acquisition/records.jsonl\`.
+**Quality ranks first; efficiency ranks second.** A transcript, frame dump, or fluent video summary is not a successful extraction. The full extraction stage must understand the demonstrated operation, its intent, the visible UI state transition, the action target, and the result. An uncertain action must remain an inference, never be promoted to a recorded fact.
 
-Bilibili has a platform adapter extension point but no search implementation in this
-MVP. Do not treat a placeholder as a working \`bilisearch\` endpoint. Implement a
-Bilibili API-backed search adapter that returns the common \`VideoCandidate\` shape.
+The current repository contains an acquisition prototype and media interfaces, not this complete production pipeline. This design does not claim that the cloud downloader, real ASR, video-understanding models, action-grounding model, joint review, or LoRA training workflow are already implemented.
 
-## Install
+## Step 1 — Download and course archive
 
-~~~powershell
-python -m pip install -e ".[acquisition,dev]"
-yt-dlp --version
-ffmpeg -version
-ffprobe -version
-~~~
+1. Search the web for tutorials in the selected target vertical.
+2. Download with a cloud downloader directly into the user's 5TB Google Drive. Do not use scattered single-video folders or make a local workstation the bulk-download staging destination.
+3. Organize the archive hierarchically by **creator and series/course**. A platform grouping may sit above the creator level, but the course structure must remain intact:
 
-The \`acquisition\` extra declares yt-dlp and the official Google Drive API/OAuth client
-libraries. They are optional so importing the base package does not fail on machines
-that have not enabled acquisition. The first actual YouTube search or download raises
-an actionable install error if yt-dlp is missing.
+   ```text
+   AI-Learning/
+     <platform>/
+       <creator>/
+         <series-or-course>/
+           <video-file>
+   ```
 
-## Search and selection
+4. Keep one download record for every video. At minimum, record the canonical source link and platform. Also retain creator, series/course, title, discovery/download time, Drive file ID/link/path, byte size, content SHA-256, and download status when available.
+5. Preserve original source metadata and attribution/license information where available. Unknown license metadata stays unknown; it must not be guessed.
 
-~~~python
-from aios_work_system.acquisition import (
-    RuleBasedVideoSelector,
-    SelectionCriteria,
-    YouTubePlatformAdapter,
-)
+The downloader's final archive target is Drive. The repository's current Google Drive API OAuth helper is an integration component, not proof that a cloud downloader-to-Drive production flow already exists.
 
-platform = YouTubePlatformAdapter()
-videos = platform.search("Blender beginner workflow", max_results=20)
-selected = RuleBasedVideoSelector().select(
-    videos,
-    SelectionCriteria(
-        title_keywords=("blender", "beginner"),
-        max_duration_seconds=20 * 60,
-        allowed_license_terms=("creative commons", "cc by"),
-        allow_unknown_license=False,
-        limit=1,
-    ),
-)
-~~~
+## Step 2 — Clean first, then perform intelligent extraction
 
-The selector is a deterministic stub, not a language model. A future LLM selector must
-implement the same \`VideoSelector.select(candidates, criteria)\` interface and return
-the selected candidates; it must not rewrite source metadata or infer missing license
-information.
+### 2a. Cheap text pre-filter
 
-A search result is not proof of reuse permission. If the platform metadata does not
-include a license, the record stores \`unknown\`. License metadata is not promoted to
-\`verified\` without an authoritative source. The sample below has a separately
-documented Wikimedia Commons CC BY 3.0 listing.
+This stage runs before expensive multimodal extraction:
 
-A quick search command is also available:
+1. Check the downloaded video for existing subtitle tracks or associated subtitle files.
+2. Prefer and extract existing subtitles when available.
+3. Only when subtitles are unavailable, run ASR on the audio to create a timestamped subtitle/transcript.
+4. Use this text to classify whether the video is both (a) a tutorial and (b) relevant to the selected target vertical.
+5. Drop unrelated videos, non-tutorial content, and clear false positives from the full-extraction queue. Retain the download record and a rejection reason; do not erase acquisition history.
+6. Only matching videos proceed to full video understanding.
 
-~~~powershell
-python scripts/search_youtube.py "Blender 3.4 tutorial" --max-results 20
-~~~
+This filter is intentionally cheap: subtitle extraction or ASR plus text classification. It reduces GPU use by rejecting unsuitable material before full visual reasoning. Passing the text filter is not proof that the video has been understood or that its instructions are correct.
 
-It prints normalized candidate metadata as JSON and does not download anything.
+### 2b. Full multimodal understanding and operation trajectory extraction
 
-## End-to-end orchestration API
+The selected model must watch the relevant video frames/clips and listen to the audio, using subtitles/transcription as supporting context. It must extract a temporally aligned operation trajectory and knowledge, including:
 
-The full \`AcquisitionPipeline\` accepts four replaceable components: platform,
-selector, Drive storage, and evidence extractor. The production storage path is
-\`GoogleDriveStorage.from_environment()\`, which uses the official Drive API client.
-Tests inject a fake transport at the HTTP boundary; they do not replace the production
-Google Drive implementation.
+- What the person is doing and the task goal.
+- Why the person is taking the action, separating spoken explanation from model-inferred intent.
+- Which UI/application/page and controls are visible.
+- What appears to be clicked, selected, typed, dragged, or changed, and where on screen the target is located.
+- The UI state before and after the action, including dialogs, navigation, values, status messages, and other visible effects.
+- Whether the expected result is visible, absent, ambiguous, or contradicted.
+- Preconditions, alternative paths, exceptions, recovery options, and applicability/version constraints that can be supported by evidence.
 
-The reusable extractor adapter is \`PR26VideoLearningAdapter\`. It lazily imports
-\`aios_work_system.video_learning.VideoLearningPipeline\`; it does not copy the
-media-processing implementation. PR #26 must be merged to main before this adapter
-can run. The adapter also requires concrete ASR/OCR adapters implementing the existing
-media Protocols. If PR #26 is not yet present, extraction fails clearly after the
-Drive archive is safely retained and the local working copy is cleaned up.
+The extraction is not “video-to-subtitles and done.” Transcription-only output does not qualify. The output is a structured, time-aligned knowledge package whose steps link to source video intervals and visual/audio evidence.
 
-~~~python
-from aios_work_system.acquisition import (
-    AcquisitionPipeline,
-    GoogleDriveStorage,
-    JsonlRecordStore,
-    PR26VideoLearningAdapter,
-    RuleBasedVideoSelector,
-    SelectionCriteria,
-    YouTubePlatformAdapter,
-)
+### Model responsibilities
 
-# Supply ASR/OCR adapter instances that implement the existing media Protocols.
-evidence_extractor = PR26VideoLearningAdapter(
-    asr_adapter=your_asr_adapter,
-    ocr_adapter=your_ocr_adapter,
-)
-pipeline = AcquisitionPipeline(
-    platform=YouTubePlatformAdapter(),
-    selector=RuleBasedVideoSelector(),
-    drive=GoogleDriveStorage.from_environment(),
-    evidence_extractor=evidence_extractor,
-    record_store=JsonlRecordStore("artifacts/acquisition/records.jsonl"),
-)
-candidates, records = pipeline.run_search(
-    "Blender 3.4 tutorial",
-    SelectionCriteria(
-        title_keywords=("blender",),
-        max_duration_seconds=20 * 60,
-        limit=1,
-    ),
-)
-~~~
+| Model | Assigned job | Expected output |
+|---|---|---|
+| Qwen3-VL | Video understanding: watch frames/clips and reason over the tutorial and its context | Text descriptions of events, intent, UI state, outcomes, and evidence-linked knowledge |
+| Mage-VL | Video understanding candidate, evaluated on the same job independently | Text descriptions of events, intent, UI state, outcomes, and evidence-linked knowledge |
+| Magma | Action grounding, not the primary semantic explainer | Coordinate/action output such as candidate click points, target regions, and trajectories |
 
-The Drive round-trip is deliberate: the extractor receives only the file freshly
-downloaded from Drive, not the original yt-dlp staging file. A SHA-256 mismatch stops
-extraction. The Drive archive is not deleted. Both local copies are removed and checked
-for absence; extracted evidence JSON and JSONL metadata are kept locally.
+Qwen3-VL and Mage-VL are competing video-understanding candidates and must be evaluated on understanding quality. Magma performs a different action-grounding job and must be evaluated on coordinate/trajectory accuracy. Do not rank unlike task metrics in one score. The Qwen3-VL vs Mage-VL blind test on Colab T4 is currently running; this document records no winner.
 
-## Record and course grouping
+Use the understanding model to describe **what happened and why**. Use the grounding model to propose **where the action was aimed and what coordinate/action sequence is consistent with the frames**. Cross-check them. A grounding prediction is not proof of an actual historical mouse event.
 
-Each JSONL row contains the video URL, platform, uploader, title, duration, series,
-license/source/verification state, discovery/download times, SHA-256, Drive file ID,
-Drive link, Drive path, upload status, extraction status, local deletion status, and
-evidence path. Updates replace the current row by \`record_id\`; this MVP is not a
-transactional database.
+### Evidence epistemology
 
-Videos are grouped by uploader and series. If no series or playlist metadata is
-provided, the folder component is exactly \`未分组\`. The evidence provenance carries
-both uploader and series, so a set of videos from one creator/course can later be
-treated as a course-level learning unit.
+Every trajectory step must distinguish:
 
-## Reference sample
+- `observed`: explicitly visible in the video or captured in synchronized input-event logs. Store the exact source/time/frame evidence.
+- `inferred`: a reasoned interpretation not directly recorded, such as an inferred click when the cursor or click feedback is ambiguous, inferred intent, or inferred causal connection. Store the inference, confidence, and supporting observations.
 
-- YouTube URL: https://www.youtube.com/watch?v=0zaG13Do12Q
-- Title: Blender 3.4 New Features in LESS than 5 minutes
-- YouTube channel: Blender (@blenderofficial)
-- Attribution: Blender Foundation and SouthernShotty (Commons attribution record)
-- Duration: 3 minutes 29 seconds
-- Series: unknown; store under \`未分组\`
-- License: Creative Commons Attribution 3.0 Unported (CC BY 3.0), as listed by
-  Wikimedia Commons. Retain attribution and the license link; identify any changes.
-- Commons source page:
-  https://commons.wikimedia.org/wiki/File:Blender_3.4_New_Features_in_LESS_than_5_minutes.webm
+Do not create `observed` mouse/keyboard events when the video does not visibly show them or a synchronized event log does not exist. If the action is ambiguous, preserve the uncertainty and the candidate interpretations.
 
-For an actual acquisition, the YouTube metadata returned by yt-dlp is saved as
-observed. The Commons reference above is independent license evidence, not a reason to
-hard-code a license string for other videos. If the live result cannot confirm a
-license, its record remains \`unknown\`.
+## Step 3 — Content deduplication, two-stage review, and SQLite storage
 
-## CI and limits
+1. Deduplicate by content hash (SHA-256 of the downloaded video bytes). Exact duplicate content is processed once and linked to the existing source record.
+2. Different or conflicting knowledge entries coexist. Never overwrite a conflicting statement, trajectory, applicability scope, or source version. Preserve both claims, evidence, and provenance so that disagreement remains inspectable.
+3. GPT performs the first review:
+   - every claim and action is supported by the cited video/audio evidence;
+   - trajectory steps are temporally and causally consistent;
+   - before/after UI states agree with the frames;
+   - observed and inferred claims are correctly separated;
+   - inferred mouse/click coordinates are not mislabeled as recorded events;
+   - uncertainty and contradictions are not hidden.
+4. PM Sangou independently verifies GPT-passed candidates against the original video evidence and the relevant tests. There is **no separate human-review queue or outside manual reviewer**; these are the two required project gates.
+5. Only items passing both GPT review and PM verification enter the approved SQLite store. Rejected or unresolved candidates remain traceable with their review status but are not admitted as verified training data.
 
-- Unit tests fake the yt-dlp boundary and inject an in-memory Drive transport.
-- CI has no Google OAuth credentials and does not attempt a real Drive upload.
-- The production Google Drive implementation uses the official API and OAuth flow;
-  see [GOOGLE_DRIVE_SETUP.md](GOOGLE_DRIVE_SETUP.md) for one-time authorization.
-- PR #26 is intentionally not vendored into this branch. Once it is merged, wire
-  concrete ASR/OCR adapters into \`PR26VideoLearningAdapter\`.
-- Current chunking, transcription/OCR quality, semantic course organization, and
-  persistent database storage remain separate acceptance items.
+## Step 4 — Train and validate vertical LoRA experts
+
+1. Build the training dataset from verified knowledge packages. The packages are training data, not the final product.
+2. Train the LoRA adapter on a cloud GPU. Current capacity-planning assumption: a 16GB NVIDIA T4 fits 4B BF16 LoRA; the 9B variant requires a 24GB-or-larger GPU. Confirm the exact base revision, sequence length, batch, optimizer, checkpointing, and peak VRAM in the training run before treating a resource estimate as measured.
+3. Bring the trained adapter back to the deployment environment and mount it on the 4B base model.
+4. Use one base model with different vertical LoRAs to create different domain experts. Keep each adapter, dataset snapshot, training configuration, base revision, and evaluation report versioned.
+5. Validate each trained expert in the Docker sandbox and the GUI operation loop. Test goal understanding, action selection, state verification, recovery, and unseen variations—not just replay of the tutorial's exact sequence.
+
+The skill-package compiler and Docker sandbox are validation harnesses for training material and expert behavior. They are not the destination product and do not replace the trained LoRA expert.
+
+## Storage and provenance
+
+- Original videos and course groupings live in Google Drive.
+- Download records link each item to source URL, platform, creator, series, Drive location, and content hash.
+- Approved structured knowledge, review decisions, trajectory steps, conflicts, and training-dataset membership are stored in SQLite.
+- Each extracted step links back to video ID/hash, start/end time, relevant frames, transcript evidence, model identity/version, and observed/inferred status.
+- Keep failed, rejected, and superseded records for traceability; they are excluded from the verified training snapshot.
+
+## Current implementation boundary
+
+The repository currently has a YouTube acquisition prototype, Drive API storage code, FFmpeg audio/frame extraction, ASR/OCR Protocol interfaces, deterministic static adapters, and a simple video-learning evidence path. The static ASR/OCR adapters consume supplied fixtures; they do not perform real transcription or recognition. The current extractor protocol does not yet express full video reasoning, action grounding, or a temporally aligned operation trajectory. Those are the principal design-to-implementation gaps.

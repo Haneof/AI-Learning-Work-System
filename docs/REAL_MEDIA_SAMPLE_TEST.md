@@ -1,6 +1,6 @@
-# Real Media, ASR, and OCR Integration Test
+# Real Media, ASR, and OCR Component Smoke Tests
 
-This test suite downloads and processes an actual, openly licensed tutorial recording on GitHub-hosted Ubuntu runners. It exercises real FFmpeg, faster-whisper, and Tesseract execution; it does not mock the media tools.
+This document records existing component-level integration tests on an openly licensed tutorial recording. These jobs exercise FFmpeg, faster-whisper, and Tesseract. They are useful for media I/O and subtitle/OCR plumbing, but they are **not** the target intelligent tutorial-extraction pipeline and do not prove that a model understands the demonstrated operation.
 
 ## Sample and attribution
 
@@ -10,34 +10,30 @@ This test suite downloads and processes an actual, openly licensed tutorial reco
 - Attribution: Free I.T. Athens
 - License: Creative Commons Attribution 3.0 (CC BY 3.0); retain attribution and license when redistributing the sample.
 
-## Automated test jobs
+## Existing automated component jobs
 
-The `Real Media Sample Integration` workflow runs three real integration jobs:
+The `Real Media Sample Integration` workflow currently runs:
 
 1. **Real video / FFmpeg**
    - Downloads the original WebM and checks it with `ffprobe`.
-   - Extracts the full audio track to mono 16 kHz WAV.
-   - Transcodes a 1280-wide H.264 proxy MP4.
-   - Extracts one frame every 60 seconds.
-   - Registers the original file with SHA-256 and creates timestamp-located audio/frame segments in a source manifest.
-   - Uploads the source, derived media, manifest, and JSON report.
+   - Extracts mono 16 kHz audio, creates an H.264 proxy, and extracts one frame every 60 seconds.
+   - Registers original file SHA-256 and timestamp-located audio/frame segments.
+   - Uploads artifacts and a JSON report.
 
 2. **Real ASR / faster-whisper**
-   - Downloads the same recording and extracts mono 16 kHz audio.
    - Runs the open-source `tiny.en` model on CPU with INT8 compute.
-   - Writes segment text with start/end timestamps and a JSON report.
-   - Checks that a non-empty transcript and valid timestamp intervals were returned.
+   - Writes segment text with start/end timestamps and checks for a non-empty transcript and valid intervals.
 
 3. **Real keyframe OCR / Tesseract**
-   - Downloads the same recording and extracts one frame per 60 seconds through the project FFmpeg wrapper.
-   - Runs Tesseract English OCR on each frame after resizing to a maximum of 640×360.
-   - Writes recognized text, frame timestamps, per-frame character counts, and elapsed time to JSON.
+   - Extracts one frame every 60 seconds.
+   - Runs Tesseract English OCR on sampled frames after resizing.
+   - Writes recognized text, frame timestamps, per-frame character counts, and elapsed time.
 
-Each job uploads its report and generated artifacts. The workflow runs for relevant pull requests and can also be started manually from GitHub Actions.
+Each job uploads reports and generated artifacts. The workflow is a component smoke test; it does not call Qwen3-VL, Mage-VL, or Magma.
 
-## Recorded test evidence
+## Existing recorded smoke-test evidence
 
-The following results were observed on the 21-minute, 1280×720 sample in GitHub-hosted Ubuntu runners:
+The following results were recorded on the 21-minute, 1280×720 sample in GitHub-hosted Ubuntu runners:
 
 | Test | Observed result |
 |---|---|
@@ -50,11 +46,28 @@ The following results were observed on the 21-minute, 1280×720 sample in GitHub
 | faster-whisper `tiny.en` | 341 timestamped segments; 16,794 transcript characters; CPU INT8 |
 | Tesseract 5.5.0 | 21/21 sampled frames returned text; 11,365 characters |
 
-These are integration smoke-test results, not accuracy benchmarks. The ASR transcript has not been scored against a human-verified reference transcript. OCR character count does not measure character-level accuracy or semantic correctness.
+These are execution results, not accuracy benchmarks. ASR was not scored against a PM-verified transcript. OCR character count is not character-level accuracy or semantic correctness.
 
-## Run locally on Windows
+## Relation to the target pipeline
 
-Install FFmpeg and add both `ffmpeg.exe` and `ffprobe.exe` to PATH. Then, from the repository root:
+In the target design, subtitles are a **cheap pre-filter**:
+- use existing subtitles when available;
+- otherwise use ASR to produce timestamped subtitles;
+- reject non-tutorial or wrong-vertical videos before full GPU extraction.
+
+Only pre-filter-passed videos go to the full video-understanding path. Qwen3-VL and Mage-VL are evaluated for understanding actions, intent, UI transitions, and outcomes. Magma is evaluated separately for action grounding and candidate click coordinates/trajectories. The full output must distinguish observed evidence from inferred claims and be reviewed by GPT, then independently verified by PM Sangou.
+
+Therefore this existing smoke test does not establish:
+- correct operation-step or intent extraction;
+- UI-state transition understanding;
+- mouse-click history or coordinate accuracy;
+- observed/inferred classification;
+- verified knowledge-package quality;
+- LoRA training readiness or expert generalization.
+
+## Local component checks
+
+Install FFmpeg and add `ffmpeg.exe` and `ffprobe.exe` to PATH, then:
 
 ```powershell
 python -m pip install -e .
@@ -63,7 +76,7 @@ Invoke-WebRequest -Uri "https://upload.wikimedia.org/wikipedia/commons/1/18/Libr
 python scripts/validate_real_media_sample.py --input artifacts/real-media/LibreOffice_Writer_Basics.webm --output-dir artifacts/real-media/output
 ```
 
-For the optional ASR smoke test:
+Optional component-level ASR:
 
 ```powershell
 python -m pip install "faster-whisper>=1.1,<2"
@@ -71,49 +84,13 @@ ffmpeg -y -i artifacts/real-media/LibreOffice_Writer_Basics.webm -vn -ac 1 -ar 1
 python scripts/validate_asr_sample.py --input artifacts/real-media/audio.wav --output artifacts/real-media/asr-report.json --model tiny.en
 ```
 
-For the optional OCR smoke test, install Tesseract OCR and its English language data, then:
+Optional component-level OCR requires Tesseract and its language data:
 
 ```powershell
-python -m pip install -e .
 python -m pip install pillow pytesseract
 python scripts/validate_ocr_sample.py --input artifacts/real-media/LibreOffice_Writer_Basics.webm --output-dir artifacts/real-media/ocr --interval-seconds 60
 ```
 
-## Mandarin Chinese test extension
+## Acceptance still required
 
-A second, openly licensed Mandarin learning video is used for multilingual coverage:
-
-- Work: 25 Essential Chinese Phrases You NEED to Know Before Visiting China!
-- Source: [Wikimedia Commons file page](https://commons.wikimedia.org/wiki/File:25_Essential_Chinese_Phrases_You_NEED_to_Know_Before_Visiting_China!.webm)
-- Author: My Mandarin Journey
-- License: CC BY 3.0 (attribution required)
-- Automated jobs: faster-whisper multilingual `tiny` with `zh` language hint; Tesseract Simplified Chinese `chi_sim` on 30-second keyframes.
-
-These jobs are designed to validate that the pipeline can execute on Chinese-language media. A PASS only proves non-empty outputs and valid execution; it does not prove transcription correctness, Simplified-vs-Traditional script fidelity, or OCR accuracy. The report artifacts must be manually reviewed and scored against reference text before acceptance.
-
-## Limits and remaining acceptance work
-
-This suite validates one real narrated English screen-recording sample. It does **not** establish:
-
-- ASR word error rate or correctness against a human-verified transcript.
-- Chinese speech recognition or Chinese UI OCR.
-- Dense-screen OCR recall/precision, table extraction, or PDF parsing.
-- Semantic step extraction, knowledge approval, skill generation, or task success.
-- Windows-specific FFmpeg/ASR/OCR acceptance.
-- Peak RAM/VRAM, throughput under concurrent ingestion, or behavior on hundreds of GB of material.
-
-Issue #3 must remain open until representative narrated recordings, text-dense recordings, and table PDFs are tested; source-linked outputs and failure cases are checked; and Windows reproduction plus resource measurements are recorded. A passing Ubuntu smoke test must not be represented as full media-ingestion acceptance.
-
-
-## Manual Mandarin OCR reference set
-
-A first reference set was manually transcribed by visually inspecting 10 corresponding extracted keyframes from the CC BY 3.0 Mandarin sample. It labels only the principal Simplified Chinese phrase shown on screen; pinyin, English translations, category headings, and incidental/background text are outside this benchmark's scope.
-
-- Labels: `tests/fixtures/mandarin_ocr_ground_truth.json`
-- Scorer: `scripts/score_ocr_reference.py`
-- Metric: Chinese-character CER = Levenshtein edit distance / number of reference Chinese characters.
-- Normalization: whitespace and non-CJK characters are removed before scoring.
-- Observed result on the saved Tesseract 5.5.0 `chi_sim` report: 13 edit operations / 56 reference characters = **23.21% CER** (76.79% simple character-accuracy proxy).
-- Largest error clusters occur at the 240-second and 270-second frames, where extra or misread Chinese characters appear around the main phrase.
-
-This is a diagnostic score on 10 selected keyframes, not a representative general OCR accuracy claim. The scorer is wired into the Chinese OCR CI job and emits `ocr-score.json`. Future coverage should add more layouts, small fonts, dense screens, tables, Traditional Chinese, and background-only frames. This score is not yet a release gate.
+The target pipeline still requires blind video-understanding evaluation, independent action-grounding evaluation, trajectory/UI-state labels, observed/inferred checks, GPT + PM dual review, SQLite verified storage, and LoRA expert validation in sandbox and GUI operation loop. Throughput or smoke-test PASS status cannot substitute for those gates.

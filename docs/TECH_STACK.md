@@ -1,36 +1,87 @@
 # 技术选型与验证策略
 
-版本：V1.0。开源优先、按需引入、先验证再定案。以下均为候选而非生产依赖。
+版本：V1.1。开源优先；模型角色分离；质量优先、效率第二。下列模型选型记录项目当前设计，不等于仓库已经集成全部推理后端。
 
-## 模型策略
-主模型方向固定为本地无审查 Qwen 3.5，4B 与 9B 两个候选。需确认精确模型仓库与 revision、是否具备视觉输入、权重许可、量化格式、推理后端、上下文长度和实际资源占用。4B/9B 使用同一测试集和一致提示模板比较，不预设参数更大就一定更好。业务逻辑不得绑定单一模型 API。
+## 1. 模型角色
 
-## 开源候选
-| 领域 | 项目 | 用途 | 当前定位 |
+| 模型 | 角色 | 输入/输出职责 | 评测重点 |
 |---|---|---|---|
-| 视频转技能 | [Video-to-Skill](https://github.com/brenoepics/video-to-skill) | 视频转录、关键帧、步骤提取、技能草案 | 优先小样本实验 |
-| 电脑操作 | [OpenGCUA](https://github.com/Tongyi-MAI/OpenGCUA) | GUI、代码执行、电脑使用 Agent | 候选，需测成熟度 |
-| 电脑操作研究 | [Agent S](https://github.com/simular-ai/Agent-S) | 操作经验与评测方法参考 | 研究参考 |
-| GUI 视觉 | [UI-Venus](https://github.com/inclusionAI/UI-Venus) | GUI 屏幕理解 | 资源需求待实测 |
-| 视频理解 | [InternVideo](https://github.com/OpenGVLab/InternVideo) | 视频表征与长视频理解 | 后续评估 |
-| 视频理解 | [MOSS-VL](https://github.com/OpenMOSS/MOSS-VL) | 多模态/视频理解研究 | 后续评估 |
-| 技能格式 | [Agent Skills](https://github.com/anthropics/skills) | 可移植技能目录参考 | 借鉴格式 |
-| 浏览器自动化 | [Playwright](https://github.com/microsoft/playwright) | 浏览器控制与测试 | 优先评估 |
-| 浏览器 Agent | [Browser Use](https://github.com/browser-use/browser-use) | 浏览器任务自动化 | 候选 |
-| 桌面自动化 | [CUA](https://github.com/trycua/cua) | 桌面环境控制 | 候选 |
-| ASR | [faster-whisper](https://github.com/SYSTRAN/faster-whisper) | 本地语音识别 | 优先评估 |
-| OCR | [PaddleOCR](https://github.com/PaddlePaddle/PaddleOCR) | 文档与屏幕 OCR | 优先评估 |
-| 媒体处理 | [FFmpeg](https://ffmpeg.org/) | 转码、抽帧、音轨处理 | 基础工具 |
-| 向量检索 | [Qdrant](https://github.com/qdrant/qdrant) | 语义检索 | MVP 评估 |
-| 工作流编排 | [LangGraph](https://github.com/langchain-ai/langgraph) | 状态化 Agent 工作流 | 候选 |
+| Qwen3-VL | 视频理解候选 | 视频片段/采样帧 + 音频/字幕上下文 → 带时间定位的文本理解 | 操作步骤、意图、UI 状态变化、结果和证据的准确性 |
+| Mage-VL | 视频理解候选 | 与 Qwen3-VL 同任务、同类输入输出，独立完成语义理解 | 同一盲测集上比较理解质量和遗漏/幻觉 |
+| Magma | 动作 grounding | 关键画面/视觉轨迹 + grounding 提示 → 点击点、目标区域和坐标/动作轨迹 | 坐标偏差、目标命中率、动作时序与轨迹一致性 |
 
-代码许可、模型权重许可和数据集许可必须分别核查。代码开源不代表权重或数据可自由商用。
+Qwen3-VL 和 Mage-VL 是同一职责的竞争候选，不能在模型选择前写死赢家。两者当前的 Colab T4 16GB 盲测正在运行。Magma 负责动作落点/轨迹 grounding，不替代理解模型；它的预测位置不能当成真实鼠标事件。
 
-## 本地资源策略
-原型设备为 8GB VRAM / 16GB RAM。先单模型低并发；视频离线分段、代理分辨率、抽帧和转录；OCR/ASR 按需加载；任务队列支持断点续跑和缓存。9B 是否可用必须实测，不以参数量推断。
+## 2. 字幕与预筛
 
-## 统一基准测试
-比较知识提取与证据引用、视频步骤理解、技能生成完整性、多步骤推理、电脑操作成功率、异常处理、未见任务迁移、延迟/吞吐、显存/内存和长任务稳定性。若主模型不支持视觉输入，则评估其对视觉模块解析结果的理解能力。
+- 首先尝试提取视频自带字幕轨/sidecar 字幕。
+- 没有可用字幕时才使用 ASR 生成带时间戳转录。
+- ASR 的首要用途是目标垂直教程预筛，判断内容是否值得进入昂贵的多模态理解阶段。
+- 预筛未通过的视频记录拒绝原因，不进行完整提取。
+- ASR 文字不能替代视频理解，字幕中没有的信息不能自动补成观察事实。
 
-## 技术准入
-候选依赖进入主干前，完成许可证与维护状态检查、可重复安装、Windows 兼容性、资源测量、最小功能测试、安全边界和替代方案比较。未通过者留在实验区。
+现有 `ASRAdapter` / `OCRAdapter` Protocol 可以保留为组件接入边界；Static adapters 只是 fixture。FFmpeg 负责媒体准备，不负责语义理解。OCR 可为 UI 文字提供证据，但也不能独立产生操作意图或轨迹。
+
+## 3. 训练基座与 LoRA
+
+- 首个专家基座：4B。
+- 首次领域训练：云端 GPU 上的 4B BF16 LoRA。
+- 资源规划假设：T4 16GB 可运行 4B BF16 LoRA；9B LoRA 需要 24GB 或更大显存。
+- 每个垂直领域单独保存 LoRA adapter；一个 base + 不同 LoRA = 不同领域专家。
+- 已验证知识包是训练数据，必须保留训练集快照、样本来源、review 决策、base revision、训练参数和 adapter 哈希。
+- adapter 训练完成后回传部署环境并挂载到 4B base。模型能力通过沙箱和 GUI 操作循环验证，而不是通过训练 loss 或教程复述验收。
+
+上述显存配置是当前容量规划基线；最终必须以选定权重版本、上下文、batch、优化器、checkpointing 和实测峰值 VRAM 确认。
+
+## 4. 既有开源/基础组件定位
+
+| 组件 | 用途 | 定位 |
+|---|---|---|
+| FFmpeg | 探测、音轨抽取、代理视频、抽帧 | 媒体准备工具，不是理解模型 |
+| 现有 ASR Adapter | 无字幕时生成时间戳字幕 | 预筛依赖；真实模型 adapter 仍需集成和验证 |
+| 现有 OCR Adapter | 识别帧中的文字与位置（按需） | 辅助 UI 证据，不单独生成知识 |
+| Qwen3-VL / Mage-VL | 视频语义理解 | 主理解模型候选 |
+| Magma | 动作/坐标 grounding | 专项定位模型 |
+| SQLite | 知识、轨迹、审核和训练集元数据 | 管线选定结构化存储 |
+| Google Drive | 原始课程视频归档 | 5TB 目标存储 |
+| Skill Package Compiler | 生成/校验结构化测试材料 | 验证 harness |
+| Docker Sandbox | 隔离运行和行为验证 | 验证 harness |
+| GUI operation loop | 观察真实 UI、执行动作、核验结果 | 专家能力验收场景 |
+
+## 5. 统一质量基准
+
+视频理解与 grounding 分开测试：
+
+**理解模型：**
+- 操作步骤识别准确率、顺序和时间区间。
+- 操作意图与因果解释正确率。
+- UI 元素、前后状态、弹窗/导航/内容变化识别正确率。
+- 成功/失败结果判断。
+- 证据匹配、遗漏率、无依据幻觉率。
+- observed/inferred 分类正确率。
+
+**动作 grounding 模型：**
+- 点击坐标误差和目标区域命中率。
+- 动作轨迹/顺序一致性。
+- 目标元素变化、缩放、滚动后的鲁棒性。
+- 对不可见/模糊点击的拒绝或不确定性表达。
+
+**训练后的 LoRA 专家：**
+- 未见初始状态和界面变化下的目标达成率。
+- 动态决策、异常恢复和工具选择。
+- 与固定演示路径不同的合理替代方案。
+- 沙箱安全、结果验证和失败时停止能力。
+
+只有质量通过后，才比较吞吐、成本、GPU 利用率和长视频稳定性。
+
+## 6. 部署与算力
+
+- 当前本地 RTX 3070 8GB 用于开发、FFmpeg 预处理和轻量测试。
+- Qwen3-VL/Mage-VL 当前盲测使用 Colab T4 16GB。
+- LoRA 训练在云端 GPU 执行，4B BF16 以 T4 16GB 为规划基线，9B 要求 24GB+。
+- 大规模视频原件留在 Google Drive；计算任务只读取被预筛选的素材。
+- 不宣称 GB/hour 或 videos/hour，除非在固定模型、输入时长、GPU、批量和质量门槛下实测。
+
+## 7. 技术准入
+
+正式采用候选前，冻结模型仓库/revision、权重许可证、输入格式、输出 schema、部署依赖和 GPU 环境。对理解模型和 grounding 模型分别运行盲测，留存原始输出和失败案例。不能因社区关注度、模型参数量或单个榜单分数取代目标任务验证。

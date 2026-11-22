@@ -1,55 +1,62 @@
-# 验收标准
+# Acceptance Criteria
 
-版本：V1.0。具体数值阈值由试点基线测试确定并版本化。
+Version: V1.1  
+The pipeline is accepted on quality and verified expert behavior, not on transcript volume or raw throughput.
 
-## 端到端闭环
-1. 导入真实专业资料并生成唯一 source_id。
-2. 完成解析，保留页码、时间戳或片段定位。
-3. 提取知识条目并回溯原始证据。
-4. 编译技能草案并通过结构和依赖检查。
-5. 在隔离沙箱执行技能测试。
-6. 输出结构化测试报告。
-7. 诊断失败并生成新技能版本。
-8. 使用未见任务验证，而非只重复原样例。
-9. 记录成功/失败经验并在后续任务中正确检索应用。
+## Step 1 — Download and archive
 
-## 知识验收
-- 关键结论带来源定位。
-- 区分原文事实、模型推断和建议。
-- 不确定内容明确标记，不伪造证据。
-- 多来源冲突保留双方证据、时间和版本。
-- 过期信息可标记并阻止无条件使用。
-- 抽样人工核验准确性与遗漏。
+- Every selected video has a download record with source link and platform.
+- Creator/series grouping is preserved in the 5TB Google Drive archive.
+- Original metadata and license uncertainty are not fabricated.
+- SHA-256 is recorded to identify exact duplicate content.
 
-## 技能验收
-- 具备目标、范围、前置条件、输入输出。
-- 关键步骤有成功判据。
-- 包含条件分支、异常处理和终止条件。
-- 明确工具、权限和外部副作用。
-- 有正向、负向、边界和异常测试。
-- 版本变更触发回归测试。
-- 不以模型自评作为唯一通过依据。
+## Step 2 — Clean and extract
 
-## 执行验收
-- 执行前进行权限判定，参数经过 schema 校验。
-- 关键步骤保留证据，结果由独立检查器或可观察状态验证。
-- 超时、失败和部分成功有明确状态。
-- 高风险操作暂停等待人工批准。
-- 不把点击成功误报为业务结果成功。
+- Existing subtitles are used first; ASR runs only when usable subtitles are unavailable.
+- The transcript/text pre-filter identifies both tutorial content and relevance to the target vertical.
+- Rejected videos retain their source/download record and rejection reason; they do not enter full extraction.
+- Full extraction watches relevant frames/clips and listens to audio.
+- Output explains actions, intent, target controls/coordinates, pre/post UI states, visible changes, expected outcomes, preconditions, exceptions, and recovery evidence.
+- Transcription-only, OCR-only, or a fluent generic summary does not pass.
+- Every step has source/time evidence and separate observed/inferred fields.
+- No predicted action is mislabeled as a directly recorded historical click.
 
-## 学习进化验收
-- 从失败轨迹提取明确能力缺口。
-- 学习任务关联原始失败任务。
-- 新技能隔离验证后才发布。
-- 失败不污染正式技能库。
-- 新版本运行回归集并可撤销回滚。
+## Step 3 — Deduplicate, review, and store
 
-## 专家隔离验收
-- 专家 A 默认不能检索专家 B 的私有记忆。
-- 跨专家调用显式授权。
-- 任务、技能、日志和评估结果带 expert_id。
-- 专家停用时按策略处理数据。
-- 专家不能自行提升资源配额或权限。
+- Exact duplicate video content is identified by SHA-256.
+- Conflicting claims and different applicability/version records coexist; no overwrite.
+- GPT first checks evidence match, trajectory consistency, state changes, and epistemic labels.
+- PM Sangou independently verifies the candidate against source video evidence and relevant tests.
+- No separate human-review queue is introduced.
+- Only candidates passing both gates enter the approved SQLite store and training dataset snapshot.
+- Failed or uncertain candidates retain traceable rejection/hold reasons and cannot enter the training snapshot.
 
-## 发布阻断
-关键知识无证据、技能高危步骤未处理、回归失败、权限可绕过、结果验证缺失、审计缺失或依赖许可未确认，均阻止发布。
+## Step 4 — LoRA and expert validation
+
+- Training dataset contains only double-approved knowledge packages.
+- Every dataset snapshot and training run records sample hashes, base revision, configuration, compute/GPU, and output adapter hash.
+- The 4B BF16 LoRA path is planned for a T4 16GB cloud GPU; the 9B path requires 24GB+.
+- The adapter is loaded on the designated 4B base model.
+- The trained expert is tested in Docker sandbox and the GUI operation loop.
+- Passing requires flexible task completion under changed UI states and unseen variations, not only replaying memorized tutorial steps.
+- Unsafe actions, unsupported claims, or unverified outcomes block acceptance.
+
+## Quality metrics
+
+Freeze thresholds before the final blind test. At minimum, measure:
+
+- action-step precision/recall, order, and temporal localization;
+- intent and causal explanation correctness;
+- UI element and before/after state correctness;
+- action outcome correctness;
+- coordinate/target grounding accuracy;
+- evidence-match rate and unsupported-claim rate;
+- observed/inferred classification accuracy;
+- generalization to unseen initial states, interface changes, and alternative valid routes;
+- sandbox safety and GUI operation success.
+
+Throughput, GPU utilization, cost per source hour, and GB/video hours are optimized only after the quality gates pass.
+
+## Release blocking
+
+Any missing critical evidence, false observed-action claim, material trajectory inconsistency, unreviewed training sample, model/version provenance gap, or critical sandbox/GUI safety failure blocks release.

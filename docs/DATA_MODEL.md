@@ -1,129 +1,157 @@
-# 核心数据模型（MVP）
+# Core Data Model for Tutorial Learning and LoRA Experts
 
-版本：V1.0  
-状态：逻辑模型，具体 ORM / SQL 类型由实现任务确定。
+Version: V1.1  
+Status: target logical model; implementation and migrations must be versioned separately.
 
-## 1. 设计原则
+## 1. Design rules
 
-- 所有业务数据显式归属 expert；平台级数据使用明确的 system/platform scope。
-- 原始资料不可被解析结果覆盖；解析结果、知识、技能均版本化。
-- 证据定位必须指向原始 source 与 segment。
-- 状态字段使用受控枚举；状态变更写入事件/审计。
-- 文件字节存文件系统或对象存储，数据库保存 URI、哈希和元数据。
-- 不把向量数据库作为事实主库；关系型数据库保存权威记录。
+- Every acquired video has a download record with original source link and platform.
+- Video assets are grouped by creator and series/course in Google Drive.
+- SHA-256 identifies exact duplicate video content. A duplicate links to the existing asset; it does not erase its acquisition record.
+- Conflicting knowledge and different applicability/version claims coexist; never overwrite one with another.
+- Every trajectory step links to source video identity, time range, and supporting frames/audio/text.
+- Direct observations and model inferences are stored separately.
+- Only knowledge packages passing both GPT review and PM Sangou's independent verification enter the approved SQLite training corpus.
+- LoRA training runs, base-model revisions, training-data snapshots, and adapter artifacts are immutable/versioned lineage.
 
-## 2. 实体
+## 2. Core entities
 
-### expert
-- id（UUID，PK）
-- name、domain、description
-- lifecycle_state（CREATED / LEARNING / TRAINING / READY / SUSPENDED / ARCHIVED）
-- config_json、created_at、updated_at
+### download_record
+- id (UUID, PK)
+- source_url, platform (required)
+- creator, series_or_course, title
+- discovered_at, downloaded_at
+- drive_file_id, drive_web_link, drive_path
+- sha256, size_bytes, duration_ms
+- license_value, license_source, license_status
+- download_status, failure_reason
+- duplicate_of_download_id (nullable FK)
+- metadata_json
 
-### source
-- id（UUID，PK）
-- expert_id（FK，可空仅限显式共享资料）
-- source_type（VIDEO / AUDIO / PDF / DOCUMENT / IMAGE / WEB / LOG / OTHER）
-- original_name、storage_uri、sha256、mime_type、size_bytes
-- ingest_state、trust_level、metadata_json
-- created_at、created_by
+Every video gets a record even when later rejected by the clean/pre-filter stage.
+
+### source_video
+- id (UUID, PK)
+- download_record_id (FK)
+- content_sha256 (unique per exact content)
+- storage_uri (Google Drive)
+- creator, series_or_course, platform
+- source_version, applicability_scope
+- lifecycle_state (DOWNLOADED / PREFILTERED / REJECTED / READY_FOR_EXTRACTION / EXTRACTED)
+
+### subtitle_transcript
+- id (UUID, PK)
+- source_video_id (FK)
+- origin (EMBEDDED_SUBTITLE / SIDECAR_SUBTITLE / ASR)
+- language, text, start_ms, end_ms
+- model_name, model_version, configuration_json
+- selected_for_prefilter (bool), quality_status
+
+Prefer existing subtitles. ASR-generated subtitles are a fallback only when no usable subtitle source exists.
 
 ### source_segment
-- id（UUID，PK）
-- source_id（FK）
-- segment_type（PAGE / TIME_RANGE / PARAGRAPH / FRAME / REGION / OTHER）
-- locator_json（例如 page、start_ms/end_ms、frame_timestamp_ms）
-- text_content、media_uri、content_hash
-- parser_name、parser_version、created_at
+- id (UUID, PK)
+- source_video_id (FK)
+- segment_type (TIME_RANGE / FRAME / AUDIO_RANGE / SUBTITLE_RANGE)
+- locator_json (start_ms/end_ms/frame_timestamp_ms/frame_index)
+- media_uri, text_content, content_hash
+- parser_or_model_name, version, created_at
 
-### knowledge_item
-- id（UUID，PK）
-- expert_id（FK）
-- knowledge_type（FACT / CONCEPT / PROCEDURE / RULE / EXCEPTION / RISK）
-- statement、content_json
-- epistemic_type（DIRECT_QUOTE / EXTRACTED_FACT / INFERENCE / RECOMMENDATION）
-- lifecycle_state（CANDIDATE / REVIEW_REQUIRED / APPROVED / SUPERSEDED / REJECTED）
-- confidence_label（LOW / MEDIUM / HIGH；非概率保证）
-- version、created_at、updated_at
+### trajectory_step
+- id (UUID, PK)
+- source_video_id (FK)
+- sequence_no, start_ms, end_ms
+- action_description, target_element, candidate_coordinates_json
+- intent_description, expected_outcome, observed_outcome
+- pre_ui_state_json, post_ui_state_json
+- observed_evidence_json (directly visible video or synchronized event telemetry)
+- inferred_claims_json (predicted action/intent/causality, confidence, alternatives)
+- evidence_segment_ids_json, model_name, model_version
+- epistemic_status (OBSERVED / INFERRED / MIXED / UNKNOWN)
+- review_state, created_at
 
-### evidence_link
-- id（UUID，PK）
-- knowledge_item_id（FK）
-- source_segment_id（FK）
-- relation（SUPPORTS / CONTRADICTS / CONTEXT）
-- quote_or_excerpt、review_state、created_at
+A coordinate predicted by an action-grounding model is inference unless the actual click is visibly evidenced or captured by synchronized input-event telemetry.
 
-### skill
-- id（UUID，PK）
-- expert_id（FK）
-- slug、name、description
-- current_version_id（FK，可空）
-- lifecycle_state（DRAFT / VALIDATING / APPROVED / DEPRECATED / SUSPENDED）
-- created_at、updated_at
+### knowledge_package
+- id (UUID, PK)
+- expert_id, vertical_id
+- package_version, package_hash
+- purpose, conditions_json, judgement_criteria_json
+- success_failure_experience_json, counterexamples_json, recovery_json
+- trajectory_step_ids_json, evidence_refs_json
+- lifecycle_state (CANDIDATE / GPT_PASSED / PM_VERIFIED / APPROVED / REJECTED / SUPERSEDED)
+- applicability_scope, created_at
 
-### skill_version
-- id（UUID，PK）
-- skill_id（FK）
-- version、package_uri、package_hash
-- manifest_json（输入输出、工具、权限、风险、依赖）
-- source_evidence_json
-- validation_state、created_at、created_by
+### review_event
+- id (UUID, PK)
+- knowledge_package_id (FK)
+- gate (GPT_FIRST_PASS / PM_INDEPENDENT_VERIFICATION)
+- decision (PASS / REJECT / NEEDS_EVIDENCE)
+- reviewer_identity (GPT model/version or PM identity)
+- checks_json (evidence_match, trajectory_consistency, UI_state_match, epistemic_separation, test_results)
+- comments, created_at
 
-### skill_test_run
-- id（UUID，PK）
-- skill_version_id（FK）
-- test_suite_version、status（QUEUED / RUNNING / PASSED / FAILED / BLOCKED / TIMED_OUT）
-- input_ref、report_uri、metrics_json、environment_json
-- started_at、finished_at
+No separate manual-reviewer role is part of this workflow. The required sequence is GPT check first, then PM Sangou independently verifies the original video evidence and relevant tests.
 
-### task
-- id（UUID，PK）
-- expert_id（FK）
-- task_type、goal、input_json
-- state（QUEUED / RUNNING / WAITING_APPROVAL / SUCCEEDED / FAILED / CANCELLED）
-- requested_permissions_json、result_json、trace_id
-- created_at、started_at、finished_at
+### training_dataset_snapshot
+- id (UUID, PK)
+- vertical_id
+- dataset_version, dataset_hash
+- approved_knowledge_package_ids_json
+- included_source_hashes_json
+- exclusions_json
+- created_at, created_by
 
-### task_event
-- id（UUID，PK）
-- task_id（FK）
-- sequence_no、event_type、payload_json、created_at
-- UNIQUE(task_id, sequence_no)
+Only knowledge packages with both required PASS review events may be included.
 
-### audit_event
-- id（UUID，PK）
-- actor_type、actor_id、expert_id、task_id
-- action、resource_type、resource_id
-- decision（ALLOW / DENY / REQUIRE_APPROVAL）
-- reason_code、details_redacted_json、created_at
+### lora_training_run
+- id (UUID, PK)
+- vertical_id, training_dataset_snapshot_id (FK)
+- base_model_id, base_model_revision
+- adapter_id, adapter_revision
+- training_config_json
+- compute_provider, GPU_model, VRAM_GB
+- status, started_at, finished_at
+- peak_vram_gb, metrics_json, artifact_uri, adapter_sha256
 
-## 3. 关系
+### expert
+- id (UUID, PK)
+- name, vertical_id, description
+- base_model_id, base_model_revision
+- active_adapter_id, adapter_revision
+- lifecycle_state (DATASET_READY / TRAINING / EVALUATING / READY / SUSPENDED)
+- created_at, updated_at
 
-- expert 1:N source / knowledge_item / skill / task。
-- source 1:N source_segment。
-- knowledge_item N:M source_segment，通过 evidence_link 关联。
-- skill 1:N skill_version。
-- skill_version 1:N skill_test_run。
-- task 1:N task_event。
-- audit_event 可关联 expert/task/resource，但审计记录不得依赖业务对象仍然存在。
+The expert is the trained base-plus-LoRA model; the knowledge package is its provenance-backed training material.
 
-## 4. 必须实现的约束
+## 3. Relationships
 
-1. 同一 expert 内 source.sha256 可用于重复导入识别；不得跨 expert 自动暴露资料。
-2. evidence_link 指向的 source_segment 必须与 knowledge_item 的 expert scope 匹配，除非显式共享授权。
-3. APPROVED 知识必须至少有一条有效支持证据；纯推断应显式标记且走独立审核策略。
-4. APPROVED 技能版本必须存在通过的测试报告，并且测试报告对应同一 package_hash。
-5. skill_version 不可原地修改；变更必须创建新版本。
-6. task_event sequence_no 单调递增；任务终态不可无审计地回退。
-7. L3 操作审批记录需绑定动作参数摘要；参数变化后审批失效。
-8. 日志与审计不得存储明文密钥、访问令牌或不必要的个人数据。
+- download_record 1:1 source_video; duplicate download records may refer to a canonical source_video.
+- source_video 1:N subtitle_transcript / source_segment / trajectory_step.
+- trajectory_step N:M source_segment through evidence_segment_ids/evidence links.
+- knowledge_package 1:N trajectory_step (or references steps from multiple source videos when explicitly designed).
+- knowledge_package 1:N review_event.
+- training_dataset_snapshot N:M approved knowledge_package.
+- training_dataset_snapshot 1:N lora_training_run.
+- lora_training_run produces a versioned adapter mounted on a base-model revision.
+- expert references one base model and one active vertical adapter.
 
-## 5. MVP 暂缓
+## 4. Required constraints
 
-- 完整组织/租户计费。
-- 复杂知识图谱和跨专家自动共享。
-- 自动遗忘/合规保留策略引擎。
-- 大规模向量索引分片。
-- 多区域分布式事务。
+1. An approved knowledge package has evidence references and both required review events.
+2. Observed claims have direct video or synchronized telemetry evidence; inferred claims carry confidence and supporting observations.
+3. Hash-equal content is not redundantly re-extracted; conflicting knowledge is never silently overwritten.
+4. Dataset snapshot membership is immutable and excludes rejected, pending, or superseded content.
+5. Every adapter is traceable to a base revision, training dataset hash, and configuration.
+6. Changing the base, adapter, or dataset creates a new version, not an in-place mutation.
+7. SQLite is the selected store for structured pipeline records and review/training metadata. Large video objects remain in Google Drive.
+8. Secrets, personal credentials, and private tokens are not included in records or logs.
 
-这些不属于阶段 0 的准入条件。
+## 5. Deferred
+
+- Distributed multi-region storage.
+- Advanced graph database and cross-expert automatic knowledge sharing.
+- Automated compliance retention policy engine.
+- Large-scale vector-index sharding.
+
+These are not prerequisites for the first vertical LoRA expert.

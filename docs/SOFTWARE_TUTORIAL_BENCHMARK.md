@@ -1,8 +1,10 @@
 # Software Tutorial Benchmark: Content Translation Screencast
 
-## Why this sample
+## Purpose
 
-This is a real software-operation screencast, not a language-learning clip or a static product demo. It shows a user enabling Wikipedia's Content Translation beta feature, opening the translation dashboard, selecting source/target languages and an article, editing paragraph translations, reviewing links and formatting, saving a draft, resuming work, and publishing.
+This openly licensed tutorial is a reference sample for testing whether a video-understanding model can reconstruct a software workflow from visual and audio evidence. It is not simply a subtitle/OCR benchmark, and the reference outline below is not a pre-approved generated trajectory.
+
+A successful understanding result must identify actions, intent, UI state before/after each action, visible result, time range, and supporting frames/audio. It must separate directly visible or logged events from inferred actions and explanations.
 
 ## Source and license
 
@@ -17,7 +19,7 @@ This is a real software-operation screencast, not a language-learning clip or a 
 - Simplified Chinese timed text: https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.zh-cn.srt
 - English timed text: https://commons.wikimedia.org/wiki/TimedText:Content_Translation_Screencast_(English).webm.en.srt
 
-## Expected procedural outline (reference labels)
+## Expected procedural outline (PM reference labels)
 
 | Approx. time | Expected operation | Evidence |
 |---|---|---|
@@ -32,12 +34,45 @@ This is a real software-operation screencast, not a language-learning clip or a 
 | 03:02-03:23 | Categories, autosaved draft, resume from dashboard | narration + dashboard |
 | 03:24-03:31 | Publish translation | narration + publish action |
 
-## CI processing
+These labels provide expected task landmarks only. During evaluation, the model must cite the actual frame/audio evidence and may identify an action as uncertain or inferred when the screencast does not show the input event unambiguously.
 
-The `content-translation-tutorial` job downloads the original WebM and Chinese subtitles, probes streams, extracts audio and sampled frames, runs CPU faster-whisper on the English narration, and runs Tesseract OCR on UI frames. Artifacts are retained for 14 days.
+## Model-role evaluation
 
-## What this does and does not prove
+### Video understanding: Qwen3-VL and Mage-VL
 
-A passing job proves that the media can be downloaded and processed and that ASR/OCR return outputs. It does **not** prove that a model has reconstructed the procedure, learned a reusable skill, or completed the task. Those require a separate evidence-linked step extraction evaluation and a controlled task replay against a live or locally reproducible target application.
+Give each candidate the same video intervals and context. Score whether it accurately explains:
+- what action occurred and the purpose of the step;
+- which UI elements and states were visible;
+- what changed after the action;
+- whether the expected result occurred;
+- what the narration explicitly said versus what the model inferred;
+- the time interval and evidence supporting each claim.
 
-This sample is short and dates from 2015. It is a first procedural-learning benchmark, not a representative long-course or modern enterprise-software benchmark. The spoken audio is English; the Chinese subtitle file is a separate aligned reference, not Chinese speech.
+These candidates produce text understanding and are tested against the same blind rubric. The current Colab T4 comparison is ongoing; this sample alone does not identify a winner.
+
+### Action grounding: Magma
+
+Evaluate target-region and click-point predictions independently. A predicted point is not automatically a recorded historical click. Score target hit, coordinate error, timing, and uncertainty separately from semantic understanding.
+
+## Existing CI processing is only a component smoke test
+
+The current `content-translation-tutorial` job downloads the original WebM and Chinese subtitles, probes streams, extracts audio and sampled frames, runs CPU faster-whisper on English narration, and runs Tesseract OCR on UI frames. Artifacts are retained for 14 days.
+
+This demonstrates that media and subtitle/OCR components execute. It does not prove semantic operation reconstruction, intent understanding, action grounding, or knowledge validation. The presence of a subtitle file is a pre-filter input/benchmark reference, not the final extracted knowledge.
+
+## Quality and evidence requirements
+
+A benchmark report should preserve:
+- source URL, platform, SHA-256, license/attribution, and video version;
+- model/revision and generation settings;
+- per-step start/end time and supporting frame/audio references;
+- action, target, pre/post UI state, and outcome;
+- explicit observed/inferred/unknown labels;
+- incorrect, missing, or unsupported claims;
+- independent GPT review and PM Sangou verification decisions.
+
+Passing requires a correct, evidence-grounded trajectory and explanation. Subtitle generation or OCR output alone is never a pass.
+
+## Limitations
+
+This sample is short and dates from 2015. It is a first procedural-understanding benchmark, not a representative long-course or modern enterprise-software benchmark. The spoken audio is English; the Chinese subtitle file is a separately aligned reference, not Chinese speech. Expand the evaluation corpus with multiple creators, software versions, layouts, languages, and tutorial lengths before selecting a model or asserting large-scale quality.
