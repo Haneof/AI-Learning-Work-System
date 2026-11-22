@@ -313,6 +313,7 @@ def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
     assert "--network=none" in command
     assert "--read-only" in command
     assert "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m" in command
+    assert (package / "output").is_dir()
     assert "--cap-drop=ALL" in command
     assert any(argument.startswith("--memory=") for argument in command)
     with pytest.raises(ValueError):

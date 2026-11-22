@@ -106,7 +106,10 @@ def _check_python_script(path: Path) -> list[str]:
                 errors.append(f"{path.name}: blocked import '{root_name}'")
             for alias in node.names:
                 local_name = alias.asname or alias.name
-                if root_name in {"os", "subprocess", "builtins"} and alias.name in blocked_attributes:
+                if (
+                    root_name in {"os", "subprocess", "builtins"}
+                    and alias.name in blocked_attributes
+                ):
                     call_aliases[local_name] = f"{root_name}.{alias.name}"
                 if root_name == "builtins" and alias.name in {"getattr", "__getattribute__"}:
                     dynamic_lookup_aliases.add(local_name)
@@ -122,7 +125,10 @@ def _check_python_script(path: Path) -> list[str]:
         if isinstance(assignment, ast.Attribute) and isinstance(assignment.value, ast.Name):
             imported_module = module_aliases.get(assignment.value.id, assignment.value.id)
             root_name = imported_module.split(".", maxsplit=1)[0]
-            if root_name in {"os", "subprocess", "builtins"} and assignment.attr in blocked_attributes:
+            if (
+                root_name in {"os", "subprocess", "builtins"}
+                and assignment.attr in blocked_attributes
+            ):
                 targets = node.targets if isinstance(node, ast.Assign) else [node.target]
                 for target in targets:
                     if isinstance(target, ast.Name):
@@ -160,7 +166,10 @@ def _check_python_script(path: Path) -> list[str]:
                         function.value.id,
                     )
                     root_name = imported_module.split(".", maxsplit=1)[0]
-                    if root_name in {"os", "subprocess", "builtins"} and function.attr in blocked_attributes:
+                    if (
+                        root_name in {"os", "subprocess", "builtins"}
+                        and function.attr in blocked_attributes
+                    ):
                         errors.append(
                             f"{path.name}: blocked call '{root_name}.{function.attr}'"
                         )
