@@ -10,7 +10,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from aios_work_system.brain_hands.engine import BrainHandsLoop, LoopConfig, LoopReport, WorkflowBrain
+from aios_work_system.brain_hands.engine import (
+    BrainHandsLoop,
+    LoopConfig,
+    LoopReport,
+    WorkflowBrain,
+)
 from aios_work_system.brain_hands.simulated import SimulatedHands, shop_listing_handlers
 
 
@@ -126,7 +131,9 @@ async def _run_browser_loop(
     try:
         local_origin(url)
     except ValueError as exc:
-        raise RunLoopConfigurationError(f"browser --url must be a loopback HTTP(S) URL: {exc}") from exc
+        raise RunLoopConfigurationError(
+            f"browser --url must be a loopback HTTP(S) URL: {exc}"
+        ) from exc
 
     try:
         model = OpenAICompatibleDecisionModel.from_env()
@@ -138,7 +145,7 @@ async def _run_browser_loop(
     except ModuleNotFoundError as exc:
         raise RunLoopConfigurationError(
             "Playwright is not installed. Install the GUI extra and Chromium "
-            "(python -m pip install -e ".[gui]"; playwright install chromium)."
+            '(python -m pip install -e ".[gui]"; playwright install chromium).'
         ) from exc
 
     async with async_playwright() as playwright:
