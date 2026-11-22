@@ -323,7 +323,6 @@ def test_pr40_style_synthetic_fixture_pipeline_tokenizes_train_and_test_without_
         max_repeat_factor=3,
     )
 
-
     train_rows = [
         json.loads(line)
         for line in (tmp_path / "axolotl" / "train.weighted.jsonl").read_text().splitlines()
