@@ -404,6 +404,15 @@ class BilibiliPlatformAdapter:
                 f"Bilibili {operation} returned an invalid API status code"
             ) from exc
         if code != 0:
+            if allow_unauthenticated_wbi and code == -101:
+                data = payload.get("data")
+                wbi_image = data.get("wbi_img") if isinstance(data, dict) else None
+                if isinstance(wbi_image, dict) and all(
+                    isinstance(wbi_image.get(key), str) and wbi_image[key].strip()
+                    for key in ("img_url", "sub_url")
+                ):
+                    return payload
+
             message = str(payload.get("message") or "no error message")
             if code in {-412, -352, -799, -1200}:
                 detail = "blocked by Bilibili anti-bot/risk control"
@@ -422,7 +431,11 @@ class BilibiliPlatformAdapter:
         from urllib.parse import urlsplit
 
         self._initialize_anonymous_session()
-        payload = self._request_json(self.NAV_URL, "WBI key lookup")
+        payload = self._request_json(
+            self.NAV_URL,
+            "WBI key lookup",
+            allow_unauthenticated_wbi=True,
+        )
         data = payload.get("data")
         wbi_image = data.get("wbi_img") if isinstance(data, dict) else None
         if not isinstance(wbi_image, dict):
