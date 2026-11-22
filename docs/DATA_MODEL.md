@@ -8,7 +8,7 @@
 - Every acquired tutorial has a download record with original source link and platform.
 - Original videos are grouped by creator and series/course in Google Drive.
 - SHA-256 identifies exact duplicate source content. A duplicate links to the canonical source but does not erase its acquisition record.
-- New tutorials capture semantic UI events directly; legacy MP4 reconstructions are explicitly inferred.
+- Tutorial learning starts from downloaded video files; visible observations and inferred interactions are separately labelled.
 - Instructor narration is preserved and aligned to the same timeline as UI events.
 - Each Decision Episode records the business decision point, not just a UI click.
 - HTN workflows retain conditions, dependencies, branches, alternatives, and recovery paths.
@@ -39,31 +39,32 @@ Every downloaded video gets a record, including items later rejected by the text
 - id (UUID, PK)
 - download_record_id (FK)
 - content_sha256
-- storage_uri (Google Drive)
+- storage_uri (Google Drive or local processing reference)
 - creator, series_or_course, platform
-- source_kind (NEW_EVENT_RECORDING / LEGACY_VIDEO / LIVE_TASK_TRACE)
-- software_name, software_version
-- session_id, session_clock_metadata_json
-- lifecycle_state (DOWNLOADED / PREFILTERED / REJECTED / EVENT_CAPTURED / DECISIONS_EXTRACTED)
+- source_kind (DOWNLOADED_VIDEO / LIVE_HANDS_TRACE)
+- software_name, software_version (when known from source)
+- media_duration_ms, subtitle_asset_refs_json
+- lifecycle_state (DOWNLOADED / PROBED / EVIDENCE_EXTRACTED / EPISODES_DRAFTED / LOCALLY_VERIFIED / PM_APPROVED / REJECTED)
+- extraction_profile_json, extractor_version
 
-### ui_event
+The primary tutorial source is the downloaded file. A runtime Hands trace is a separate execution artifact and must not be confused with tutorial ingestion or a cancelled live tutorial recorder.
+
+### video_observation
 
 - id (UUID, PK)
 - source_asset_id (FK)
 - event_sequence_no
 - timestamp_ms, end_timestamp_ms (when an interval is available)
-- event_type (DOM_MUTATION / CLICK / POINTER_MOVE / INPUT / FOCUS / BLUR / SCROLL / NAVIGATION / UIA_PROPERTY_CHANGE / UIA_STRUCTURE_CHANGE / UIA_FOCUS / OTHER)
-- observation_channel (DIRECT_CAPTURE / INFERRED_FROM_VIDEO / UNKNOWN)
-- application_id, page_or_window_id
-- target_element_ref, parent_element_ref
-- control_type, accessible_name
-- before_value_json, after_value_json
-- event_payload_json
-- capture_tool, capture_tool_version
+- observation_type (INITIAL_FRAME / SCREEN_CHANGE / OCR_REGION / CURSOR_CANDIDATE / CLICK_HYPOTHESIS / UI_TARGET_GROUNDING / OTHER)
+- observation_channel (OBSERVED_FROM_VIDEO / INFERRED_FROM_VIDEO / UNKNOWN)
+- frame_index, frame_ref, source_time_range_json
+- visible_text, target_box_json, cursor_candidate_json
+- before_visual_state_json, after_visual_state_json
+- extraction_tool, extraction_model, tool_or_model_version
 - confidence, source_locator_json
-- raw_event_ref
+- raw_record_ref
 
-New tutorial recordings should populate directly captured events through rrweb or Windows UI Automation. Legacy MP4 reconstruction must use INFERRED_FROM_VIDEO and retain the source time range and reconstruction evidence.
+This replaces the old tutorial-ingestion assumption that each row is a directly captured DOM/click/UIA event. A decoded frame or OCR region is an observation from the video; a cursor/click or target interpretation is an inference. The video file does not supply native DOM, Windows UIA, mouse, or keyboard telemetry. Runtime GUI/Hands traces, when used, are stored separately.
 
 ### narration_segment
 
@@ -211,9 +212,9 @@ An expert is the Brain base-plus-LoRA paired with a configured Hands integration
 ## 3. Relationships
 
 - download_record 1:1 source_asset; duplicate acquisition records may refer to a canonical source_asset.
-- source_asset 1:N ui_event and narration_segment.
+- source_asset 1:N video_observation and narration_segment.
 - source_asset 1:N decision_episode.
-- decision_episode N:M ui_event and narration_segment through evidence references.
+- decision_episode N:M video_observation and narration_segment through evidence references.
 - decision_episode N:1 workflow_definition version.
 - workflow_definition N:M operation_capability through primitive task mappings.
 - decision_episode/workflow_definition 1:N review_event.
