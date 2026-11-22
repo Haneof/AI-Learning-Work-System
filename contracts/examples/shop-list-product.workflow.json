@@ -1,0 +1,219 @@
+{
+  "schema_version": "0.1",
+  "workflow_id": "shop.list_new_product",
+  "version": "0.1",
+  "name": "List a New Product",
+  "domain": "ecommerce",
+  "goal": "Write and verify the product title before setting the price.",
+  "success_conditions": [
+    "title.status == verified",
+    "price.status == set"
+  ],
+  "initial_state": {
+    "photos.status": "complete",
+    "title.status": "missing",
+    "price.status": "not_set"
+  },
+  "tasks": [
+    {
+      "task_id": "list_product",
+      "kind": "compound",
+      "description": "Prepare the new product listing.",
+      "preconditions": [],
+      "postconditions": [
+        "The title is verified and the price is set in the required order."
+      ]
+    },
+    {
+      "task_id": "ensure_title",
+      "kind": "compound",
+      "parent_task_id": "list_product",
+      "description": "Ensure the product title is written and verified.",
+      "preconditions": [],
+      "postconditions": ["title.status == verified"]
+    },
+    {
+      "task_id": "enter_title",
+      "kind": "primitive",
+      "parent_task_id": "ensure_title",
+      "description": "Enter the supplied product title.",
+      "capability_id": "shop.listing.enter_title",
+      "preconditions": [
+        {
+          "path": "title.status",
+          "operator": "equals",
+          "value": "missing"
+        }
+      ],
+      "postconditions": ["title.status == saved"]
+    },
+    {
+      "task_id": "verify_title",
+      "kind": "primitive",
+      "parent_task_id": "ensure_title",
+      "description": "Verify that the title is saved and matches the approved title.",
+      "capability_id": "shop.listing.verify_title",
+      "preconditions": [
+        {
+          "path": "title.status",
+          "operator": "equals",
+          "value": "saved"
+        }
+      ],
+      "postconditions": ["title.status == verified"]
+    },
+    {
+      "task_id": "set_price",
+      "kind": "primitive",
+      "parent_task_id": "list_product",
+      "description": "Set a supplied price after the title is verified.",
+      "capability_id": "shop.listing.set_price",
+      "preconditions": [
+        {
+          "path": "title.status",
+          "operator": "equals",
+          "value": "verified"
+        }
+      ],
+      "postconditions": ["price.status == set"]
+    }
+  ],
+  "capabilities": [
+    {
+      "capability_id": "shop.listing.enter_title",
+      "version": "0.1",
+      "description": "Enter a provided title in the product listing.",
+      "risk_level": "low",
+      "idempotent": true
+    },
+    {
+      "capability_id": "shop.listing.verify_title",
+      "version": "0.1",
+      "description": "Verify the saved product title.",
+      "risk_level": "low",
+      "idempotent": true
+    },
+    {
+      "capability_id": "shop.listing.set_price",
+      "version": "0.1",
+      "description": "Set a price supplied by the Brain.",
+      "risk_level": "medium",
+      "idempotent": false
+    }
+  ],
+  "methods": [
+    {
+      "method_id": "list_product.standard",
+      "compound_task_id": "list_product",
+      "applicable_when": [],
+      "subtasks": ["ensure_title", "set_price"],
+      "ordering_constraints": [
+        {
+          "before_task_id": "verify_title",
+          "after_task_id": "set_price"
+        }
+      ],
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    },
+    {
+      "method_id": "title.missing",
+      "compound_task_id": "ensure_title",
+      "applicable_when": [
+        {
+          "path": "title.status",
+          "operator": "equals",
+          "value": "missing"
+        }
+      ],
+      "subtasks": ["enter_title", "verify_title"],
+      "ordering_constraints": [
+        {
+          "before_task_id": "enter_title",
+          "after_task_id": "verify_title"
+        }
+      ],
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    },
+    {
+      "method_id": "title.saved",
+      "compound_task_id": "ensure_title",
+      "applicable_when": [
+        {
+          "path": "title.status",
+          "operator": "equals",
+          "value": "saved"
+        }
+      ],
+      "subtasks": ["verify_title"],
+      "ordering_constraints": [],
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    }
+  ],
+  "edges": [
+    {
+      "from_task_id": "enter_title",
+      "to_task_id": "verify_title",
+      "relation": "hard_dependency",
+      "rationale": "The title must be entered before it can be verified."
+    },
+    {
+      "from_task_id": "verify_title",
+      "to_task_id": "set_price",
+      "relation": "hard_dependency",
+      "rationale": "The project-owner-provided rule requires the title to be written and verified before setting the price.",
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    }
+  ],
+  "ordering_constraints": [
+    {
+      "before_task_id": "verify_title",
+      "after_task_id": "set_price",
+      "rationale": "The title must be written and verified before setting the price.",
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    }
+  ],
+  "invariants": [
+    {
+      "invariant_id": "title_verified_before_price",
+      "description": "The product title must be verified before the price-setting task can execute.",
+      "condition": {
+        "path": "title.status",
+        "operator": "equals",
+        "value": "verified"
+      },
+      "must_hold_before_task_ids": ["set_price"],
+      "evidence_refs": ["ev-project-owner-ordering-rule"]
+    }
+  ],
+  "transitions": [
+    {
+      "from_task_id": "verify_title",
+      "to_task_id": "set_price",
+      "when": {
+        "path": "title.status",
+        "operator": "equals",
+        "value": "verified"
+      },
+      "decision_action": "delegate",
+      "rationale": "Continue to price configuration only after title verification."
+    }
+  ],
+  "recovery_rules": [
+    {
+      "rule_id": "title-verification-not-passed",
+      "when": {
+        "path": "title.status",
+        "operator": "not_equals",
+        "value": "verified"
+      },
+      "next_action": "replan",
+      "next_task_id": "ensure_title",
+      "stop_conditions": [
+        "The title cannot be verified from available evidence."
+      ],
+      "rationale": "Do not continue to price configuration while the required title condition is unmet."
+    }
+  ],
+  "evidence_refs": ["ev-project-owner-ordering-rule"],
+  "lifecycle_status": "draft"
+}

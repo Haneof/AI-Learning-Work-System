@@ -1,0 +1,142 @@
+{
+  "schema_version": "0.1",
+  "episode_id": "shop-list-product-title-first-001",
+  "expert_id": "ecommerce-operator",
+  "workflow_ref": {
+    "workflow_id": "shop.list_new_product",
+    "version": "0.1",
+    "node_id": "ensure_title"
+  },
+  "source": {
+    "source_id": "project-owner-shop-scenario",
+    "source_kind": "project_owner_specification",
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "platform": "online_shop",
+    "application": "shop_admin"
+  },
+  "task": {
+    "business_domain": "ecommerce",
+    "goal": "List a new product",
+    "user_request": "Prepare the new product listing.",
+    "success_criteria": [
+      {
+        "criterion_id": "title-before-price",
+        "description": "The product title is written and verified before setting the price.",
+        "verification_type": "state_check"
+      }
+    ],
+    "business_constraints": [
+      "The title must be written and verified before setting the price."
+    ]
+  },
+  "state_before": {
+    "application": "shop_admin",
+    "page": "new_product",
+    "business_state": {
+      "photos": { "status": "complete" },
+      "title": { "status": "missing", "content": null },
+      "price": { "status": "not_set" }
+    },
+    "facts": [
+      {
+        "fact_id": "photos-ready",
+        "path": "photos.status",
+        "value": "complete",
+        "evidence_refs": ["ev-project-owner-scenario"]
+      },
+      {
+        "fact_id": "title-missing",
+        "path": "title.status",
+        "value": "missing",
+        "evidence_refs": ["ev-project-owner-scenario"]
+      },
+      {
+        "fact_id": "price-not-set",
+        "path": "price.status",
+        "value": "not_set",
+        "evidence_refs": ["ev-project-owner-scenario"]
+      }
+    ]
+  },
+  "narration": [],
+  "decision": {
+    "decision_type": "sequence_decision",
+    "selected_strategy": "Write and verify the product title before any price-setting action.",
+    "rationale_summary": "The project owner specified that the title must be written and verified before setting the price. The scenario does not include the product facts or approved title text, so request the information needed to write the title and keep the price unset.",
+    "decision_basis": ["user_provided"],
+    "applicable_conditions": [
+      {
+        "path": "photos.status",
+        "operator": "equals",
+        "value": "complete"
+      },
+      {
+        "path": "title.status",
+        "operator": "equals",
+        "value": "missing"
+      },
+      {
+        "path": "price.status",
+        "operator": "equals",
+        "value": "not_set"
+      }
+    ],
+    "selected_next_step": {
+      "action": "ask_user",
+      "objective": "Obtain the product information needed to write the listing title; do not set the price before the title is written and verified.",
+      "question": "Please provide the product name and verified details needed for its listing title.",
+      "constraints": [
+        "Do not set the price until the title has been written and verified."
+      ]
+    },
+    "alternatives_considered": [
+      {
+        "strategy": "Set the price before writing the title",
+        "reason_not_selected": "This violates the project-owner-provided ordering constraint.",
+        "evidence_refs": ["ev-project-owner-scenario"]
+      }
+    ],
+    "uncertainties": [
+      "The product name and verified product details needed to draft the title were not supplied in this scenario."
+    ],
+    "evidence_refs": ["ev-project-owner-scenario"]
+  },
+  "operation": {
+    "execution_status": "not_executed",
+    "event_refs": []
+  },
+  "outcome": {
+    "status": "not_verified",
+    "postcondition_checks": [],
+    "next_action": "ask_user",
+    "next_step_reason": "The required title information is missing. Ask for it before delegating title entry; do not set the price."
+  },
+  "evidence": [
+    {
+      "evidence_id": "ev-project-owner-scenario",
+      "evidence_type": "user_specification",
+      "observation_channel": "not_applicable",
+      "rationale_source": "not_applicable",
+      "confidence": 1.0,
+      "labels": ["user_provided"],
+      "capture_method": "project_owner_prompt",
+      "source_locator": {
+        "external_ref": "user-provided-shop-list-product-scenario"
+      },
+      "claim": "Photos are complete, the title has not been written, and the title must be written and verified before setting the price."
+    }
+  ],
+  "review": {
+    "status": "draft",
+    "approved_for_training": false,
+    "review_notes": "Illustrative example based only on the project-owner-provided scenario. Not a real tutorial sample."
+  },
+  "quality": {
+    "annotation_status": "human_reviewed",
+    "trainable": false,
+    "exclusion_reasons": [
+      "Illustrative contract example, not an audited real-tutorial end-to-end sample.",
+      "Product title facts were not supplied; this example asks for missing information."
+    ]
+  }
+}
