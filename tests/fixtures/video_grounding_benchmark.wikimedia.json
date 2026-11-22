@@ -1,0 +1,38 @@
+{
+  "benchmark_id": "wikimedia-content-translation-ui-grounding-v1",
+  "video_id": "wikimedia-wikipedia-content-translation-tool-tutorial",
+  "annotation_source": "manual visual bounding-box annotations made from decoded frame files; these are target-localization labels, not click-event ground truth",
+  "frame_size": [960, 540],
+  "metric": "point_in_target_bbox",
+  "minimum_pass_rate": 0.75,
+  "annotations": [
+    {
+      "timestamp_ms": 4500,
+      "frame_index": 9,
+      "query": "the Russian translation title text input field at the top of the translation pane",
+      "target_label": "Russian translation title input field",
+      "target_bbox_norm": [0.352, 0.139, 0.685, 0.294]
+    },
+    {
+      "timestamp_ms": 7500,
+      "frame_index": 15,
+      "query": "the Russian translation title text input field at the top of the translation pane",
+      "target_label": "Russian translation title input field",
+      "target_bbox_norm": [0.352, 0.139, 0.685, 0.222]
+    },
+    {
+      "timestamp_ms": 16500,
+      "frame_index": 32,
+      "query": "the completed Russian translated title text field at the top of the translation pane",
+      "target_label": "Russian translation title input field",
+      "target_bbox_norm": [0.352, 0.139, 0.685, 0.294]
+    },
+    {
+      "timestamp_ms": 17500,
+      "frame_index": 34,
+      "query": "the Russian translated paragraph in the article body below the translated image",
+      "target_label": "Russian article body translation editor",
+      "target_bbox_norm": [0.453, 0.631, 0.685, 0.756]
+    }
+  ]
+}

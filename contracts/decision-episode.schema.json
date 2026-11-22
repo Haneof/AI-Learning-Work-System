@@ -30,7 +30,7 @@
       "properties": {
         "source_id": { "type": "string", "minLength": 1 },
         "source_kind": {
-          "enum": ["new_event_recording", "legacy_video", "live_task_trace", "mixed", "project_owner_specification"]
+          "enum": ["new_event_recording", "downloaded_tutorial_video", "legacy_video", "live_task_trace", "mixed", "project_owner_specification"]
         },
         "sha256": { "type": "string", "pattern": "^[a-fA-F0-9]{64}$" },
         "platform": { "type": "string" },
@@ -289,7 +289,7 @@
           "enum": ["ui_event", "narration", "video_segment", "business_result", "human_annotation", "user_specification", "other"]
         },
         "observation_channel": {
-          "enum": ["direct_capture", "inferred_from_video", "not_applicable", "unknown"]
+          "enum": ["direct_capture", "observed_from_video", "inferred_from_video", "not_applicable", "unknown"]
         },
         "rationale_source": {
           "enum": ["instructor_explicit", "behavioral_inference", "hybrid", "not_applicable", "unknown"]
@@ -297,7 +297,7 @@
         "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
         "labels": {
           "type": "array", "uniqueItems": true,
-          "items": { "const": "user_provided" }
+          "items": { "enum": ["user_provided", "observed_from_video", "inferred_from_video", "instructor_words"] }
         },
         "capture_method": { "type": "string" },
         "source_locator": {

@@ -26,6 +26,23 @@ acquisition = [
   "google-auth-oauthlib>=1.2,<2",
 ]
 gui = ["playwright>=1.52,<2"]
+video = [
+  "opencv-python-headless>=4.10,<5",
+  "numpy>=1.26,<3",
+  "Pillow>=10,<13",
+  "pytesseract>=0.3.13,<1",
+  "faster-whisper>=1.1,<2",
+  "yt-dlp>=2025.3,<2027",
+]
+video-open-models = [
+  "huggingface-hub>=0.28,<2",
+  "transformers>=4.57,<6",
+  "accelerate>=1,<2",
+  "qwen-vl-utils>=0.0.10",
+  "llama-cpp-python @ git+https://github.com/JamePeng/llama-cpp-python.git",
+]
+video-open-models-torch = ["torch>=2.6", "torchvision>=0.21,<1"]
+video-open-models-cuda = ["bitsandbytes>=0.45,<1"]
 
 [project.scripts]
 aios = "aios_work_system.cli:main"
