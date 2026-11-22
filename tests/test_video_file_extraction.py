@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from contracts.validate import validate_episode
 from aios_work_system.video_extraction.episode import (
     align_transcript_to_events,
     build_decision_episode,
@@ -17,6 +16,7 @@ from aios_work_system.video_extraction.transcript import (
     parse_subtitle_file,
     timestamp_to_ms,
 )
+from contracts.validate import validate_episode
 
 
 def test_timestamp_parser_accepts_srt_and_vtt_clock_formats():
@@ -116,10 +116,7 @@ def test_decision_episode_uses_distinct_observed_inferred_and_narration_labels(t
     episode = _episode_fixture(video)
     assert validate_episode(episode) == []
     labels = {item["evidence_id"]: item.get("labels", []) for item in episode["evidence"]}
-    channels = {
-        item["evidence_id"]: item["observation_channel"]
-        for item in episode["evidence"]
-    }
+    channels = {item["evidence_id"]: item["observation_channel"] for item in episode["evidence"]}
     assert labels["ev-observed-video"] == ["observed_from_video"]
     assert labels["ev-inferred-actions"] == ["inferred_from_video"]
     assert labels["ev-instructor-words"] == ["instructor_words"]

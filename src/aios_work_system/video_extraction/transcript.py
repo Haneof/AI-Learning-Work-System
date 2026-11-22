@@ -6,7 +6,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 _TIMESTAMP = re.compile(
     r"(?m)^\s*(\d{2}:\d{2}:\d{2}[,.]\d{3}|\d{2}:\d{2}[,.]\d{3})"
     r"\s+-->\s+"

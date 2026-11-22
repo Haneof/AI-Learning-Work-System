@@ -10,7 +10,6 @@ from urllib.error import URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 
-
 CANDIDATES = [
     ("OyZ3qj44snA", "Windows 11 create a new folder"),
     ("tdYUsICTIdk", "Windows 11 change desktop wallpaper"),
@@ -67,9 +66,7 @@ def _download_wikimedia_fallback(
         _write_url(WIKIMEDIA_VIDEO_URL, video_path)
         _write_url(f"{WIKIMEDIA_CAPTION_URL}?{caption_query}", caption_path)
         caption_text = caption_path.read_text(encoding="utf-8-sig", errors="replace")
-        if "-->" not in caption_text or not any(
-            char.isdigit() for char in caption_text
-        ):
+        if "-->" not in caption_text or not any(char.isdigit() for char in caption_text):
             raise RuntimeError("Wikimedia timed-text response has no timestamped subtitle cues")
         metadata = {
             "video_id": video_id,
@@ -148,9 +145,7 @@ def download_first_available(output_dir: Path) -> dict[str, Any]:
                     if duration <= 0:
                         raise RuntimeError("video duration is missing")
                     if duration > 20 * 60:
-                        raise RuntimeError(
-                            f"candidate is longer than 20 minutes ({duration:.1f}s)"
-                        )
+                        raise RuntimeError(f"candidate is longer than 20 minutes ({duration:.1f}s)")
                     requested = info.get("requested_downloads") or []
                     video_path = requested[0].get("filepath") if requested else None
                     if not video_path:
@@ -165,9 +160,9 @@ def download_first_available(output_dir: Path) -> dict[str, Any]:
                         video_path = str(matches[0]) if matches else None
                     if not video_path or not Path(video_path).is_file():
                         raise RuntimeError("download completed but no video file was found")
-                    caption_candidates = sorted(
-                        output_dir.glob(f"{video_id}*.vtt")
-                    ) + sorted(output_dir.glob(f"{video_id}*.srt"))
+                    caption_candidates = sorted(output_dir.glob(f"{video_id}*.vtt")) + sorted(
+                        output_dir.glob(f"{video_id}*.srt")
+                    )
                     caption = next(
                         (item for item in caption_candidates if item.stat().st_size),
                         None,
@@ -180,9 +175,7 @@ def download_first_available(output_dir: Path) -> dict[str, Any]:
                         "duration_seconds": duration,
                         "video_path": str(Path(video_path).resolve()),
                         "captions_path": str(caption.resolve()) if caption else None,
-                        "caption_candidates": [
-                            str(item.resolve()) for item in caption_candidates
-                        ],
+                        "caption_candidates": [str(item.resolve()) for item in caption_candidates],
                         "subtitle_source": (
                             "youtube_subtitle" if caption else "asr_fallback_required"
                         ),

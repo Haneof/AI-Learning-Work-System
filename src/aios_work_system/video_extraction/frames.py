@@ -117,9 +117,7 @@ def detect_frame_changes(
                 cv2.CHAIN_APPROX_SIMPLE,
             )
             candidates = [
-                cv2.boundingRect(contour)
-                for contour in contours
-                if cv2.contourArea(contour) >= 3
+                cv2.boundingRect(contour) for contour in contours if cv2.contourArea(contour) >= 3
             ]
             if candidates:
                 x1 = min(item[0] for item in candidates)
@@ -309,8 +307,7 @@ class CursorTracker:
             if cursor and previous and previous.get("cursor"):
                 prior = previous["cursor"]
                 cursor["movement_px"] = round(
-                    ((cursor["x"] - prior["x"]) ** 2 + (cursor["y"] - prior["y"]) ** 2)
-                    ** 0.5,
+                    ((cursor["x"] - prior["x"]) ** 2 + (cursor["y"] - prior["y"]) ** 2) ** 0.5,
                     1,
                 )
             detections.append(

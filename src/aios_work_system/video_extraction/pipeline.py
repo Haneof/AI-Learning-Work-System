@@ -53,9 +53,7 @@ def probe_video(video_path: str | Path) -> dict[str, Any]:
         (stream for stream in payload.get("streams", []) if stream.get("codec_type") == "video"),
         {},
     )
-    duration = float(
-        payload.get("format", {}).get("duration") or video_stream.get("duration") or 0
-    )
+    duration = float(payload.get("format", {}).get("duration") or video_stream.get("duration") or 0)
     if duration <= 0:
         raise RuntimeError("video duration could not be read from the local video file")
     return {
@@ -64,8 +62,7 @@ def probe_video(video_path: str | Path) -> dict[str, Any]:
         "height": video_stream.get("height"),
         "video_codec": video_stream.get("codec_name"),
         "audio_streams": sum(
-            stream.get("codec_type") == "audio"
-            for stream in payload.get("streams", [])
+            stream.get("codec_type") == "audio" for stream in payload.get("streams", [])
         ),
     }
 
@@ -129,8 +126,7 @@ class VideoExtractionPipeline:
             segment["words"] = [
                 word
                 for word in segment.get("words", [])
-                if start_ms <= int(word["start_ms"])
-                and int(word["end_ms"]) <= end_ms
+                if start_ms <= int(word["start_ms"]) and int(word["end_ms"]) <= end_ms
             ]
             valid_transcript.append(segment)
         transcript = valid_transcript
@@ -211,8 +207,7 @@ class VideoExtractionPipeline:
 
                 grounder = Qwen3VLGrounder(self.vlm_model)
                 ocr_by_timestamp = {
-                    int(record["timestamp_ms"]): record.get("text", "")
-                    for record in ocr_records
+                    int(record["timestamp_ms"]): record.get("text", "") for record in ocr_records
                 }
                 for index, frame in enumerate(changed_for_vlm, start=1):
                     timestamp_ms = int(frame["timestamp_ms"])
@@ -223,8 +218,7 @@ class VideoExtractionPipeline:
                     )
                     ocr_text = (
                         ocr_by_timestamp.get(nearest_ocr, "")
-                        if nearest_ocr is not None
-                        and abs(nearest_ocr - timestamp_ms) <= 1500
+                        if nearest_ocr is not None and abs(nearest_ocr - timestamp_ms) <= 1500
                         else ""
                     )
                     nearby_narration = [
@@ -234,9 +228,7 @@ class VideoExtractionPipeline:
                         <= timestamp_ms
                         <= int(segment["end_ms"]) + 3500
                     ]
-                    narration_context = " ".join(
-                        segment["text"] for segment in nearby_narration
-                    )
+                    narration_context = " ".join(segment["text"] for segment in nearby_narration)
                     try:
                         result = grounder.ground(
                             frame["path"],
@@ -346,27 +338,19 @@ class VideoExtractionPipeline:
             "counts": {
                 "sampled_frames": len(analyzed_frames),
                 "changed_frames": len(change_frames),
-                "ocr_text_regions": sum(
-                    len(record.get("regions", [])) for record in ocr_records
-                ),
+                "ocr_text_regions": sum(len(record.get("regions", [])) for record in ocr_records),
                 "subtitle_or_asr_segments": len(transcript),
-                "cursor_candidates": stages.get("cursor_tracking", {}).get(
-                    "cursor_candidates", 0
-                ),
+                "cursor_candidates": stages.get("cursor_tracking", {}).get("cursor_candidates", 0),
                 "inferred_click_candidates": len(cursor_events),
                 "vlm_grounding_results": len(vlm_results),
                 "frame_event_counts": dict(event_counts),
             },
             "evidence_semantics": {
-                "observed_from_video": (
-                    "Visible pixels, timestamped frame changes, and OCR text."
-                ),
+                "observed_from_video": ("Visible pixels, timestamped frame changes, and OCR text."),
                 "inferred_from_video": (
                     "Cursor/click hypotheses and VLM target/action hypotheses."
                 ),
-                "instructor_words": (
-                    "Subtitle/ASR transcript; context only, not a business rule."
-                ),
+                "instructor_words": ("Subtitle/ASR transcript; context only, not a business rule."),
             },
             "episode_id": episode["episode_id"],
             "validation": validation,

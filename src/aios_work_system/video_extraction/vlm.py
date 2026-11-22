@@ -7,7 +7,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 _JSON_OBJECT = re.compile(r"\{[\s\S]*\}")
 
 
@@ -20,8 +19,7 @@ class Qwen3VLGrounder:
             from transformers import AutoProcessor, Qwen3VLForConditionalGeneration
         except Exception as exc:
             raise RuntimeError(
-                "Qwen3-VL requires torch and transformers>=4.57.0: "
-                f"{type(exc).__name__}: {exc}"
+                f"Qwen3-VL requires torch and transformers>=4.57.0: {type(exc).__name__}: {exc}"
             ) from exc
 
         self.model_id = model_id
