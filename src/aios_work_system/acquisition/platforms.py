@@ -344,7 +344,13 @@ class BilibiliPlatformAdapter:
             ) from exc
         self._anonymous_session_initialized = True
 
-    def _request_json(self, url: str, operation: str) -> dict[str, Any]:
+    def _request_json(
+        self,
+        url: str,
+        operation: str,
+        *,
+        allow_unauthenticated_wbi: bool = False,
+    ) -> dict[str, Any]:
         from urllib.error import HTTPError, URLError
         from urllib.request import Request
 
