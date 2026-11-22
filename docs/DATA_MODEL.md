@@ -41,7 +41,7 @@ Every downloaded video gets a record, including items later rejected by the text
 - content_sha256
 - storage_uri (Google Drive or local processing reference)
 - creator, series_or_course, platform
-- source_kind (DOWNLOADED_VIDEO / LIVE_HANDS_TRACE)
+- source_kind (DOWNLOADED_VIDEO / LIVE_TASK_TRACE)
 - software_name, software_version (when known from source)
 - media_duration_ms, subtitle_asset_refs_json
 - lifecycle_state (DOWNLOADED / PROBED / EVIDENCE_EXTRACTED / EPISODES_DRAFTED / LOCALLY_VERIFIED / PM_APPROVED / REJECTED)
@@ -89,7 +89,7 @@ Prefer usable existing subtitles; use ASR only when subtitle sources are unavail
 - task_goal, success_criteria_json
 - state_before_json, state_after_json
 - narration_segment_ids_json
-- relevant_ui_event_ids_json
+- relevant_video_observation_ids_json
 - decision_type
 - selected_strategy, rationale_summary
 - decision_basis_json, applicable_conditions_json
