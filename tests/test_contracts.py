@@ -227,9 +227,7 @@ def write_jsonl(path: Path, records: list[dict]) -> None:
     )
 
 
-def training_record(
-    example_id: str, sample_type: str, last_result: dict | None
-) -> dict:
+def training_record(example_id: str, sample_type: str, last_result: dict | None) -> dict:
     user_payload = {
         "goal": "List a new product",
         "current_state": {"title.status": "missing", "price.status": "not_set"},

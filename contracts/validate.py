@@ -171,9 +171,7 @@ def validate_episode(data: dict[str, Any]) -> list[str]:
                 "successful outcome requires at least one passed postcondition with evidence"
             )
         else:
-            verification_refs = {
-                ref for check in passed for ref in check["evidence_refs"]
-            }
+            verification_refs = {ref for check in passed for ref in check["evidence_refs"]}
             verified_directly = any(
                 item["evidence_id"] in verification_refs
                 and item["observation_channel"] == "direct_capture"
@@ -195,9 +193,7 @@ def validate_episode(data: dict[str, Any]) -> list[str]:
                 "review.approved_for_training=true"
             )
         if quality["annotation_status"] not in {"human_reviewed", "gold"}:
-            errors.append(
-                "quality.trainable requires annotation_status=human_reviewed or gold"
-            )
+            errors.append("quality.trainable requires annotation_status=human_reviewed or gold")
         if quality["exclusion_reasons"]:
             errors.append("quality.trainable cannot be true when exclusion_reasons is non-empty")
     if review["approved_for_training"] and not quality["trainable"]:
@@ -340,9 +336,7 @@ def validate_workflow(
     for transition in data["transitions"]:
         for field in ("from_task_id", "to_task_id"):
             if transition[field] not in task_id_set:
-                errors.append(
-                    f"transition references unknown {field}: {transition[field]}"
-                )
+                errors.append(f"transition references unknown {field}: {transition[field]}")
 
     for recovery in data["recovery_rules"]:
         next_task = recovery.get("next_task_id")
@@ -353,14 +347,12 @@ def validate_workflow(
     if workflow_evidence_refs:
         if available_evidence_refs is None:
             errors.append(
-                "an evidence registry is required to validate "
-                "WorkflowDefinition references"
+                "an evidence registry is required to validate WorkflowDefinition references"
             )
         else:
             unresolved = workflow_evidence_refs - set(available_evidence_refs)
             errors.extend(
-                f"workflow has unresolved evidence reference: {ref}"
-                for ref in sorted(unresolved)
+                f"workflow has unresolved evidence reference: {ref}" for ref in sorted(unresolved)
             )
 
     return errors
@@ -393,9 +385,7 @@ def validate_protocol(
             )
         else:
             top_level_refs = set(data["evidence_refs"])
-            if not any(
-                set(item["evidence_refs"]).issubset(top_level_refs) for item in passed
-            ):
+            if not any(set(item["evidence_refs"]).issubset(top_level_refs) for item in passed):
                 errors.append(
                     "passed postcondition evidence must also appear in top-level evidence_refs"
                 )
@@ -419,9 +409,7 @@ def _contains_forbidden_key(value: Any) -> str | None:
     return None
 
 
-def validate_training_jsonl(
-    training_path: Path, sidecar_path: Path | None = None
-) -> list[str]:
+def validate_training_jsonl(training_path: Path, sidecar_path: Path | None = None) -> list[str]:
     """Validate conversational JSONL and its separate training_meta sidecar."""
     errors: list[str] = []
     examples: dict[str, dict[str, Any]] = {}
@@ -441,8 +429,7 @@ def validate_training_jsonl(
                 continue
             if example_id in examples:
                 errors.append(
-                    f"training line {line_number}: duplicate training_example_id "
-                    f"{example_id}"
+                    f"training line {line_number}: duplicate training_example_id {example_id}"
                 )
                 continue
             examples[example_id] = record
@@ -517,9 +504,7 @@ def validate_training_jsonl(
             }
             missing = required - set(metadata)
             if missing:
-                errors.append(
-                    f"sidecar line {line_number}: missing fields {sorted(missing)}"
-                )
+                errors.append(f"sidecar line {line_number}: missing fields {sorted(missing)}")
                 continue
             example_id = metadata["training_example_id"]
             if example_id in sidecar_records:
@@ -597,9 +582,7 @@ def main(argv: list[str] | None = None) -> int:
                 if args.evidence_registry is not None:
                     registry = _read_json(args.evidence_registry)
                     if "evidence" in registry:
-                        evidence_ids = [
-                            item["evidence_id"] for item in registry["evidence"]
-                        ]
+                        evidence_ids = [item["evidence_id"] for item in registry["evidence"]]
                     else:
                         evidence_ids = registry.get("evidence_ids", [])
                 errors = validate_workflow(data, evidence_ids)
