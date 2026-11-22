@@ -8,11 +8,11 @@ The system learns how an instructor pursued a business goal, what was known at e
 
 ## Provenance path
 
-1. **Download record:** original tutorial URL and platform, creator, series/course, Drive location, content hash, and license status.
-2. **Event capture:** rrweb or Windows UI Automation event records for new tutorials, including event type, target/element identity, state changes, and timestamps.
-3. **Narration:** original audio and transcript segments. Prefer supplied subtitles; use ASR only when needed. Preserve alignment method, source language, and word/segment timestamps.
-4. **Decision extraction:** Decision Episodes link current state, conditions, instructor explanations, selected decisions, delegated operations, outcomes, and next decisions to event and narration evidence.
-5. **Workflow and training lineage:** HTN workflow version, review decisions, approved SQLite storage, training-example JSONL, separate metadata sidecar, and immutable LoRA dataset snapshot.
+1. **Download record:** original tutorial URL and platform, creator, series/course, archive location, content hash, and license status.
+2. **Video-file extraction:** FFmpeg-decoded frames, screen-change timestamps, OCR regions, inferred cursor/click and UI-target candidates, and source-frame references.
+3. **Narration:** supplied subtitles first, local ASR only when needed, and transcript segments with source language and word/segment timestamps.
+4. **Decision extraction and verification:** DecisionEpisodes link current state, conditions, instructor explanations, inferred operation hypotheses, supported outcomes, and next decisions to the extracted video and narration evidence; the local verifier scores extraction fidelity, decision validity, and outcome validity.
+5. **Review and training lineage:** independent PM review, HTN workflow version, approved storage, training-example JSONL, separate metadata sidecar, source-grouped split manifest, and immutable LoRA dataset snapshot.
 
 ## Evidence dimensions
 
@@ -73,4 +73,4 @@ Auto-extracted, rejected, unresolved, or contradictory examples do not become tr
 
 SQLite is the selected structured store for download records, semantic UI events, narration segments, Decision Episodes, workflow versions, evidence links, review events, and training-dataset membership. Original tutorial videos remain in Google Drive.
 
-The current repository does not yet implement the complete direct event capture, narration alignment, Decision Episode extraction, dual review, and Brain LoRA path end-to-end. Existing timestamped quote extraction or legacy video inspection must not be described as full workflow learning.
+The repository now implements downloaded-video extraction and DecisionEpisode validation (#38), local open-weight verification (#39), fail-closed training-sample compilation (#40), Brain LoRA dataset preparation/configuration (#41), and a Brain/Hands closed-loop harness (#42). These are separate components, not a deployed production service or a trained domain expert. PR #41 did not train an adapter; PR #42 CI uses a deterministic WorkflowBrain stand-in and SimulatedHands. The PM evidence gate, real approved corpus, actual LoRA training run, and real Hands evaluation remain distinct requirements.
