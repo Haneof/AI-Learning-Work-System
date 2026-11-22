@@ -358,12 +358,22 @@ class BrainHandsLoop:
                 decision = self.brain.decide(context)
             except Exception as exc:
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     f"Brain decision failed: {type(exc).__name__}: {exc}",
                 )
             if not isinstance(decision, BrainDecision):
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     "Brain must return a validated BrainDecision object",
                 )
 
@@ -373,36 +383,66 @@ class BrainHandsLoop:
                         "succeeded", True, decision_number, operations, current_state, history
                     )
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     "Brain attempted to finish while workflow success conditions were unmet",
                 )
             if decision.action in {"ask_user", "request_approval"}:
                 return self._report(
-                    "blocked", False, decision_number, operations, current_state, history,
+                    "blocked",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     f"{decision.action}: {decision.reason}",
                 )
             if decision.action == "stop":
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     decision.reason,
                 )
 
             delegation = decision.delegation
             if delegation is None:
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     "delegate decision did not contain an operation_delegation",
                 )
             try:
                 self._validate_delegation(delegation, current_state)
             except ProtocolError as exc:
                 return self._report(
-                    "blocked", False, decision_number, operations, current_state, history,
+                    "blocked",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     f"delegation rejected: {exc}",
                 )
             if delegation.requires_human_approval:
                 return self._report(
-                    "blocked", False, decision_number, operations, current_state, history,
+                    "blocked",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     "operation requires human approval before Hands execution",
                 )
 
@@ -421,11 +461,13 @@ class BrainHandsLoop:
                     result_summary="Hands raised an exception before returning a result.",
                     observed_state={},
                     postcondition_results=(),
-                    actions_summary=({
-                        "action": delegation.capability_id,
-                        "status": "failed",
-                        "detail": f"{type(exc).__name__}: {exc}",
-                    },),
+                    actions_summary=(
+                        {
+                            "action": delegation.capability_id,
+                            "status": "failed",
+                            "detail": f"{type(exc).__name__}: {exc}",
+                        },
+                    ),
                     error={
                         "category": "hands_exception",
                         "code": type(exc).__name__,
@@ -447,7 +489,12 @@ class BrainHandsLoop:
                 refreshed_state = dict(await self.hands.observe())
             except Exception as exc:
                 return self._report(
-                    "failed", False, decision_number, operations, current_state, history,
+                    "failed",
+                    False,
+                    decision_number,
+                    operations,
+                    current_state,
+                    history,
                     f"post-execution observation failed: {type(exc).__name__}: {exc}",
                 )
 
@@ -483,10 +530,9 @@ class BrainHandsLoop:
     def _validate_delegation(
         self, delegation: OperationDelegation, current_state: Mapping[str, Any]
     ) -> None:
-        if (
-            delegation.workflow_id != self.workflow.get("workflow_id")
-            or delegation.workflow_version != self.workflow.get("version")
-        ):
+        if delegation.workflow_id != self.workflow.get(
+            "workflow_id"
+        ) or delegation.workflow_version != self.workflow.get("version"):
             raise ProtocolError("delegation workflow_ref does not match the active workflow")
         task = self._tasks.get(delegation.task_id)
         if task is None or task.get("kind") != "primitive":
@@ -498,9 +544,7 @@ class BrainHandsLoop:
             raise ProtocolError("delegation capability_id is not registered")
         declared_risk = str(task.get("risk_level") or capability.get("risk_level") or "unknown")
         if delegation.risk_level != declared_risk:
-            raise ProtocolError(
-                "delegation risk_level does not match the workflow capability"
-            )
+            raise ProtocolError("delegation risk_level does not match the workflow capability")
         if (
             declared_risk in {"high", "critical", "unknown"}
             and not delegation.requires_human_approval
