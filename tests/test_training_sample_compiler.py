@@ -95,9 +95,7 @@ def test_held_episode_is_excluded_from_compilation():
 
     assert result.train_samples == []
     assert result.test_samples == []
-    assert result.exclusions == [
-        {"episode_id": "ep-001", "reason": "local_verification_not_pass"}
-    ]
+    assert result.exclusions == [{"episode_id": "ep-001", "reason": "local_verification_not_pass"}]
 
 
 def test_future_result_leaked_into_input_is_rejected():
