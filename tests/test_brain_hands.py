@@ -25,10 +25,7 @@ from aios_work_system.brain_hands import (
 )
 
 WORKFLOW_PATH = (
-    Path(__file__).parent.parent
-    / "contracts"
-    / "examples"
-    / "shop-list-product.workflow.json"
+    Path(__file__).parent.parent / "contracts" / "examples" / "shop-list-product.workflow.json"
 )
 PROTOCOL_SCHEMA_PATH = (
     Path(__file__).parent.parent / "contracts" / "brain-hands-protocol.schema.json"
@@ -47,9 +44,7 @@ def _run(hands: SimulatedHands, *, brain: Any | None = None, max_decisions: int 
         hands,
         LoopConfig(max_decisions=max_decisions),
     )
-    return asyncio.run(
-        loop.run({"product_title": "Portable Pet Water Fountain", "price": 39.99})
-    )
+    return asyncio.run(loop.run({"product_title": "Portable Pet Water Fountain", "price": 39.99}))
 
 
 def test_brain_only_simulated_hands_reaches_business_goal() -> None:
@@ -257,9 +252,7 @@ def test_high_risk_capability_cannot_be_delegated_without_approval() -> None:
     high_risk = copy.deepcopy(workflow)
     task = next(item for item in high_risk["tasks"] if item["task_id"] == "enter_title")
     capability = next(
-        item
-        for item in high_risk["capabilities"]
-        if item["capability_id"] == task["capability_id"]
+        item for item in high_risk["capabilities"] if item["capability_id"] == task["capability_id"]
     )
     capability["risk_level"] = "high"
     brain = WorkflowBrain(high_risk)
