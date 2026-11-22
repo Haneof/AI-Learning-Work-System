@@ -40,14 +40,10 @@ def main() -> None:
         rows.append(
             {
                 "frame": frame.name,
-                "timestamp_seconds": round(
-                    len(rows) * args.interval_seconds, 3
-                ),
+                "timestamp_seconds": round(len(rows) * args.interval_seconds, 3),
                 "characters": len(extracted),
                 "text": extracted,
-                "elapsed_ms": round(
-                    (time.perf_counter() - frame_started) * 1000, 1
-                ),
+                "elapsed_ms": round((time.perf_counter() - frame_started) * 1000, 1),
             }
         )
 

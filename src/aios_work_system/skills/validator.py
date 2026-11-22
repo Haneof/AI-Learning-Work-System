@@ -86,28 +86,100 @@ def _check_python_script(path: Path) -> list[str]:
     except (SyntaxError, UnicodeDecodeError) as exc:
         return [f"{path.name}: invalid Python source: {exc}"]
 
+    blocked_attributes = BLOCKED_CALLS | {"execv", "spawn", "fork"}
+    module_aliases: dict[str, str] = {}
+    call_aliases: dict[str, str] = {}
+    dynamic_lookup_aliases: set[str] = {"getattr", "__getattribute__"}
+
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             for alias in node.names:
                 root_name = alias.name.split(".", maxsplit=1)[0]
+                local_name = alias.asname or alias.name.split(".", maxsplit=1)[0]
+                module_aliases[local_name] = alias.name
                 if root_name in BLOCKED_IMPORTS:
                     errors.append(f"{path.name}: blocked import '{root_name}'")
         elif isinstance(node, ast.ImportFrom):
-            root_name = (node.module or "").split(".", maxsplit=1)[0]
+            imported_module = node.module or ""
+            root_name = imported_module.split(".", maxsplit=1)[0]
             if root_name in BLOCKED_IMPORTS:
                 errors.append(f"{path.name}: blocked import '{root_name}'")
-        elif isinstance(node, ast.Call):
-            if isinstance(node.func, ast.Name) and node.func.id in BLOCKED_CALLS:
-                errors.append(f"{path.name}: blocked call '{node.func.id}'")
-            if isinstance(node.func, ast.Attribute):
+            for alias in node.names:
+                local_name = alias.asname or alias.name
                 if (
-                    isinstance(node.func.value, ast.Name)
-                    and node.func.value.id in {"os", "subprocess"}
-                    and node.func.attr in BLOCKED_CALLS | {"execv", "spawn", "fork"}
+                    root_name in {"os", "subprocess", "builtins"}
+                    and alias.name in blocked_attributes
                 ):
+                    call_aliases[local_name] = f"{root_name}.{alias.name}"
+                if root_name == "builtins" and alias.name in {"getattr", "__getattribute__"}:
+                    dynamic_lookup_aliases.add(local_name)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign):
+            assignment = node.value
+            targets = node.targets
+        elif isinstance(node, ast.AnnAssign):
+            assignment = node.value
+            targets = [node.target]
+        else:
+            continue
+
+        if isinstance(assignment, ast.Attribute) and isinstance(assignment.value, ast.Name):
+            imported_module = module_aliases.get(assignment.value.id, assignment.value.id)
+            root_name = imported_module.split(".", maxsplit=1)[0]
+            if (
+                root_name in {"os", "subprocess", "builtins"}
+                and assignment.attr in blocked_attributes
+            ):
+                for target in targets:
+                    if isinstance(target, ast.Name):
+                        call_aliases[target.id] = f"{root_name}.{assignment.attr}"
+        elif isinstance(assignment, ast.Name):
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if assignment.id in BLOCKED_CALLS or assignment.id in call_aliases:
+                    call_aliases[target.id] = call_aliases.get(assignment.id, assignment.id)
+                if assignment.id in dynamic_lookup_aliases:
+                    dynamic_lookup_aliases.add(target.id)
+
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Name) and node.id == "__builtins__":
+            errors.append(f"{path.name}: blocked builtins access '__builtins__'")
+        elif isinstance(node, ast.Attribute):
+            if node.attr == "__builtins__":
+                errors.append(f"{path.name}: blocked builtins access '__builtins__'")
+            elif node.attr == "__dict__" and isinstance(node.value, ast.Name):
+                imported_module = module_aliases.get(node.value.id, node.value.id)
+                if imported_module.split(".", maxsplit=1)[0] == "builtins":
+                    errors.append(f"{path.name}: blocked builtins namespace access")
+        elif isinstance(node, ast.Call):
+            function = node.func
+            if isinstance(function, ast.Name):
+                if function.id in BLOCKED_CALLS:
+                    errors.append(f"{path.name}: blocked call '{function.id}'")
+                elif function.id in call_aliases:
                     errors.append(
-                        f"{path.name}: blocked call '{node.func.value.id}.{node.func.attr}'"
+                        f"{path.name}: blocked call '{call_aliases[function.id]}' via import alias"
                     )
+                elif function.id in dynamic_lookup_aliases or function.id == "getattr":
+                    errors.append(f"{path.name}: blocked dynamic attribute access '{function.id}'")
+            elif isinstance(function, ast.Attribute):
+                if function.attr in {"getattr", "__getattribute__"}:
+                    errors.append(
+                        f"{path.name}: blocked dynamic attribute access '{function.attr}'"
+                    )
+                elif isinstance(function.value, ast.Name):
+                    imported_module = module_aliases.get(
+                        function.value.id,
+                        function.value.id,
+                    )
+                    root_name = imported_module.split(".", maxsplit=1)[0]
+                    if (
+                        root_name in {"os", "subprocess", "builtins"}
+                        and function.attr in blocked_attributes
+                    ):
+                        errors.append(f"{path.name}: blocked call '{root_name}.{function.attr}'")
     return errors
 
 
@@ -289,6 +361,10 @@ def validate_skill_package(
         for tool in tools:
             if not isinstance(tool, str) or tool not in ALLOWED_TOOLS:
                 errors.append(f"tool is not allowlisted: {tool}")
+
+    evidence = manifest.get("evidence", [])
+    if isinstance(evidence, list):
+        errors.extend(_validate_string_array(evidence, "evidence"))
 
     permissions = manifest.get("permissions", [])
     if isinstance(permissions, list):

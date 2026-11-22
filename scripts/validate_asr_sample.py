@@ -61,9 +61,7 @@ def main() -> None:
         "transcript_characters": len(transcript),
         "segments": rows,
     }
-    output_path.write_text(
-        json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    output_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps({key: value for key, value in report.items() if key != "segments"}, indent=2))
 
 

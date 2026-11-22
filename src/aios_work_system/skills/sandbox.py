@@ -78,6 +78,15 @@ class DockerSandboxRunner:
         if container_name and not re.fullmatch(r"[a-zA-Z0-9][a-zA-Z0-9_.-]{0,63}", container_name):
             raise ValueError("container_name contains unsupported characters")
 
+        output_mountpoint = root / "output"
+        if output_mountpoint.is_symlink() or (
+            output_mountpoint.exists() and not output_mountpoint.is_dir()
+        ):
+            raise ValueError("Skill package output mountpoint must be a real directory")
+        output_mountpoint.mkdir(mode=0o755, exist_ok=True)
+        if any(output_mountpoint.iterdir()):
+            raise ValueError("Skill package output mountpoint must be empty")
+
         mount = f"type=bind,src={root},dst=/workspace,readonly"
         command = [
             self.docker_binary,
@@ -94,6 +103,7 @@ class DockerSandboxRunner:
             "--user=65534:65534",
             f"--mount={mount}",
             "--tmpfs=/tmp:rw,noexec,nosuid,size=64m",
+            "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m,uid=65534,gid=65534,mode=0700",
             "--workdir=/workspace",
         ]
         if container_name:

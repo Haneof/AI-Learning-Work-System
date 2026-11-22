@@ -38,3 +38,23 @@ def test_phase0_demo_refuses_to_overwrite_nonempty_output(tmp_path):
     else:
         raise AssertionError("Expected non-empty output directory to be rejected")
     assert (output / "user-file.txt").read_text(encoding="utf-8") == "keep"
+
+
+def test_phase0_demo_reports_invalid_output_paths_clearly(tmp_path):
+    output_file = tmp_path / "not-a-directory"
+    output_file.write_text("keep", encoding="utf-8")
+
+    try:
+        run_phase0_demo(output_file)
+    except ValueError as exc:
+        assert "Output path must be a directory" in str(exc)
+    else:
+        raise AssertionError("Expected a file output path to be rejected")
+
+    try:
+        run_phase0_demo(output_file / "child")
+    except ValueError as exc:
+        assert "Cannot create Phase 0 output directory" in str(exc)
+    else:
+        raise AssertionError("Expected a non-directory parent to be rejected")
+    assert output_file.read_text(encoding="utf-8") == "keep"

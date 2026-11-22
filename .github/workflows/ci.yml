@@ -43,6 +43,8 @@ jobs:
           tests/test_skills.py
       - name: Format check for GUI milestone files
         run: ruff format --check src/aios_work_system/gui tests/test_gui.py tests/test_gui_real_model.py scripts/run_gui_agent_demo.py
+      - name: Format check for the entire repository
+        run: ruff format --check .
       - name: Test
         run: pytest
       - name: Format changed Python files

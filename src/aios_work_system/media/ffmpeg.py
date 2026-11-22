@@ -7,6 +7,8 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+MAX_EXTRACTED_FRAMES = 1000
+
 
 class MediaProcessingError(RuntimeError):
     """Raised when a media command fails or returns invalid output."""
@@ -50,7 +52,12 @@ class FFmpegProcessor:
         return completed.stdout
 
     def probe(self, source: str | Path) -> dict[str, Any]:
-        source_path = Path(source).resolve(strict=True)
+        try:
+            source_path = Path(source).expanduser().resolve(strict=True)
+        except (OSError, RuntimeError) as exc:
+            raise MediaProcessingError(f"Could not resolve media source: {source}") from exc
+        if not source_path.is_file():
+            raise MediaProcessingError(f"Media source is not a file: {source_path}")
         output = self._run(
             [
                 self.ffprobe_binary,
@@ -127,9 +134,16 @@ class FFmpegProcessor:
         source: str | Path,
         output_dir: str | Path,
         interval_seconds: float = 5.0,
+        max_frames: int = MAX_EXTRACTED_FRAMES,
     ) -> list[Path]:
         if interval_seconds <= 0:
             raise ValueError("interval_seconds must be greater than zero")
+        if (
+            isinstance(max_frames, bool)
+            or not isinstance(max_frames, int)
+            or not 1 <= max_frames <= MAX_EXTRACTED_FRAMES
+        ):
+            raise ValueError(f"max_frames must be between 1 and {MAX_EXTRACTED_FRAMES}")
         source_path = Path(source).resolve(strict=True)
         frame_dir = Path(output_dir).resolve()
         frame_dir.mkdir(parents=True, exist_ok=True)
@@ -144,10 +158,12 @@ class FFmpegProcessor:
                 f"fps=1/{interval_seconds:.6g}",
                 "-q:v",
                 "2",
+                "-frames:v",
+                str(max_frames),
                 str(pattern),
             ]
         )
-        frames = sorted(frame_dir.glob("frame_*.jpg"))
+        frames = sorted(frame_dir.glob("frame_*.jpg"))[:max_frames]
         if not frames:
             raise MediaProcessingError("FFmpeg completed but produced no frames")
         return frames

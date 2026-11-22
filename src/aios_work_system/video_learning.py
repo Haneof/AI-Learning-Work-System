@@ -234,9 +234,7 @@ class VideoLearningPipeline:
             end_ms = min((bucket + 1) * chunk_ms, duration_ms)
             if end_ms <= start_ms:
                 continue
-            ordered_lines = [
-                line for _, line in sorted(events[bucket], key=lambda event: event[0])
-            ]
+            ordered_lines = [line for _, line in sorted(events[bucket], key=lambda event: event[0])]
             text_content = "\n".join(ordered_lines)
             media_segment = SegmentRecord.create(
                 source_id=source.source_id,
