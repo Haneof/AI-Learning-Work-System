@@ -34,9 +34,7 @@ EXECUTION_STATUSES = frozenset(
     }
 )
 RISK_LEVELS = frozenset({"low", "medium", "high", "critical", "unknown"})
-CONDITION_OPERATORS = frozenset(
-    {"equals", "not_equals", "in", "not_in", "exists", "not_exists"}
-)
+CONDITION_OPERATORS = frozenset({"equals", "not_equals", "in", "not_in", "exists", "not_exists"})
 _FORBIDDEN_COORDINATE_KEYS = frozenset(
     {
         "coordinates",
