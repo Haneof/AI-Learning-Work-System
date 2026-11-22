@@ -18,7 +18,8 @@ classifiers = [
 dependencies = []
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "ruff>=0.11,<1", "jsonschema>=4.23,<5"]
+dev = ["pytest>=8,<10", "ruff>=0.11,<1", "jsonschema>=4.23,<5", "PyYAML>=6,<7"]
+training-config = ["PyYAML>=6,<7"]
 media = ["pypdf>=5,<7"]
 acquisition = [
   "yt-dlp>=2024.10.22",

@@ -1,0 +1,60 @@
+# Brain workflow-policy LoRA on a single NVIDIA T4 (16 GB).
+# The Hub repository contains the original Transformers safetensors checkpoint.
+# Do not replace base_model with a GGUF, a ComfyUI path, or a quantized variant.
+base_model: DreamFast/qwen3-4b-heretic
+revision_of_model: main
+type_of_model: AutoModelForCausalLM
+trust_remote_code: false
+
+chat_template: qwen3
+datasets:
+  - path: artifacts/brain-training/axolotl/train.weighted.jsonl
+    type: chat_template
+test_datasets:
+  - path: artifacts/brain-training/axolotl/test.jsonl
+    type: chat_template
+
+dataset_prepared_path: artifacts/brain-training/axolotl/prepared
+dataset_num_proc: 1
+dataloader_num_workers: 0
+sequence_len: 512
+sample_packing: false
+eval_sample_packing: false
+
+adapter: lora
+lora_r: 16
+lora_alpha: 32
+lora_dropout: 0.05
+lora_target_modules:
+  - q_proj
+  - k_proj
+  - v_proj
+  - o_proj
+  - gate_proj
+  - up_proj
+  - down_proj
+
+micro_batch_size: 1
+gradient_accumulation_steps: 16
+num_epochs: 3
+learning_rate: 0.0001
+optimizer: adamw_torch
+lr_scheduler: cosine
+warmup_ratio: 0.03
+max_grad_norm: 1.0
+
+# T4 is compute capability 7.5: BF16 is not a supported native precision.
+# This loads the original unquantized HF checkpoint in FP16 for T4 training.
+fp16: true
+bf16: false
+activation_checkpointing: true
+attn_implementation: sdpa
+load_in_4bit: false
+load_in_8bit: false
+
+eval_strategy: epoch
+evals_per_epoch: 1
+saves_per_epoch: 1
+save_total_limit: 2
+logging_steps: 5
+output_dir: artifacts/brain-lora/brain-heretic-qwen3-4b
