@@ -189,9 +189,7 @@ class SimulatedHands:
 
 def _set_business_path(state: dict[str, Any], path: str, value: Any) -> None:
     root = path.split(".", maxsplit=1)[0]
-    if path in state or any(
-        isinstance(key, str) and key.startswith(f"{root}.") for key in state
-    ):
+    if path in state or any(isinstance(key, str) and key.startswith(f"{root}.") for key in state):
         state[path] = value
     else:
         set_state_path(state, path, value)
