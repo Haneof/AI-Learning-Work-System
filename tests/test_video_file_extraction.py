@@ -220,6 +220,7 @@ def test_pipeline_runs_on_a_real_video_file_and_emits_contract_valid_episode(tmp
     assert (output / "decision-verification.json").is_file()
     assert (output / "training-admission.json").is_file()
 
+
 def test_pipeline_endpoint_configuration_does_not_require_a_model_file():
     from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline
 
