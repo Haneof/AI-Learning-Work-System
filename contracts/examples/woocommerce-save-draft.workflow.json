@@ -1,0 +1,51 @@
+{
+  "capabilities": [
+    {"capability_id": "woocommerce.product.enter_title", "description": "Enter a provided title in the WooCommerce product editor.", "idempotent": true, "risk_level": "low", "version": "0.1"},
+    {"capability_id": "woocommerce.product.set_product_type", "description": "Set the WooCommerce product type to Simple.", "idempotent": true, "risk_level": "low", "version": "0.1"},
+    {"capability_id": "woocommerce.product.set_price", "description": "Set a price supplied by the Brain in the WooCommerce product editor.", "idempotent": false, "risk_level": "medium", "version": "0.1"},
+    {"capability_id": "woocommerce.product.save_draft", "description": "Save the WooCommerce product as a draft. Never publish.", "idempotent": true, "risk_level": "medium", "version": "0.1"}
+  ],
+  "domain": "ecommerce",
+  "edges": [
+    {"from_task_id": "enter_title", "rationale": "The tutorial enters the title before setting the product type; the type choice depends on knowing what the product is.", "relation": "hard_dependency", "to_task_id": "set_product_type"},
+    {"from_task_id": "set_product_type", "rationale": "The price fields shown depend on the product type; set the type first.", "relation": "hard_dependency", "to_task_id": "set_price"},
+    {"from_task_id": "set_price", "rationale": "All content must be in place before the draft is saved.", "relation": "hard_dependency", "to_task_id": "save_draft"}
+  ],
+  "evidence_refs": ["ev-observed-video", "ev-instructor-words", "ev-grounding-product-fields", "ev-grounding-save-draft"],
+  "goal": "Create a complete, accurate simple-product listing in WooCommerce and save it as a draft. Never publish.",
+  "initial_state": {"description.present": false, "draft.status": "unknown", "price.value": "", "product_type.value": "simple", "publish.visible": true, "short_description.present": false, "title.status": "empty", "title.value": ""},
+  "invariants": [
+    {"condition": {"operator": "equals", "path": "title.status", "value": "present"}, "description": "The product title must be present before the price-setting task can execute.", "evidence_refs": ["ev-instructor-words", "ev-grounding-product-fields"], "invariant_id": "title_present_before_price", "must_hold_before_task_ids": ["set_price"]},
+    {"condition": {"operator": "not_equals", "path": "price.value", "value": ""}, "description": "A price must be entered before the draft is saved.", "evidence_refs": ["ev-instructor-words"], "invariant_id": "content_complete_before_save", "must_hold_before_task_ids": ["save_draft"]}
+  ],
+  "lifecycle_status": "draft",
+  "methods": [
+    {"applicable_when": [], "compound_task_id": "save_product_draft", "evidence_refs": ["ev-instructor-words", "ev-grounding-product-fields"], "method_id": "save_product_draft.standard", "ordering_constraints": [{"after_task_id": "save_draft", "before_task_id": "prepare_product"}], "subtasks": ["prepare_product", "save_draft"]},
+    {"applicable_when": [], "compound_task_id": "prepare_product", "evidence_refs": ["ev-instructor-words", "ev-grounding-product-fields"], "method_id": "prepare_product.standard", "ordering_constraints": [{"after_task_id": "set_product_type", "before_task_id": "enter_title"}, {"after_task_id": "set_price", "before_task_id": "set_product_type"}], "subtasks": ["enter_title", "set_product_type", "set_price"]}
+  ],
+  "name": "Save a WooCommerce Simple Product as Draft",
+  "ordering_constraints": [
+    {"after_task_id": "set_product_type", "before_task_id": "enter_title", "evidence_refs": ["ev-instructor-words"], "rationale": "Title before product type."},
+    {"after_task_id": "set_price", "before_task_id": "set_product_type", "evidence_refs": ["ev-instructor-words"], "rationale": "Product type before price."},
+    {"after_task_id": "save_draft", "before_task_id": "set_price", "evidence_refs": ["ev-instructor-words"], "rationale": "Content complete before saving the draft."}
+  ],
+  "recovery_rules": [
+    {"next_action": "replan", "next_task_id": "save_draft", "rationale": "Do not finish while the draft-updated signal is unconfirmed.", "rule_id": "draft-not-saved", "stop_conditions": ["The draft could not be saved from available evidence."], "when": {"operator": "not_equals", "path": "draft.status", "value": "draft_updated"}},
+    {"next_action": "replan", "next_task_id": "enter_title", "rationale": "Do not continue to type or price while the title is missing.", "rule_id": "title-not-present", "stop_conditions": ["The title cannot be entered from available evidence."], "when": {"operator": "not_equals", "path": "title.status", "value": "present"}}
+  ],
+  "schema_version": "0.1",
+  "success_conditions": ["title.status == present", "product_type.value == simple", "price.value != \"\"", "draft.status == draft_updated"],
+  "tasks": [
+    {"description": "Create a simple product listing and save it as a draft, never publishing it.", "kind": "compound", "postconditions": ["The product is saved as a draft with a title, simple type, and price."], "preconditions": [], "task_id": "save_product_draft"},
+    {"description": "Enter the product content before saving.", "kind": "compound", "parent_task_id": "save_product_draft", "postconditions": ["title.status == present", "product_type.value == simple", "price.value != \"\""], "preconditions": [], "task_id": "prepare_product"},
+    {"capability_id": "woocommerce.product.enter_title", "description": "Enter the supplied product title.", "kind": "primitive", "parent_task_id": "prepare_product", "postconditions": ["title.status == present"], "preconditions": [{"operator": "equals", "path": "title.status", "value": "empty"}], "task_id": "enter_title"},
+    {"capability_id": "woocommerce.product.set_product_type", "description": "Set the product type to Simple. A new product usually already defaults to Simple, in which case there is nothing to do.", "kind": "primitive", "parent_task_id": "prepare_product", "postconditions": ["product_type.value == simple"], "preconditions": [{"operator": "equals", "path": "title.status", "value": "present"}], "task_id": "set_product_type"},
+    {"capability_id": "woocommerce.product.set_price", "description": "Set the supplied regular price after the title is present and the type is Simple.", "kind": "primitive", "parent_task_id": "prepare_product", "postconditions": ["price.value != \"\""], "preconditions": [{"operator": "equals", "path": "title.status", "value": "present"}], "task_id": "set_price"},
+    {"capability_id": "woocommerce.product.save_draft", "description": "Click Save Draft and confirm the draft-updated notice. Never click Publish.", "kind": "primitive", "parent_task_id": "save_product_draft", "postconditions": ["draft.status == draft_updated"], "preconditions": [{"operator": "not_equals", "path": "price.value", "value": ""}], "task_id": "save_draft"}
+  ],
+  "transitions": [
+    {"decision_action": "delegate", "from_task_id": "set_price", "rationale": "Continue to saving the draft only after a price is entered.", "to_task_id": "save_draft", "when": {"operator": "not_equals", "path": "price.value", "value": ""}}
+  ],
+  "version": "0.1",
+  "workflow_id": "woocommerce.save_product_draft"
+}
