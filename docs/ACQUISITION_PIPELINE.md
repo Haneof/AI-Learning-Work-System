@@ -2,25 +2,31 @@
 
 ## Purpose and priority
 
-This document defines the target pipeline for converting professional tutorials into source-grounded workflow knowledge that trains a language-model Brain to direct an existing GUI operation model (the Hands).
+This document describes the selected, implemented learning route for turning professional tutorials into source-grounded workflow knowledge for a language-model Brain that directs an existing GUI operation model (the Hands).
 
-**Quality ranks first; efficiency ranks second.** The primary learning input is a semantic UI event stream aligned with the instructor's narration. The project does not use sparse or dense frame extraction as the primary way to teach the Brain how a page or business workflow operates.
+**Quality ranks first; efficiency ranks second.** The primary input is a downloaded tutorial video file. Programs process that file offline. The system does not play tutorials as a live session, and tutorial learning does not depend on rrweb, Windows UI Automation event capture, or a live event collector.
 
-The current repository contains acquisition, media, knowledge, and GUI components, not the complete production pipeline described here. This design does not claim that direct event recording, complete narration alignment, Decision Episode extraction, Brain LoRA training, or the Brain-to-Hands runtime loop are already implemented end-to-end.
+The current implementation milestones are PRs #38–#42. They provide extraction, structured episode generation and validation, a local verifier, an approved-sample compiler, LoRA preparation/configuration, and a Brain/Hands closed-loop harness. They do not yet constitute a deployed production service or a trained domain expert.
+
+## Superseded design decision — 2026-11-21
+
+The previously proposed live-recorder/event-collector route was cancelled on **2026-11-21** and superseded by downloaded-video-file extraction. The architectural reason is that the selected route works from tutorial files that can be downloaded and processed locally, without requiring a recorder to be installed in or synchronized with each live web/desktop tutorial session. The old rrweb-for-web / Windows-UIA-for-desktop proposal is retained here as historical design context only; it is not an active primary route or a required fallback.
+
+The selected route does use frames. It does **not** treat a sparse/dense frame dump as a complete action log: it samples the file, detects actual screen changes, and grounds visual/cursor hypotheses against timestamped narration and OCR. A video does not contain native click telemetry, so inferred clicks remain explicitly inferred.
 
 ## Roles: Brain and Hands
 
 - **Brain:** the language model plus a vertical LoRA. It learns the business goal, workflow structure, reasons, preconditions, conditional branches, operation capability selection, result verification, and recovery decisions.
-- **Hands:** an existing open-source GUI operation model and adapter (for example, UI-TARS). It handles live page perception, control localization, clicking, typing, scrolling, and other low-level UI operations. Reuse this layer; do not build a replacement perception/action model as part of Brain training.
-- **Event recorder:** captures what changed in the tutorial environment and when. It provides the behavioral evidence used to teach the Brain.
-- **Narration processor:** aligns the instructor's words to the same timeline. It provides stated goals, reasons, constraints, and business context.
+- **Hands:** an existing GUI operation model and adapter (for example, UI-TARS). It handles live page perception, control localization, clicking, typing, scrolling, and other low-level UI operations. Reuse this layer; do not build a replacement perception/action model as part of Brain training.
+- **Video-file extractor:** processes a downloaded file and produces timestamped transcript, visual, OCR, cursor, and UI-grounding evidence from which DecisionEpisodes can be proposed.
+- **Narration processor:** prefers supplied subtitles and uses local ASR only when usable subtitle tracks are unavailable; it preserves the instructor's words and timestamps.
 
 The Brain chooses what should happen and why. The Hands execute the delegated capability and return a structured result. The Brain then decides what happens next.
 
-## Step 1 — Download and course archive
+## Step 1 — Download and archive
 
-1. Search the web for tutorials in the selected target vertical.
-2. Download with a cloud downloader directly into the user's 5TB Google Drive. Do not use scattered single-video folders or make the local workstation the bulk-download staging destination.
+1. Search for tutorials in the selected target vertical.
+2. Download the tutorial video file and any available timed subtitle file. The repository includes a downloader implementation; the long-term archive target remains Google Drive.
 3. Organize the archive hierarchically by creator and series/course. A platform grouping may sit above the creator level, but the course structure must remain intact:
 
    ~~~text
@@ -29,135 +35,101 @@ The Brain chooses what should happen and why. The Hands execute the delegated ca
        <creator>/
          <series-or-course>/
            <video-file>
+           <subtitle-file>
    ~~~
 
 4. Keep one download record for every video. At minimum, record the canonical source link and platform. Also retain creator, series/course, title, discovery/download time, Drive file ID/link/path, byte size, content SHA-256, and download status when available.
 5. Preserve source metadata and attribution/license information where available. Unknown license metadata stays unknown; it must not be guessed.
 
-The downloader's final archive target is Drive. The repository's current Google Drive API OAuth helper is an integration component, not proof that a cloud downloader-to-Drive production flow already exists.
+The downloader's final archive target is Drive. The repository's Google Drive API OAuth helper is an integration component, not proof that the complete cloud-downloader-to-Drive archive service is deployed.
 
-## Step 2 — Capture semantic UI events and narration
+## Step 2 — Process the downloaded video file
 
-### 2a. New tutorials: direct event capture is the primary path
+The executable entry point is `scripts/run_video_file_pipeline.py`; the main implementation is `aios_work_system.video_extraction.pipeline.VideoExtractionPipeline`.
 
-Start event capture before the instructor begins the tutorial. Capture a semantic operation event stream rather than trying to infer every action from sampled screenshots.
+### 2a. Subtitle / ASR
 
-For web tutorials, use an event recorder such as rrweb to retain:
-- initial DOM snapshot and incremental DOM mutations;
-- mouse movement/click/press/release and other interaction events supported by the recorder;
-- focus and blur changes;
-- scroll events;
-- input and form-state changes;
-- page navigation and relevant element/property changes;
-- event timestamps, page/session identity, and stable node references where available.
+1. Prefer a supplied local SRT/WebVTT subtitle file when it contains usable timestamped cues.
+2. If no usable subtitle cues exist, transcribe the downloaded video's audio locally with faster-whisper.
+3. Preserve source, language, transcript method, and segment/word timestamps. Cues outside the media duration are not treated as valid transcript evidence.
 
-For Windows desktop tutorials, use Windows UI Automation to retain:
-- automation element identity and hierarchy;
-- control type and accessible name;
-- focus, structure, property, and supported control events;
-- relevant enabled/disabled, expanded/collapsed, selected, value, and other state changes;
-- event timestamps, application/window identity, and provider limitations.
+The narration provides goals, motivation, explanations, conditions, constraints, and domain context. A transcript records what the instructor said; it does not automatically prove the statement is a universally correct business rule.
 
-Capture the instructor's original audio on the same session clock or preserve synchronization metadata. The recorder must report missing events and unsupported UI providers rather than silently pretending the event stream is complete.
+### 2b. Frame-change-driven visual extraction
 
-### 2b. Existing subtitles and narration alignment
+1. FFmpeg decodes timestamped sampled stills from the local video file.
+2. A grayscale pixel-difference detector compares adjacent samples and selects initial/changed frames. Unchanged frames are not treated as separate workflow actions and are not sent through the expensive grounding path.
+3. Tesseract OCR reads visible text and text-region boxes on the initial state and selected changed frames.
+4. OpenCV cursor tracking and the changed-region heuristic generate possible cursor/click candidates. These are hypotheses inferred from pixels, not native mouse/click events.
+5. Local GUI-grounding models (ShowUI/UI-TARS) can localize a target in selected changed frames. Their benchmark measures point-in-annotated-target-box hit rate, not click-event accuracy. Model escalation is controlled by measured quality gates.
 
-1. Inspect embedded subtitle tracks and associated subtitle files.
-2. Prefer existing subtitles and preserve their source, language, and timecodes.
-3. Only when usable subtitles are unavailable, run ASR on the original audio.
-4. Align the transcript to the audio. Prefer word-level timestamps when the aligner supports the language and the result is reliable; otherwise retain segment-level timestamps and mark the time granularity.
-5. Keep instructor-explicit statements separate from behavioral inference. A transcript records what the instructor said; it does not automatically prove that the statement is a universally correct business rule.
+### 2c. Evidence classification and narration alignment
 
-The narration provides the goal, motivation, explanation, conditions, constraints, and domain knowledge. UI events provide the observed behavior and state changes. Neither channel is sufficient alone; they must be aligned.
+- `observed_from_video`: decoded frames, screen changes, and text visibly read by OCR.
+- `inferred_from_video`: cursor/click hypotheses and UI target coordinates returned by a grounding model.
+- `instructor_words`: timestamped subtitle or ASR transcript; this is what the speaker said, not proof that an operation executed.
+- Unknown or hidden activity stays unknown. Do not invent DOM mutations, keyboard events, or click telemetry that the video cannot show.
 
-### 2c. Legacy MP4 tutorials: fallback reconstruction only
+Timestamped transcript segments are aligned to visual screen-change events. The evidence model preserves the source time range and the distinction between observation, inference, and instructor narration.
 
-A prerecorded MP4 normally does not contain its original DOM tree, Accessibility tree, Windows UI Automation stream, or actual mouse/keyboard events. For legacy recordings only, reconstruct the limited UI events that can be supported by reviewing the recording and aligning those observations with narration.
+## Step 3 — Build and validate DecisionEpisodes (PR #38)
 
-- Mark reconstructed events as inferred_from_video.
-- Never represent a reconstructed click, key press, or hidden state change as directly captured telemetry.
-- Leave actions that cannot be established from the recording as unknown.
-- Keep the recording time range and the basis for each inference.
-- Do not promote frame-derived guesses into observed events.
+The minimal learning unit is a **DecisionEpisode**, not a chronological list of clicks. It represents:
 
-This is a compatibility path for historical material, not the default collection architecture. Sparse or dense frame extraction is not the primary learning method.
+**goal at the time → visible/known state → stated or inferred reason → selected decision → operation hypothesis → supported result evidence → next decision.**
 
-## Step 3 — Build Decision Episodes and workflows
+The extractor builds a structured episode from transcript segments, changed-frame observations, OCR, cursor/target hypotheses, and source metadata. The current video-derived episode is deliberately conservative: it keeps business constraints empty when unsupported, marks operation execution as not observed, marks outcome as not verified, and uses an ask-user review action where human confirmation is required.
 
-The minimal learning unit is a **Decision Episode**, not a simple chronological list of clicks. It represents:
+Every episode is checked by `contracts.validate.validate_episode` against the versioned DecisionEpisode schema and semantic rules. A valid schema does not mean that the episode is true, independently reviewed, or approved for training.
 
-**goal at the time → known business/UI situation → stated or inferred reason → selected strategy → delegated operation → observed result → next decision.**
+## Step 4 — Local verification and PM admission gate (PR #39)
 
-Each episode should preserve:
-- the task goal and success criteria;
-- the current business state and facts available at that decision point;
-- relevant conditions, constraints, and known unknowns;
-- instructor narration segments and their time ranges;
-- the instructor's explicit reason, separately from behavioral/model inference;
-- the selected next decision and the operation capability to delegate;
-- operation status and evidence-backed postcondition checks;
-- the next step, branch, recovery, question, approval request, or stop decision;
-- evidence provenance, observation channel, rationale source, and confidence.
+The local open-weight verifier evaluates three independent dimensions:
 
-Compose episodes into versioned HTN workflows with compound/primitive tasks, methods, conditional branches, hard dependencies, soft preferences, explicit ordering constraints, invariants, postconditions, operation capability IDs, and recovery rules.
+1. **Extraction fidelity:** episode claims must match timestamped transcript, OCR, frame-change, cursor, and GUI-grounding source records.
+2. **Decision validity:** the selected decision must be reasonable using only information available at that decision point.
+3. **Outcome validity:** there must be evidence for actual execution and a passed business postcondition, with confounders addressed. A video-only sequence is UNKNOWN, not causal proof.
 
-Do not assume that the instructor's demonstrated path is the only valid path. A tutorial may show only one successful route. Preserve alternative methods, scope, software version, applicability conditions, and conflicting sources.
+All three levels must pass; there is no majority vote. Missing evidence or malformed output is held as unknown. The local verifier receives structured timestamped extraction evidence rather than raw pixels, so the PM must still inspect the original source and proposed episode independently.
 
-## Step 4 — Deduplicate, review, and store
+**Local PASS is not training approval.** The preliminary admission state remains held pending the independent PM verification. Dataset admission requires both local verification and an evidence-linked PM PASS.
 
-1. Deduplicate exact source content by SHA-256 while retaining every acquisition record.
-2. Keep conflicting workflow claims from different tutorials, software versions, and conditions side by side. Never overwrite a conflicting statement, workflow, or evidence trail.
-3. The first review checks:
-   - every business fact and decision rationale has traceable evidence;
-   - instructor words, directly captured events, and behavioral inference are not conflated;
-   - event order and narration alignment are consistent;
-   - preconditions and postconditions match the evidence;
-   - no hidden click, key press, or business result is fabricated;
-   - uncertainty and conflicts are retained.
-4. PM Sangou independently verifies the candidate against its source tutorial and relevant tests. There is no separate outside manual-review queue; the two required project gates are the first review and PM verification.
-5. Only items that pass both the review approval switch and the quality/trainable gate enter the approved SQLite store and formal Brain training dataset.
+## Step 5 — Compile approved DecisionEpisodes into samples (PR #40)
 
-Rejected or unresolved items remain traceable with their review status and reasons but are excluded from the approved training snapshot.
+The training-sample compiler consumes review bundles containing the episode, local-verification report, and PM-verification record. It fails closed unless:
+- all three local verification levels pass;
+- the independent PM gate passes and cites source evidence and reviewed episode claims;
+- episode review approval and approved-for-training flags are set;
+- annotation quality is `human_reviewed` or `gold`, `trainable=true`, and exclusion reasons are empty.
 
-## Step 5 — Build training samples and train the Brain
+The compiler produces one Brain decision sample per decision point, source/course-grouped train/test splits, a manifest, and separate `training_meta` sidecars. Sidecar data is not part of model messages. The assistant target predicts the Brain's next decision only; future Hands results are not leaked into earlier decisions.
 
-1. Generate conversational JSONL samples with system/user/assistant messages. The input contains the goal, current state, relevant local HTN workflow slice, available capabilities, and any prior Hands result known at that decision point.
-2. Generate normal-decision and error-recovery examples. For recovery, put the prior Hands response in the user input. The assistant target predicts the Brain's next decision and must stop before the future execution outcome.
-3. Keep evidence_tier and rationale_loss_weight in a separate training_meta sidecar; these fields are metadata and are never fed to the model.
-4. Split by tutorial/course/source group so fragments and near-duplicates from one tutorial never cross train/test partitions.
-5. Train the vertical Brain LoRA on a cloud GPU. Current capacity-planning assumption: 4B BF16 LoRA on a 16GB T4; 9B planning requires a 24GB-or-larger GPU. Confirm the exact base revision, context, batch, optimizer, checkpointing, and peak VRAM in the actual training run.
-6. At runtime, pass the relevant local HTN workflow slice to the Brain. Updating volatile workflow rules in that data should not require retraining the LoRA.
+## Step 6 — Prepare the Brain LoRA training setup (PR #41)
 
-## Step 6 — Brain-to-Hands integration and expert validation
+The repository includes metadata-aware dataset preparation, train/test validation, tokenization checks, and an Axolotl configuration for the Qwen3 4B Brain LoRA profile. This is a reproducible setup and configuration gate, not a claim that a training run has completed or that a trained adapter exists. A non-empty dataset that passes the admission gates and an actual logged training run are still required.
 
-The Brain sends a high-level delegation JSON with an objective, capability ID, arguments, preconditions, constraints, expected postconditions, and observation requirements. A Hands adapter maps the capability to the existing GUI operation model. Hands returns a structured status, observed state, postcondition results, error category, and evidence references.
+## Step 7 — Brain-to-Hands closed loop (PR #42)
 
-The Brain must reason over the return and select the next action. A successful tool call or click is not proof of business success. Test:
-- goal decomposition and workflow planning;
-- correct method and branch selection under changed state;
-- prerequisite and invariant enforcement;
-- interpretation of successful, failed, partial, blocked, and ambiguous Hands results;
-- asking for missing information and requesting approval;
-- recovery, replan, and safe stop;
-- alternative valid paths and unseen business conditions.
+The Brain sends a high-level capability delegation with business arguments, preconditions, constraints, expected postconditions, and risk/approval metadata. Hands returns a correlated execution result with observed state, per-postcondition results, errors, and evidence references. The loop performs fresh observation and independent postcondition verification before it accepts progress; failed, partial, or uncertain results return to Brain for re-planning/recovery.
 
-The skill-package compiler and Docker sandbox are validation harnesses. They are not the final product and do not replace the trained Brain or the existing Hands model.
-
-## Historical model experiment status
-
-The earlier Colab T4 blind comparison of Qwen3-VL-4B and Mage-VL-4B was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. The comparison was not completed as a valid winner-selection benchmark. No winner is claimed. The frame-based extraction route was rejected as the primary tutorial-learning method; the semantic UI event stream plus instructor narration is the current design.
+The current CI path uses a deterministic `WorkflowBrain` stand-in driven by a WorkflowDefinition and `SimulatedHands`. `BrowserAgentHandsAdapter` bridges the protocol to the existing BrowserAgent and requires a domain-specific fresh business-state observer. No real Brain LoRA adapter or real UI-TARS-class Hands operation model was provisioned or run for PR #42. The closed-loop harness is not proof of a trained expert or a production end-to-end integration.
 
 ## Storage and provenance
 
-- Original tutorial videos and course groupings live in Google Drive.
-- Download records link each item to source URL, platform, creator, series, Drive location, and content hash.
-- Event records retain the source/session ID, event type, target/element reference, timestamps, before/after values where available, and capture method.
-- Narration records retain transcript text, language, alignment method, word/segment times, and source audio references.
-- Decision Episodes and workflow versions reference the event and narration evidence they use.
-- SQLite stores structured source metadata, event records, narration segments, decisions, workflows, conflicts, reviews, and training-dataset membership.
-- Legacy MP4 reconstruction retains its source time range and inferred_from_video provenance.
-- Failed, rejected, and superseded records remain traceable but are excluded from approved training snapshots.
+- Original tutorial video files and course groupings live in the archive; source URL, platform, attribution/license, and content hash remain attached.
+- Transcript records retain subtitle/ASR source, language, time ranges, and method.
+- Visual records retain frame timestamps, screen-change status, OCR text/boxes, and source frame references.
+- Cursor/click and UI-target hypotheses retain their inference method and must remain labelled `inferred_from_video`.
+- DecisionEpisodes link the evidence they use, retain unknowns, and preserve separate rationale/provenance labels.
+- Local verification, PM review, compiler manifests, sidecars, training configuration, adapter lineage, and Brain/Hands execution traces remain separately auditable.
+- Failed, rejected, held, and superseded records remain traceable but are excluded from approved training snapshots.
+
+## Historical model experiment status
+
+The earlier Colab T4 blind comparison of Qwen3-VL-4B and Mage-VL-4B was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. The comparison was not completed as a valid winner-selection benchmark; no model winner is claimed. This result did not reject frame extraction. The selected path is the file-based, frame-change-driven pipeline described above.
 
 ## Current implementation boundary
 
-The repository contains an acquisition prototype, Google Drive API storage code, FFmpeg media utilities, ASR/OCR Protocol interfaces and static adapters, knowledge/evidence components, skill compilation/validation, and GUI operation infrastructure. Static ASR/OCR adapters are test fixtures; they do not perform real transcription or recognition. Existing FFmpeg frame extraction is a media utility and a legacy compatibility aid, not the selected tutorial-learning path. The direct rrweb/Windows UIA event recorder, aligned narration pipeline, Decision Episode extractor, workflow learner, and Brain LoRA training/runtime integration remain implementation gaps.
+The repository contains the video-file extractor, DecisionEpisode builder and contract validator (#38), local decision verifier (#39), fail-closed training-sample compiler (#40), metadata-aware Brain LoRA preparation/configuration (#41), and Brain/Hands loop with simulated acceptance (#42). The extraction path uses local open-weight inference; it does not send video, image, OCR, transcript, or episode content to hosted model APIs.
+
+The pipeline stages are implemented as repository components and harnesses, not yet as a deployed single service. The compiler requires separately supplied PM review evidence. No real Brain adapter has been trained, and the current Brain/Hands CI acceptance uses a deterministic stub and simulated Hands.
