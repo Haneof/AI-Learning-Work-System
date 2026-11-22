@@ -1,77 +1,89 @@
 # Acceptance Criteria
 
-**Version:** 0.1 design update  
+**Version:** 0.2, aligned with PRs #38–#42  
 The pipeline is accepted on evidence quality, Brain workflow competence, and verified business outcomes—not transcript volume, screenshot count, or raw throughput.
 
 ## Step 1 — Download and archive
 
-- Every selected tutorial has a download record with source link and platform.
-- Creator/series/course grouping is preserved in the 5TB Google Drive archive.
-- Original metadata and license uncertainty are not fabricated.
-- SHA-256 is recorded to identify exact duplicate content.
+- Each selected tutorial is acquired as a downloadable video file.
+- Available timed subtitle files are preserved with the source video.
+- Every file has a record with source link, platform, content hash, creator/course grouping, and attribution/license metadata where available.
+- The source file is reproducibly available to the extraction command.
+- The learning route does not require real-time video playback or a live rrweb/Windows UIA recorder.
 
-## Step 2 — Capture semantic UI events and narration
+## Step 2 — Extract evidence from the video file (PR #38)
 
-- New web tutorials capture rrweb events directly from recording start.
-- New Windows desktop tutorials capture supported Windows UI Automation events and record provider limitations.
-- Event timestamps, application/page/window identity, target references, and before/after state changes are retained where available.
-- Instructor audio is preserved and synchronized with the event stream.
-- Existing subtitles are used first; ASR runs only when usable subtitles are unavailable.
-- Narration is aligned at word or segment granularity, with method and uncertainty recorded.
-- Legacy MP4 reconstruction is explicitly labelled inferred_from_video; it is not treated as direct telemetry.
-- Sparse/dense frame extraction is not used as the primary tutorial-learning input.
+- Existing timestamped SRT/WebVTT subtitles are preferred.
+- Local ASR is used only when no usable subtitle cues are available.
+- FFmpeg produces timestamped sampled stills and pixel-difference detection selects the initial/changed frames.
+- OCR reads visible UI text from selected frames.
+- Cursor/possible-click inference and local UI-target grounding are retained as hypotheses, not native event telemetry.
+- Transcript segments are aligned to visual screen-change events.
+- Evidence preserves source timestamps, extraction methods, provenance, and uncertainty.
+- Video-visible observations are labelled `observed_from_video`; inferred cursor/click/target items are `inferred_from_video`; instructor words remain separate.
+- Hidden clicks, keypresses, DOM changes, and unobservable business state remain unknown rather than fabricated.
 
-## Step 3 — Decision Episodes and workflows
+## Step 3 — DecisionEpisode and contract validation (PR #38)
 
-- Each Decision Episode records goal, decision-time state, rationale source, chosen strategy, operation, result, and next decision.
-- Instructor-explicit statements are separated from behavioral inference and project-owner-provided rules.
-- Every decision-driving fact and rationale has evidence or is explicitly unknown.
-- HTN workflows include compound/primitive tasks, methods, conditions, dependencies, preferences, ordering constraints, invariants, transitions, and recovery rules.
-- Conflicting workflows from different tutorials, application versions, or applicability conditions coexist; no overwrite.
-- A single tutorial's path is not assumed to be the only valid path.
+- Each DecisionEpisode records the goal, decision-time state, rationale source, selected decision, operation hypothesis/status, result evidence, next decision, and unresolved questions.
+- Every important claim links to source evidence or is explicitly marked inferred/unknown.
+- The episode passes JSON Schema and semantic validation.
+- A schema-valid episode is not automatically true, independently reviewed, or approved for training.
+- A video-derived record does not claim that an operation executed or a business postcondition passed unless separate evidence supports it.
 
-## Step 4 — Review and training data
+## Step 4 — Local verification and PM review (PR #39)
 
-- Exact duplicate source content is identified by SHA-256.
-- The first review checks evidence resolution, event/narration alignment, workflow consistency, and uncertainty.
-- PM Sangou independently verifies source evidence and relevant tests.
-- Both review.status=approved/approved_for_training and quality.trainable gates must pass.
-- Conversational JSONL examples and the separate training_meta sidecar are consistent.
-- Normal-decision and error-recovery examples use only information available at that decision point.
-- Future Hands execution outcomes do not leak into the assistant target.
-- Train/test split is grouped by tutorial/course/source.
-- Only eligible examples enter the immutable training dataset snapshot.
+- The local verifier returns separate pass/fail/unknown verdicts for extraction fidelity, decision validity, and outcome validity.
+- All three local levels must pass; no majority vote can override a failed or unknown level.
+- Invalid evidence references, missing source/model evidence, and malformed output remain held.
+- A video-only temporal sequence is UNKNOWN for causal outcome validity.
+- The PM independently inspects the original source and proposed episode and records a separate PASS with source-evidence and proposed-record references.
+- Local PASS alone never makes an episode eligible for training.
 
-## Step 5 — Brain LoRA and Brain-to-Hands validation
+## Step 5 — Compile Brain training samples (PR #40)
 
-- Every dataset snapshot and training run records example/source hashes, base revision, configuration, compute/GPU, and adapter hash.
-- The 4B BF16 LoRA path is planned for a T4 16GB cloud GPU; the 9B path requires 24GB+ planning capacity. Actual usage must be measured.
-- Runtime prompts include the applicable local HTN workflow slice.
-- Brain decisions are first evaluated with a simulated Hands executor.
-- The real existing Hands model is connected through a capability adapter; no new button-recognition or low-level operation model is required.
-- Hands returns structured status, observed state, postcondition results, errors, and evidence references.
-- Passing requires business postcondition verification, branch handling, and safe recovery—not a successful click alone.
-- The Brain handles success, failure, partial success, blocked, and ambiguous operation results.
-- Evaluation includes unseen tasks, changed initial states, alternative valid routes, missing information, and error recovery.
+- The compiler accepts only episodes with local verifier PASS, independent PM PASS, approved review, eligible annotation state, `trainable=true`, and no exclusion reasons.
+- Every decision point becomes a separate conversational sample.
+- Assistant targets contain the Brain's next decision only; future Hands results do not leak into earlier decisions.
+- Evidence tier and rationale loss weight are kept in a separate training-metadata sidecar, not model messages.
+- All episodes/near-duplicates from one source/course group stay in one train/test partition.
+- The manifest records included/excluded counts and split assignments; held records fail closed.
+
+## Step 6 — Brain LoRA training setup and execution (PR #41)
+
+- Sidecars are required, aligned, uniquely identified, and partition-consistent.
+- Excluded or not-eligible rows are rejected.
+- Training-row weighting is deterministic and bounded; test rows remain unchanged.
+- The T4 Axolotl config uses the original `DreamFast/qwen3-4b-heretic` Transformers checkpoint, FP16 compute, and the documented LoRA modules/settings.
+- Dataset preparation and configuration validation pass before any model download or training.
+- **A real training run is a separate acceptance step:** record dataset hash, base revision, run parameters, GPU/VRAM, metrics, and adapter hash. PR #41 did not run training or produce adapter weights.
+
+## Step 7 — Brain-to-Hands loop (PR #42)
+
+- Brain delegation is business-level and names a registered capability, arguments, preconditions, constraints, risk/approval policy, and expected postconditions.
+- Hands results are correlated by call/task ID and include status, fresh state, postcondition checks, and evidence references.
+- The loop independently verifies expected postconditions against a fresh observation before accepting progress.
+- Failed, partial, or uncertain execution returns to Brain for recovery/replanning; non-idempotent actions are not blindly retried.
+- Acceptance is scored by business-goal completion and safe recovery, not click count or model "done" text.
+- **Current merged CI scope:** deterministic WorkflowBrain plus SimulatedHands. The BrowserAgentHandsAdapter is available as a bridge, but PR #42 did not run a trained Brain LoRA or a real UI-TARS-class Hands model.
 
 ## Quality metrics
 
 Freeze thresholds before held-out evaluation. At minimum measure:
-- decision accuracy at each decision point;
-- task decomposition and dependency/order correctness;
-- conditional branch selection;
-- business rationale and evidence provenance correctness;
-- precondition and postcondition verification;
-- capability selection and safe delegation;
-- Hands result interpretation;
-- recovery/replan/stop decision quality;
+- extraction fidelity and timestamp alignment;
+- OCR and changed-frame coverage;
+- UI target-box localization (not click-event accuracy);
+- observed/inferred/unknown label correctness;
+- decision validity and provenance of rationale;
+- outcome validity and postcondition evidence;
+- task decomposition, dependency/order reasoning, and branch selection;
+- capability selection, safe delegation, and Hands-result interpretation;
+- recovery/replan/stop quality;
 - held-out business-goal completion and transfer to alternative routes;
-- evidence coverage and unsupported-claim rate;
-- direct-capture versus inferred-from-video classification accuracy;
-- safety violations (must be zero).
+- evidence coverage, unsupported-claim rate, and safety violations (must be zero).
 
 Throughput and cost are optimized only after the quality gates pass.
 
 ## Release blocking
 
-Any fabricated instructor reason, unsupported business rule, false direct-capture claim, unresolved critical evidence, material workflow inconsistency, future-outcome leakage, unreviewed training example, unregistered capability call, or critical sandbox/Hands safety failure blocks release.
+Any fabricated instructor reason, unsupported business rule, false native-event claim, unsupported click/outcome assertion, unresolved critical evidence, invalid local or PM gate, unreviewed training sample, future-outcome leakage, unregistered capability call, or critical sandbox/Hands safety failure blocks release.
