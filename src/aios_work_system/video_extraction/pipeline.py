@@ -166,7 +166,9 @@ class VideoExtractionPipeline:
         self.decision_verifier_server_binary = decision_verifier_server_binary
         self.decision_verifier_port = decision_verifier_port
         self.decision_verifier_gpu_layers = (
-            llama_gpu_layers if decision_verifier_gpu_layers is None else decision_verifier_gpu_layers
+            llama_gpu_layers
+            if decision_verifier_gpu_layers is None
+            else decision_verifier_gpu_layers
         )
         self.decision_verifier = decision_verifier
 
