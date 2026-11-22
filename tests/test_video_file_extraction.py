@@ -18,6 +18,7 @@ from aios_work_system.video_extraction.transcript import (
 )
 from contracts.validate import validate_episode
 
+
 def test_video_pipeline_cli_help_registers_secondary_small_model_option_once():
     script = Path(__file__).resolve().parents[1] / "scripts" / "run_video_file_pipeline.py"
     completed = subprocess.run(
@@ -29,6 +30,12 @@ def test_video_pipeline_cli_help_registers_secondary_small_model_option_once():
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.count("--ui-secondary-small-model-path") == 1
 
+
+def test_pipeline_accepts_explicit_secondary_small_grounder_path():
+    from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline
+
+    pipeline = VideoExtractionPipeline(ui_secondary_small_model_path="custom-ui-tars-2b")
+    assert pipeline.ui_secondary_small_model_path == "custom-ui-tars-2b"
 
 def test_timestamp_parser_accepts_srt_and_vtt_clock_formats():
     assert timestamp_to_ms("00:01:02,345") == 62_345

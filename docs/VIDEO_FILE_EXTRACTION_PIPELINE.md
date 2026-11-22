@@ -4,7 +4,7 @@
 
 This pipeline processes downloaded tutorial **video files** with local programs. It does not record live browser sessions, use rrweb, or reconstruct native click telemetry from screenshots.
 
-All model inference in the learning/extraction path must use locally loaded open-weight models. GPT, Gemini, hosted moderation services, and hosted inference endpoints are not permitted. Hugging Face access in the downloader is used only to fetch model weight files. The processing command loads models from local paths; the demo workflow sets \`HF_HUB_OFFLINE=1\` and \`TRANSFORMERS_OFFLINE=1\` for the inference stage.
+All model inference in the learning/extraction path uses local open-weight models. GPT, Gemini, hosted moderation services, and hosted inference endpoints are not permitted. The demo downloads the primary small models before processing. It permits Hugging Face access solely for fallback weight files if—and only if—the existing measured quality gates justify escalation: UI-TARS-7B after at least one 2B model was measured and both available 2B models miss the grounding threshold; the 9B synthesis model only after the 4B model generated an output that fails JSON, semantic, or contract checks. Downloaded weights are loaded from disk and inference remains local; no video, frame, OCR, transcript, or episode data is sent to a remote model service.
 
 The code reports \`external_inference_provider_calls: 0\`. No video, image, OCR, transcript, or episode content is sent to a model API.
 
@@ -58,7 +58,7 @@ Large fallbacks are optional and can be downloaded only when the operator has en
 
 The weight downloader writes \`artifacts/models/model-manifest.json\`. It downloads weight files only and performs no inference.
 
-## Run an offline local video-file demo
+## Run a local video-file demo
 
 Download one tutorial file and timestamped subtitles:
 
@@ -78,7 +78,7 @@ To explicitly permit downloading a fallback model's **weights** after its escala
 
 The output directory contains:
 
-- \`part-breakdown.json\`: per-stage status and counts, model IDs, model licences, measured scores, fallback decisions, timings, and inference backend.
+- \`part-breakdown.json\`: per-stage status and counts, stage wall-clock timings, model IDs, model licences, measured scores, fallback decisions, and inference backend. Grounding predictions and synthesis attempts also record their own model latency separately.
 - \`ui-grounding-model-evaluation.json\`: primary/secondary/fallback target-box scores and per-frame predictions.
 - \`decision-synthesis.json\`: Aurum-4B parse/quality/schema result, fallback trigger/result, selected model, latency and token counts.
 - \`transcript.json\`, \`ocr.json\`, \`cursor-and-click-inferences.json\`, \`ui-grounding.json\`, \`narration-alignment.json\`.

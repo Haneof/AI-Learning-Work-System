@@ -74,15 +74,13 @@ jobs:
           cat artifacts/models/model-manifest.json
       - name: Run downloaded video using local open-weight models only
         env:
-          HF_HUB_OFFLINE: "1"
-          TRANSFORMERS_OFFLINE: "1"
           HF_HUB_DISABLE_TELEMETRY: "1"
         run: |
           VIDEO_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_path"])')"
           CAPTIONS_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["captions_path"] or "")')"
           SOURCE_ID="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_id"])')"
           SOURCE_PLATFORM="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["extractor"])')"
-          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform "$SOURCE_PLATFORM" --sample-fps 2 --maximum-changed-frames 8 --minimum-grounding-accuracy 0.75 --ui-model-path artifacts/models/showui-2b --ui-secondary-small-model-path artifacts/models/ui-tars-2b --ui-fallback-model-path artifacts/models/ui-tars-7b --grounding-benchmark tests/fixtures/video_grounding_benchmark.wikimedia.json --episode-model-path artifacts/models/aurum-4b-q4.gguf --episode-fallback-model-path artifacts/models/deepseek-v4-pro-9b-q4.gguf --llama-gpu-layers 0)
+          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform "$SOURCE_PLATFORM" --sample-fps 2 --maximum-changed-frames 8 --minimum-grounding-accuracy 0.75 --ui-model-path artifacts/models/showui-2b --ui-secondary-small-model-path artifacts/models/ui-tars-2b --ui-fallback-model-path artifacts/models/ui-tars-7b --grounding-benchmark tests/fixtures/video_grounding_benchmark.wikimedia.json --episode-model-path artifacts/models/aurum-4b-q4.gguf --episode-fallback-model-path artifacts/models/deepseek-v4-pro-9b-q4.gguf --llama-gpu-layers 0 --allow-model-download)
           if [[ -n "$CAPTIONS_PATH" ]]; then
             ARGS+=(--captions "$CAPTIONS_PATH")
           fi
