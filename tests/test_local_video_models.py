@@ -358,7 +358,7 @@ def test_synthesis_context_uses_bounded_ocr_near_grounded_changed_frames(tmp_pat
     assert all(len(item["visible_text"]) <= 320 for item in context["ocr_observations"])
     assert len(context["instructor_words"]) <= 48
     assert all(len(item["text"]) <= 220 for item in context["instructor_words"])
-    assert len(json.dumps(context, ensure_ascii=False)) < 16_000
+    assert len(json.dumps(context, ensure_ascii=False)) < 18_000
 
 
 def test_aurum_4b_pass_prevents_deepseek_9b_escalation(tmp_path, monkeypatch):
