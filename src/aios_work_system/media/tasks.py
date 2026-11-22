@@ -17,6 +17,10 @@ class MediaTaskError(RuntimeError):
     """Raised when a journaled media task exhausts its retry budget."""
 
 
+class TaskJournalError(RuntimeError):
+    """Raised when a task journal cannot be read or decoded."""
+
+
 @dataclass
 class TaskRecord:
     task_id: str
@@ -34,10 +38,22 @@ class TaskJournal:
         self.path = Path(path)
         self.records: dict[str, TaskRecord] = {}
         if self.path.exists():
-            payload = json.loads(self.path.read_text(encoding="utf-8"))
-            self.records = {
-                task_id: TaskRecord(**record) for task_id, record in payload.items()
-            }
+            try:
+                payload = json.loads(self.path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+                raise TaskJournalError(
+                    f"Task journal at {self.path} is unreadable or contains invalid JSON: {exc}"
+                ) from exc
+            if not isinstance(payload, dict):
+                raise TaskJournalError(f"Task journal at {self.path} must contain a JSON object")
+            try:
+                self.records = {
+                    task_id: TaskRecord(**record) for task_id, record in payload.items()
+                }
+            except (AttributeError, TypeError) as exc:
+                raise TaskJournalError(
+                    f"Task journal at {self.path} contains an invalid task record: {exc}"
+                ) from exc
 
     def _save(self) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
@@ -105,4 +121,3 @@ class TaskJournal:
                 record.updated_at = datetime.now(UTC).isoformat()
                 self._save()
                 return result
-        return None

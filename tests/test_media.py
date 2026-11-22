@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from aios_work_system.media.ffmpeg import FFmpegProcessor, NoAudioStreamError
+from aios_work_system.media.ffmpeg import FFmpegProcessor, MediaProcessingError, NoAudioStreamError
 from aios_work_system.media.pdf import extract_pdf_pages
 from aios_work_system.media.source import SegmentRecord, register_source
-from aios_work_system.media.tasks import MediaTaskError, TaskJournal
+from aios_work_system.media.tasks import MediaTaskError, TaskJournal, TaskJournalError
 
 
 class FakePage:
@@ -73,6 +73,38 @@ def test_ffmpeg_probe_parses_stream_metadata(tmp_path, monkeypatch):
     result = processor.probe(media_path)
 
     assert result["streams"][0]["codec_type"] == "video"
+
+
+def test_ffmpeg_probe_wraps_bad_source_paths_in_media_processing_error(tmp_path):
+    processor = FFmpegProcessor()
+
+    with pytest.raises(MediaProcessingError, match="Could not resolve media source"):
+        processor.probe(tmp_path / "missing.mp4")
+
+
+def test_extract_frames_enforces_a_hard_frame_cap(tmp_path, monkeypatch):
+    source = tmp_path / "source.mp4"
+    source.write_bytes(b"placeholder")
+    output = tmp_path / "frames"
+    processor = FFmpegProcessor()
+    commands = []
+
+    def fake_run(command):
+        commands.append(command)
+        output.mkdir(parents=True, exist_ok=True)
+        for index in range(1, 4):
+            (output / f"frame_{index:06d}.jpg").write_bytes(b"frame")
+        return ""
+
+    monkeypatch.setattr(processor, "_run", fake_run)
+
+    with pytest.raises(ValueError, match="max_frames must be between"):
+        processor.extract_frames(source, output, max_frames=0)
+
+    frames = processor.extract_frames(source, output, max_frames=2)
+
+    assert len(frames) == 2
+    assert commands[-1][commands[-1].index("-frames:v") + 1] == "2"
 
 
 def test_audio_extraction_rejects_video_without_audio(tmp_path, monkeypatch):
@@ -147,3 +179,10 @@ def test_task_journal_persists_exhausted_failure(tmp_path):
 
     assert journal.records["broken-source"].state == "FAILED"
     assert journal.records["broken-source"].error == "RuntimeError: broken media"
+
+def test_task_journal_reports_corrupt_json_with_a_clear_error(tmp_path):
+    journal_path = tmp_path / "corrupt-task-journal.json"
+    journal_path.write_text("{ invalid json", encoding="utf-8")
+
+    with pytest.raises(TaskJournalError, match="invalid JSON"):
+        TaskJournal(journal_path)

@@ -167,6 +167,42 @@ def test_validator_rejects_dynamic_execution_and_network_imports(tmp_path):
     assert any("blocked call 'eval'" in error for error in report.errors)
 
 
+@pytest.mark.parametrize(
+    "script",
+    [
+        "import os as operating_system\noperating_system.system('echo blocked')\n",
+        "import os\ngetattr(os, 'system')('echo blocked')\n",
+        "from os import system as run_command\nrun_command('echo blocked')\n",
+        "__builtins__['eval']('1 + 1')\n",
+    ],
+)
+def test_validator_rejects_ast_blacklist_alias_and_dynamic_lookup_bypasses(tmp_path, script):
+    package = tmp_path / "unsafe-alias"
+    package.mkdir()
+    write_valid_package(package)
+    (package / "scripts" / "run.py").write_text(script, encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert not report.passed
+    assert any("blocked" in error for error in report.errors)
+
+
+def test_validator_rejects_empty_manifest_evidence(tmp_path):
+    package = tmp_path / "empty-evidence"
+    package.mkdir()
+    write_valid_package(package)
+    manifest_path = package / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["evidence"] = []
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+
+    report = validate_skill_package(package)
+
+    assert not report.passed
+    assert any("manifest evidence" in error and "non-empty" in error for error in report.errors)
+
+
 def test_validator_rejects_test_path_traversal(tmp_path):
     package = tmp_path / "traversal"
     package.mkdir()
@@ -276,6 +312,7 @@ def test_docker_sandbox_disables_network_and_requires_digest(tmp_path):
 
     assert "--network=none" in command
     assert "--read-only" in command
+    assert "--tmpfs=/workspace/output:rw,noexec,nosuid,size=64m" in command
     assert "--cap-drop=ALL" in command
     assert any(argument.startswith("--memory=") for argument in command)
     with pytest.raises(ValueError):

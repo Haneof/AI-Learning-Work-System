@@ -18,12 +18,13 @@ def make_segment(
     expert_id="expert-a",
     text="The return window is 30 days.",
     shared_with_experts=frozenset(),
+    locator=None,
 ):
     return SourceSegment(
         segment_id=segment_id,
         source_id="source-1",
         expert_id=expert_id,
-        locator={"page": 2},
+        locator=locator if locator is not None else {"page": 2},
         text_content=text,
         shared_with_experts=shared_with_experts,
     )
@@ -192,3 +193,34 @@ def test_expert_cannot_read_another_experts_knowledge():
         pass
     else:
         raise AssertionError("cross-expert knowledge access must be denied")
+
+def test_registry_deep_copies_segments_and_knowledge_evidence():
+    registry = KnowledgeRegistry()
+    segment = make_segment()
+    registry.add_segment(segment)
+    segment.locator["page"] = -1
+
+    item = make_item()
+    result = registry.add_knowledge(item)
+
+    assert result.accepted
+    item.evidence.clear()
+    stored = registry.get("knowledge-1", "expert-a")
+    assert len(stored.evidence) == 1
+
+    stored.evidence.clear()
+    assert len(registry.get("knowledge-1", "expert-a").evidence) == 1
+
+    listed = registry.list_for_expert("expert-a")
+    listed[0].evidence.clear()
+    assert len(registry.list_for_expert("expert-a")[0].evidence) == 1
+
+
+def test_locator_validation_checks_all_supplied_keys():
+    registry = KnowledgeRegistry()
+    registry.add_segment(make_segment(locator={"page": 2, "timestamp_ms": -1}))
+
+    result = registry.add_knowledge(make_item())
+
+    assert not result.accepted
+    assert "evidence[0] source locator is invalid" in result.errors

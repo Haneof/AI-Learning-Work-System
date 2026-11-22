@@ -129,6 +129,10 @@ for target in denied_paths:
         raise AssertionError(f"write unexpectedly succeeded: {target}")
 
 Path("/tmp/pvd-sandbox-positive-control.txt").write_text("ok", encoding="utf-8")
+workspace_output = Path("/workspace/output/pvd-output.txt")
+workspace_output.write_text("workspace output", encoding="utf-8")
+assert workspace_output.read_text(encoding="utf-8") == "workspace output"
+print("WORKSPACE_OUTPUT_WRITE_ALLOWED")
 print("TMPFS_WRITE_ALLOWED")
 """
     result = _run_package(package, script)
@@ -136,6 +140,7 @@ print("TMPFS_WRITE_ALLOWED")
     assert "WRITE_BLOCKED:/workspace/" in result.stdout
     assert "WRITE_BLOCKED:/pvd-rootfs-" in result.stdout
     assert "TMPFS_WRITE_ALLOWED" in result.stdout
+    assert "WORKSPACE_OUTPUT_WRITE_ALLOWED" in result.stdout
     _assert_no_sandbox_containers()
 
 

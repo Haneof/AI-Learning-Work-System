@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from dataclasses import dataclass
 
 from aios_work_system.knowledge.types import KnowledgeItem, KnowledgeState, SourceSegment
@@ -26,7 +27,7 @@ class KnowledgeRegistry:
         existing = self._segments.get(segment.segment_id)
         if existing and existing != segment:
             raise ValueError("A source segment ID cannot be reused for different content")
-        self._segments[segment.segment_id] = segment
+        self._segments[segment.segment_id] = copy.deepcopy(segment)
 
     def add_knowledge(self, item: KnowledgeItem) -> RegistryResult:
         if item.knowledge_id in self._items:
@@ -39,12 +40,13 @@ class KnowledgeRegistry:
         if errors:
             return RegistryResult(False, None, errors=tuple(errors))
         item.content_hash = statement_hash(item.statement)
+        stored_item = copy.deepcopy(item)
 
         for existing in self._items.values():
             if (
-                existing.expert_id == item.expert_id
-                and existing.content_hash == item.content_hash
-                and existing.epistemic_type == item.epistemic_type
+                existing.expert_id == stored_item.expert_id
+                and existing.content_hash == stored_item.content_hash
+                and existing.epistemic_type == stored_item.epistemic_type
             ):
                 return RegistryResult(
                     accepted=True,
@@ -53,19 +55,19 @@ class KnowledgeRegistry:
                 )
 
         conflicts: list[str] = []
-        if item.conflict_key:
+        if stored_item.conflict_key:
             for existing in self._items.values():
                 if (
-                    existing.expert_id == item.expert_id
-                    and existing.conflict_key == item.conflict_key
-                    and existing.content_hash != item.content_hash
+                    existing.expert_id == stored_item.expert_id
+                    and existing.conflict_key == stored_item.conflict_key
+                    and existing.content_hash != stored_item.content_hash
                 ):
                     existing.state = KnowledgeState.REVIEW_REQUIRED
                     conflicts.append(existing.knowledge_id)
             if conflicts:
-                item.state = KnowledgeState.REVIEW_REQUIRED
+                stored_item.state = KnowledgeState.REVIEW_REQUIRED
 
-        self._items[item.knowledge_id] = item
+        self._items[stored_item.knowledge_id] = stored_item
         return RegistryResult(
             accepted=True,
             item_id=item.knowledge_id,
@@ -76,7 +78,11 @@ class KnowledgeRegistry:
         item = self._items[knowledge_id]
         if item.expert_id != expert_id:
             raise PermissionError("Knowledge item belongs to another expert scope")
-        return item
+        return copy.deepcopy(item)
 
     def list_for_expert(self, expert_id: str) -> list[KnowledgeItem]:
-        return [item for item in self._items.values() if item.expert_id == expert_id]
+        return [
+            copy.deepcopy(item)
+            for item in self._items.values()
+            if item.expert_id == expert_id
+        ]

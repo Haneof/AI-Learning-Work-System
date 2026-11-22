@@ -24,13 +24,27 @@ def statement_hash(statement: str) -> str:
 
 
 def _valid_locator(locator: dict[str, int]) -> bool:
-    if "page" in locator:
-        return locator["page"] >= 1
-    if "start_ms" in locator and "end_ms" in locator:
-        return locator["start_ms"] >= 0 and locator["end_ms"] > locator["start_ms"]
-    if "timestamp_ms" in locator:
-        return locator["timestamp_ms"] >= 0
-    return False
+    if not isinstance(locator, dict) or not locator:
+        return False
+
+    allowed_keys = {"page", "start_ms", "end_ms", "timestamp_ms"}
+    if set(locator) - allowed_keys:
+        return False
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in locator.values()):
+        return False
+
+    if "page" in locator and locator["page"] < 1:
+        return False
+    if ("start_ms" in locator) != ("end_ms" in locator):
+        return False
+    if "start_ms" in locator and (
+        locator["start_ms"] < 0 or locator["end_ms"] <= locator["start_ms"]
+    ):
+        return False
+    if "timestamp_ms" in locator and locator["timestamp_ms"] < 0:
+        return False
+
+    return bool(locator)
 
 
 def validate_knowledge(

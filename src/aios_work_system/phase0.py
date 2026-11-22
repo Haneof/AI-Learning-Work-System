@@ -224,9 +224,14 @@ def _write_report(output: Path, report: dict[str, Any]) -> None:
 
 def run_phase0_demo(output_dir: str | Path) -> dict[str, Any]:
     output = Path(output_dir).expanduser().resolve()
-    if output.exists() and any(output.iterdir()):
+    if output.exists() and not output.is_dir():
+        raise ValueError(f"Output path must be a directory: {output}")
+    if output.is_dir() and any(output.iterdir()):
         raise ValueError(f"Output directory must be empty: {output}")
-    output.mkdir(parents=True, exist_ok=True)
+    try:
+        output.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise ValueError(f"Cannot create Phase 0 output directory '{output}': {exc}") from exc
 
     source_path = output / "input" / "lesson.txt"
     source_path.parent.mkdir(parents=True, exist_ok=True)
