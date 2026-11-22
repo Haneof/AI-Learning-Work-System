@@ -138,9 +138,7 @@ def _check_python_script(path: Path) -> list[str]:
                 if not isinstance(target, ast.Name):
                     continue
                 if assignment.id in BLOCKED_CALLS or assignment.id in call_aliases:
-                    call_aliases[target.id] = call_aliases.get(
-                        assignment.id, assignment.id
-                    )
+                    call_aliases[target.id] = call_aliases.get(assignment.id, assignment.id)
                 if assignment.id in dynamic_lookup_aliases:
                     dynamic_lookup_aliases.add(target.id)
 
