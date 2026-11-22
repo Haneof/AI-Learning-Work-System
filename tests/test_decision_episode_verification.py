@@ -116,7 +116,11 @@ def _response(decision_status="pass", outcome_status="unknown", causal_basis="un
             },
             "outcome_validity": {
                 "status": outcome_status,
-                "reasons": ["The result is supported." if outcome_status == "pass" else "Causal proof is missing."],
+                "reasons": [
+                    "The result is supported."
+                    if outcome_status == "pass"
+                    else "Causal proof is missing."
+                ],
                 "evidence_refs": ["ev-action", "ev-result"],
                 "unknowns": [],
                 "causal_basis": causal_basis,
@@ -229,5 +233,11 @@ def test_dataset_requires_local_pass_and_separate_pm_pass():
         },
     }
     assert training_dataset_admission_status(local, None)["eligible_for_dataset"] is False
-    assert training_dataset_admission_status(local, {"status": "fail"})["eligible_for_dataset"] is False
-    assert training_dataset_admission_status(local, {"status": "pass"})["eligible_for_dataset"] is True
+    assert (
+        training_dataset_admission_status(local, {"status": "fail"})["eligible_for_dataset"]
+        is False
+    )
+    assert (
+        training_dataset_admission_status(local, {"status": "pass"})["eligible_for_dataset"]
+        is True
+    )
