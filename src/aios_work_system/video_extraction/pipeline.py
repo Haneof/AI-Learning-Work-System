@@ -95,6 +95,7 @@ class VideoExtractionPipeline:
         language: str | None = None,
         *,
         ui_model_path: str | Path | None = None,
+        ui_secondary_small_model_path: str | Path | None = None,
         ui_fallback_model_path: str | Path | None = None,
         grounding_benchmark_path: str | Path | None = None,
         episode_model_path: str | Path | None = None,
@@ -117,7 +118,7 @@ class VideoExtractionPipeline:
             "AIOS_UI_MODEL_PATH",
             "artifacts/models/showui-2b",
         )
-        self.ui_secondary_small_model_path = os.getenv(
+        self.ui_secondary_small_model_path = ui_secondary_small_model_path or os.getenv(
             "AIOS_UI_SECONDARY_SMALL_MODEL_PATH",
             "artifacts/models/ui-tars-2b",
         )

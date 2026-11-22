@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -18,6 +19,18 @@ from aios_work_system.video_extraction.transcript import (
 )
 from contracts.validate import validate_episode
 
+
+
+def test_video_pipeline_cli_help_registers_secondary_small_model_option_once():
+    script = Path(__file__).resolve().parents[1] / "scripts" / "run_video_file_pipeline.py"
+    completed = subprocess.run(
+        [sys.executable, str(script), "--help"],
+        capture_output=True,
+        check=False,
+        text=True,
+    )
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.count("--ui-secondary-small-model-path") == 1
 
 def test_timestamp_parser_accepts_srt_and_vtt_clock_formats():
     assert timestamp_to_ms("00:01:02,345") == 62_345

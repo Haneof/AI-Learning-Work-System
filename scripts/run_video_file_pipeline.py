@@ -10,8 +10,6 @@ from pathlib import Path
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPOSITORY_ROOT))
 
-from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline  # noqa: E402
-
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
@@ -33,11 +31,7 @@ def main() -> int:
         type=Path,
         default=Path("artifacts/models/ui-tars-7b"),
     )
-    parser.add_argument(
-        "--ui-secondary-small-model-path",
-        type=Path,
-        default=Path("artifacts/models/ui-tars-2b"),
-    )
+
     parser.add_argument(
         "--grounding-benchmark",
         type=Path,
@@ -73,6 +67,8 @@ def main() -> int:
     parser.add_argument("--source-id")
     parser.add_argument("--source-platform", default="youtube")
     args = parser.parse_args()
+
+    from aios_work_system.video_extraction.pipeline import VideoExtractionPipeline
 
     try:
         pipeline = VideoExtractionPipeline(
