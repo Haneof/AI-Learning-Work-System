@@ -29,7 +29,9 @@ class _NoRedirect(urllib.request.HTTPRedirectHandler):
 def _validate_loopback(endpoint: str) -> urllib.parse.ParseResult:
     parsed = urllib.parse.urlparse(endpoint)
     if parsed.scheme != "http" or not parsed.hostname or parsed.username or parsed.password:
-        raise ValueError("remote verifier endpoints are forbidden; use plain HTTP on a local loopback host")
+        raise ValueError(
+            "remote verifier endpoints are forbidden; use plain HTTP on a local loopback host"
+        )
     host = parsed.hostname.lower()
     try:
         is_loopback = host == "localhost" or ipaddress.ip_address(host).is_loopback
@@ -61,7 +63,12 @@ def _completion_json(payload: dict[str, Any]) -> dict[str, Any]:
 class LocalOpenModelClient:
     """Standard-library client restricted to a local llama.cpp-compatible endpoint."""
 
-    def __init__(self, endpoint: str = DEFAULT_ENDPOINT, model_name: str = "local-open-model", timeout: float = 180):
+    def __init__(
+        self,
+        endpoint: str = DEFAULT_ENDPOINT,
+        model_name: str = "local-open-model",
+        timeout: float = 180,
+    ):
         self.endpoint = endpoint
         _validate_loopback(endpoint)
         self.model_name = model_name
@@ -89,14 +96,23 @@ class LocalOpenModelClient:
             with self.opener.open(request, timeout=self.timeout) as response:
                 result = json.loads(response.read().decode("utf-8"))
         except (OSError, urllib.error.URLError, json.JSONDecodeError) as exc:
-            raise LocalModelUnavailable(f"local verifier request failed: {type(exc).__name__}: {exc}") from exc
+            raise LocalModelUnavailable(
+                f"local verifier request failed: {type(exc).__name__}: {exc}"
+            ) from exc
         return _completion_json(result)
 
 
 class _LlamaServer:
     """Start an optional local llama-server process for one verification request."""
 
-    def __init__(self, model_path: Path, endpoint: str, binary: str, timeout: float, gpu_layers: int):
+    def __init__(
+        self,
+        model_path: Path,
+        endpoint: str,
+        binary: str,
+        timeout: float,
+        gpu_layers: int,
+    ):
         self.model_path = model_path
         self.endpoint = endpoint
         self.binary = binary
@@ -114,17 +130,24 @@ class _LlamaServer:
         ]
         try:
             self.process = subprocess.Popen(
-                command, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+                command,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
             )
         except OSError as exc:
             raise LocalModelUnavailable(f"could not start local llama-server: {exc}") from exc
-        health_url = urllib.parse.urlunparse(parsed._replace(path="/health", params="", query="", fragment=""))
+        health_url = urllib.parse.urlunparse(
+            parsed._replace(path="/health", params="", query="", fragment="")
+        )
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), _NoRedirect())
         deadline = time.monotonic() + self.timeout
         try:
             while time.monotonic() < deadline:
                 if self.process.poll() is not None:
-                    raise LocalModelUnavailable(f"llama-server exited with code {self.process.returncode}")
+                    raise LocalModelUnavailable(
+                        f"llama-server exited with code {self.process.returncode}"
+                    )
                 try:
                     with opener.open(health_url, timeout=1):
                         return self
@@ -297,7 +320,9 @@ class LocalDecisionEpisodeVerifier:
             source_evidence.get(key)
             for key in ("transcript", "frames", "ocr_records", "cursor_events", "grounding_results")
         ):
-            reason = "Timestamped source evidence is missing; extraction fidelity cannot be assessed."
+            reason = (
+                "Timestamped source evidence is missing; extraction fidelity cannot be assessed."
+            )
         evidence = {
             item.get("evidence_id"): item
             for item in episode.get("evidence", [])
@@ -445,10 +470,17 @@ class LocalDecisionEpisodeVerifier:
         if not direct_action or (episode.get("operation") or {}).get("execution_status") in {
             None, "not_observed", "unknown", "not_executed",
         }:
-            reasons.append("No directly captured evidence verifies execution of the selected operation.")
+            reasons.append(
+                "No directly captured evidence verifies execution of the selected operation."
+            )
         if not direct_result_ids.intersection(passed_refs):
-            reasons.append("No directly captured business-result evidence supports a passed postcondition.")
-        if not isinstance(raw.get("confounders_addressed"), list) or not raw["confounders_addressed"]:
+            reasons.append(
+                "No directly captured business-result evidence supports a passed postcondition."
+            )
+        if (
+            not isinstance(raw.get("confounders_addressed"), list)
+            or not raw["confounders_addressed"]
+        ):
             reasons.append("Plausible confounders were not identified and addressed.")
         if outcome.get("status") != "success":
             reasons.append("The episode does not contain a verified successful outcome.")
