@@ -434,7 +434,10 @@ class BrainHandsLoop:
                     },
                 )
 
-            if hands_result.call_id != delegation.call_id or hands_result.task_id != delegation.task_id:
+            if (
+                hands_result.call_id != delegation.call_id
+                or hands_result.task_id != delegation.task_id
+            ):
                 hands_result = self._demote(
                     hands_result,
                     "hands_correlation_mismatch",
@@ -495,7 +498,9 @@ class BrainHandsLoop:
             raise ProtocolError("delegation capability_id is not registered")
         declared_risk = str(task.get("risk_level") or capability.get("risk_level") or "unknown")
         if delegation.risk_level != declared_risk:
-            raise ProtocolError("delegation risk_level does not match the workflow capability")
+            raise ProtocolError(
+                "delegation risk_level does not match the workflow capability"
+            )
         if declared_risk in {"high", "critical", "unknown"} and not delegation.requires_human_approval:
             raise ProtocolError("high/critical/unknown risk capabilities require human approval")
         if delegation.node_id != delegation.task_id:
