@@ -1,0 +1,92 @@
+name: Downloaded Video-File Extraction Pipeline
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/aios_work_system/video_extraction/**"
+      - "scripts/download_tutorial_video.py"
+      - "scripts/run_video_file_pipeline.py"
+      - "tests/test_video_file_extraction.py"
+      - "contracts/decision-episode.schema.json"
+      - "pyproject.toml"
+      - ".github/workflows/video-file-extraction.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install FFmpeg, Tesseract and project extras
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev,video]"
+      - name: Ruff lint and full-repository format
+        run: |
+          ruff check .
+          ruff format --check .
+      - name: Run full test suite
+        run: pytest
+
+  real-tutorial-demo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install FFmpeg, Tesseract, yt-dlp, Whisper and OpenCV
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg tesseract-ocr
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[video]"
+      - name: Download one real test tutorial video file and timed captions
+        run: |
+          mkdir -p artifacts/video-file-demo/source artifacts/video-file-demo/output
+          python scripts/download_tutorial_video.py --output-dir artifacts/video-file-demo/source
+          cat artifacts/video-file-demo/source/source-manifest.json
+      - name: Install CPU PyTorch and Qwen3-VL Transformers
+        continue-on-error: true
+        run: |
+          python -m pip install --index-url https://download.pytorch.org/whl/cpu torch
+          python -m pip install "transformers>=4.57.0,<5" "accelerate>=1,<2"
+          python - <<'PY'
+          from transformers import Qwen3VLForConditionalGeneration
+          print("Qwen3-VL Transformers class available:", Qwen3VLForConditionalGeneration.__name__)
+          PY
+      - name: Run downloaded video through the extraction pipeline
+        env:
+          HF_HOME: \${{ runner.temp }}/huggingface
+        run: |
+          VIDEO_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_path"])')"
+          CAPTIONS_PATH="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["captions_path"] or "")')"
+          SOURCE_ID="$(python -c 'import json; print(json.load(open("artifacts/video-file-demo/source/source-manifest.json"))["video_id"])')"
+          ARGS=(--input "$VIDEO_PATH" --output-dir artifacts/video-file-demo/output --source-id "$SOURCE_ID" --source-platform youtube --sample-fps 2 --maximum-vlm-frames 24)
+          if [[ -n "$CAPTIONS_PATH" ]]; then
+            ARGS+=(--captions "$CAPTIONS_PATH")
+          fi
+          python scripts/run_video_file_pipeline.py "\${ARGS[@]}"
+      - name: Upload per-part breakdown and validated DecisionEpisode
+        if: always()
+        uses: actions/upload-artifact@v6
+        with:
+          name: downloaded-video-extraction-demo
+          path: |
+            artifacts/video-file-demo/source/source-manifest.json
+            artifacts/video-file-demo/output/
+          if-no-files-found: warn
+          retention-days: 14
