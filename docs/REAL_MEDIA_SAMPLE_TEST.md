@@ -1,6 +1,6 @@
 # Real Media, ASR, and OCR Component Smoke Tests
 
-This document records existing component-level integration tests on an openly licensed tutorial recording. These jobs exercise FFmpeg, faster-whisper, and Tesseract. The sampled-frame extraction and OCR steps are retained only as legacy media-component tests. They are **not** the selected tutorial-learning route and must not be treated as the primary operational event stream or Brain training input. New tutorials should capture semantic rrweb or Windows UI Automation events directly and align them with the instructor's voice narration.
+This document records component-level integration tests on an openly licensed downloaded tutorial video. These jobs exercise FFmpeg, faster-whisper, and Tesseract. File-based frame sampling and OCR are components also used by the selected tutorial-learning route; however, this older smoke test uses a simple fixed interval and does not exercise the complete frame-change-driven DecisionEpisode pipeline.
 
 ## Sample and attribution
 
@@ -55,7 +55,7 @@ In the target design, subtitles are a **cheap pre-filter**:
 - otherwise use ASR to produce timestamped subtitles;
 - reject non-tutorial or wrong-vertical videos before full GPU extraction.
 
-For newly recorded tutorials, the target path is direct semantic UI event capture (rrweb for web applications, Windows UI Automation for Windows desktop applications) plus aligned instructor narration. These become Decision Episodes describing goal, current state, instructor-explicit rationale, selected operation, outcome, and next decision. Legacy MP4 files may be reconstructed only as a fallback; reconstructed interactions must be labelled inferred_from_video. The earlier Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected, and the frame-based route was rejected as the primary learning method.
+The selected route processes downloaded tutorial video files offline. PR #38 adds the dedicated subtitle/ASR + FFmpeg frame sampling + screen-change detection + OCR/cursor inference + local UI-grounding pipeline, aligns timed narration to changed frames, builds a DecisionEpisode, and validates its contract. This component smoke test predates that full pipeline and does not by itself test screen-change detection, cursor/action inference, UI grounding, DecisionEpisode synthesis, or contract validation. Visual observations are derived from the video file; cursor/click/target hypotheses must remain labelled inferred_from_video. The earlier Qwen3-VL-4B vs Mage-VL-4B Colab T4 blind test was stopped on 2026-11-21 at approximately 19:51 PST after Qwen3-VL-4B scored 4.0/25. No winner was selected. That model experiment did not reject frame extraction.
 
 Therefore this existing smoke test does not establish:
 - correct operation-step or intent extraction;
@@ -93,4 +93,4 @@ python scripts/validate_ocr_sample.py --input artifacts/real-media/LibreOffice_W
 
 ## Acceptance still required
 
-The target pipeline still requires direct event-capture validation, narration synchronization and alignment, Decision Episode and HTN workflow quality checks, evidence labels, GPT + PM dual review, SQLite verified storage, Brain LoRA training, simulated-Hands decision evaluation, and Brain-to-Hands validation in the sandbox and live GUI operation loop. Throughput or media-smoke-test PASS status cannot substitute for those gates.
+The complete current pipeline is downloaded video-file extraction and DecisionEpisode validation (#38) → local verifier gate (#39) → independent PM evidence review → fail-closed training-sample compiler (#40) → Brain LoRA data preparation/configuration (#41) → Brain+Hands closed-loop harness (#42). This smoke test covers only basic media probing/audio/frame extraction, ASR, and OCR. It does not cover the later pipeline stages. A real PM-approved corpus, actual LoRA training run, trained Brain adapter, and real Hands evaluation remain required; throughput or media-smoke-test PASS status cannot substitute for those gates.
