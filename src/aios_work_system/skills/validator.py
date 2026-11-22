@@ -89,7 +89,7 @@ def _check_python_script(path: Path) -> list[str]:
     blocked_attributes = BLOCKED_CALLS | {"execv", "spawn", "fork"}
     module_aliases: dict[str, str] = {}
     call_aliases: dict[str, str] = {}
-    dynamic_lookup_aliases: set[str] = set()
+    dynamic_lookup_aliases: set[str] = {"getattr", "__getattribute__"}
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -122,6 +122,7 @@ def _check_python_script(path: Path) -> list[str]:
             if isinstance(node, ast.AnnAssign)
             else None
         )
+        targets = node.targets if isinstance(node, ast.Assign) else [node.target]
         if isinstance(assignment, ast.Attribute) and isinstance(assignment.value, ast.Name):
             imported_module = module_aliases.get(assignment.value.id, assignment.value.id)
             root_name = imported_module.split(".", maxsplit=1)[0]
@@ -129,10 +130,19 @@ def _check_python_script(path: Path) -> list[str]:
                 root_name in {"os", "subprocess", "builtins"}
                 and assignment.attr in blocked_attributes
             ):
-                targets = node.targets if isinstance(node, ast.Assign) else [node.target]
                 for target in targets:
                     if isinstance(target, ast.Name):
                         call_aliases[target.id] = f"{root_name}.{assignment.attr}"
+        elif isinstance(assignment, ast.Name):
+            for target in targets:
+                if not isinstance(target, ast.Name):
+                    continue
+                if assignment.id in BLOCKED_CALLS or assignment.id in call_aliases:
+                    call_aliases[target.id] = call_aliases.get(
+                        assignment.id, assignment.id
+                    )
+                if assignment.id in dynamic_lookup_aliases:
+                    dynamic_lookup_aliases.add(target.id)
 
     for node in ast.walk(tree):
         if isinstance(node, ast.Name) and node.id == "__builtins__":

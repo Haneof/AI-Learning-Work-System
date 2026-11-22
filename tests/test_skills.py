@@ -174,6 +174,9 @@ def test_validator_rejects_dynamic_execution_and_network_imports(tmp_path):
         "import os\ngetattr(os, 'system')('echo blocked')\n",
         "from os import system as run_command\nrun_command('echo blocked')\n",
         "__builtins__['eval']('1 + 1')\n",
+        "f = eval\nf('1 + 1')\n",
+        "import os\ng = getattr\ng(os, 'system')('echo blocked')\n",
+        "e = exec\ne(\"print('blocked')\")\n",
     ],
 )
 def test_validator_rejects_ast_blacklist_alias_and_dynamic_lookup_bypasses(tmp_path, script):
