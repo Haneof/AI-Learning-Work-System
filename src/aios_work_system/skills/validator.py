@@ -344,6 +344,10 @@ def validate_skill_package(
             if not isinstance(tool, str) or tool not in ALLOWED_TOOLS:
                 errors.append(f"tool is not allowlisted: {tool}")
 
+    evidence = manifest.get("evidence", [])
+    if isinstance(evidence, list):
+        errors.extend(_validate_string_array(evidence, "evidence"))
+
     permissions = manifest.get("permissions", [])
     if isinstance(permissions, list):
         for permission in permissions:
