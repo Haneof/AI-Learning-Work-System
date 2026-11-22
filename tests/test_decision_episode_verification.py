@@ -36,10 +36,14 @@ def _episode(direct=False):
         "state_before": {
             "facts": [{"fact_id": "f1", "value": "A folder with that name already exists"}]
         },
-        "narration": [{
-            "segment_id": "n1", "start_ms": 1000, "end_ms": 2000,
-            "text": "I create a new folder",
-        }],
+        "narration": [
+            {
+                "segment_id": "n1",
+                "start_ms": 1000,
+                "end_ms": 2000,
+                "text": "I create a new folder",
+            }
+        ],
         "decision": {
             "selected_strategy": "Create another folder with the same name",
             "decision_basis": ["instructor_explicit"],
@@ -48,27 +52,35 @@ def _episode(direct=False):
         "operation": {"execution_status": "observed" if direct else "not_observed"},
         "outcome": {
             "status": "success" if direct else "not_verified",
-            "postcondition_checks": [{
-                "condition": "The requested folder exists",
-                "result": "passed" if direct else "unknown",
-                "evidence_refs": ["ev-result"],
-            }],
+            "postcondition_checks": [
+                {
+                    "condition": "The requested folder exists",
+                    "result": "passed" if direct else "unknown",
+                    "evidence_refs": ["ev-result"],
+                }
+            ],
         },
         "evidence": [
             {
-                "evidence_id": "ev-words", "evidence_type": "narration",
+                "evidence_id": "ev-words",
+                "evidence_type": "narration",
                 "observation_channel": "not_applicable",
-                "rationale_source": "instructor_explicit", "claim": "I create a new folder",
+                "rationale_source": "instructor_explicit",
+                "claim": "I create a new folder",
             },
             {
-                "evidence_id": "ev-action", "evidence_type": "ui_event",
+                "evidence_id": "ev-action",
+                "evidence_type": "ui_event",
                 "observation_channel": "direct_capture" if direct else "inferred_from_video",
-                "rationale_source": "not_applicable", "claim": "The create-folder action",
+                "rationale_source": "not_applicable",
+                "claim": "The create-folder action",
             },
             {
-                "evidence_id": "ev-result", "evidence_type": "business_result",
+                "evidence_id": "ev-result",
+                "evidence_type": "business_result",
                 "observation_channel": "direct_capture" if direct else "observed_from_video",
-                "rationale_source": "not_applicable", "claim": "The resulting folder state",
+                "rationale_source": "not_applicable",
+                "claim": "The resulting folder state",
             },
         ],
     }
@@ -77,10 +89,14 @@ def _episode(direct=False):
 def _source_evidence():
     return {
         "source_metadata": {"duration_ms": 5000},
-        "transcript": [{
-            "segment_id": "n1", "start_ms": 1000, "end_ms": 2000,
-            "text": "I create a new folder",
-        }],
+        "transcript": [
+            {
+                "segment_id": "n1",
+                "start_ms": 1000,
+                "end_ms": 2000,
+                "text": "I create a new folder",
+            }
+        ],
         "frames": [
             {"frame_index": 0, "timestamp_ms": 0, "is_initial": True},
             {"frame_index": 1, "timestamp_ms": 2000, "is_change": True},
@@ -88,9 +104,9 @@ def _source_evidence():
         "ocr_records": [{"timestamp_ms": 2000, "text": "New Folder"}],
         "cursor_events": [],
         "grounding_results": [],
-        "alignment": {"alignment": [{
-            "segment_id": "n1", "matched_event_ids": ["frame-change-000001"]
-        }]},
+        "alignment": {
+            "alignment": [{"segment_id": "n1", "matched_event_ids": ["frame-change-000001"]}]
+        },
     }
 
 
@@ -150,9 +166,9 @@ def test_faithfully_extracted_but_wrong_decision_fails_decision_validity():
 
 def test_unknown_is_preserved_and_never_treated_as_pass():
     response = _response(decision_status="unknown", outcome_status="unknown")
-    report = LocalDecisionEpisodeVerifier(
-        completion_client=FakeLocalModel(response)
-    ).verify(_episode(), _source_evidence())
+    report = LocalDecisionEpisodeVerifier(completion_client=FakeLocalModel(response)).verify(
+        _episode(), _source_evidence()
+    )
 
     assert report["levels"]["decision_validity"]["status"] == "unknown"
     assert report["levels"]["outcome_validity"]["status"] == "unknown"
@@ -168,9 +184,9 @@ def test_positive_result_after_action_without_causal_evidence_is_unknown():
         "result": "passed",
         "evidence_refs": ["ev-result"],
     }
-    model = FakeLocalModel(_response(
-        outcome_status="pass", causal_basis="temporal_correlation_only"
-    ))
+    model = FakeLocalModel(
+        _response(outcome_status="pass", causal_basis="temporal_correlation_only")
+    )
     report = LocalDecisionEpisodeVerifier(completion_client=model).verify(
         episode, _source_evidence()
     )
@@ -182,9 +198,9 @@ def test_positive_result_after_action_without_causal_evidence_is_unknown():
 
 def test_outcome_pass_requires_direct_execution_result_and_causal_audit():
     report = LocalDecisionEpisodeVerifier(
-        completion_client=FakeLocalModel(_response(
-            outcome_status="pass", causal_basis="controlled_comparison"
-        ))
+        completion_client=FakeLocalModel(
+            _response(outcome_status="pass", causal_basis="controlled_comparison")
+        )
     ).verify(_episode(direct=True), _source_evidence())
 
     assert report["levels"]["outcome_validity"]["status"] == "pass"
@@ -193,9 +209,9 @@ def test_outcome_pass_requires_direct_execution_result_and_causal_audit():
 def test_fabricated_evidence_reference_fails_that_verification_level():
     response = _response()
     response["levels"]["extraction_fidelity"]["evidence_refs"] = ["invented-evidence"]
-    report = LocalDecisionEpisodeVerifier(
-        completion_client=FakeLocalModel(response)
-    ).verify(_episode(), _source_evidence())
+    report = LocalDecisionEpisodeVerifier(completion_client=FakeLocalModel(response)).verify(
+        _episode(), _source_evidence()
+    )
 
     assert report["levels"]["extraction_fidelity"]["status"] == "fail"
     assert report["overall_status"] == "fail"
@@ -206,9 +222,10 @@ def test_missing_source_evidence_returns_unknown_without_model_call():
     report = LocalDecisionEpisodeVerifier(completion_client=model).verify(_episode(), None)
 
     assert report["overall_status"] == "unknown"
-    assert all(report["levels"][name]["status"] == "unknown" for name in (
-        "extraction_fidelity", "decision_validity", "outcome_validity"
-    ))
+    assert all(
+        report["levels"][name]["status"] == "unknown"
+        for name in ("extraction_fidelity", "decision_validity", "outcome_validity")
+    )
     assert model.calls == 0
 
 
