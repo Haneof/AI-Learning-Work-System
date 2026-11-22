@@ -80,7 +80,8 @@ class BrowserAgentHandsAdapter:
         objective = (
             f"Business capability: {delegation.capability_id}\n"
             f"Objective: {delegation.description}\n"
-            f"Arguments: {json.dumps(dict(delegation.arguments), ensure_ascii=False, sort_keys=True)}\n"
+            "Arguments: "
+            f"{json.dumps(dict(delegation.arguments), ensure_ascii=False, sort_keys=True)}\n"
             f"Preconditions: {json.dumps(list(delegation.preconditions), ensure_ascii=False)}\n"
             f"Expected business postconditions: "
             f"{json.dumps(list(delegation.expected_postconditions), ensure_ascii=False)}\n"
