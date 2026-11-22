@@ -397,7 +397,8 @@ def validate_lora_config(config: Mapping[str, Any], *, gpu_profile: str = "t4") 
             or not dataset["path"].strip()
         ):
             raise ValueError(
-                f"{dataset_key} must use a local path with type: chat_template "\n                f"({expected_partition})"
+                f"{dataset_key} must use a local path with type: chat_template "
+                f"({expected_partition})"
             )
 
 
