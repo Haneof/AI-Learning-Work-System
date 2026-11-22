@@ -39,7 +39,7 @@ video-open-models = [
   "transformers>=4.57,<6",
   "accelerate>=1,<2",
   "qwen-vl-utils>=0.0.10",
-  "llama-cpp-python>=0.3.16,<1",
+  "llama-cpp-python @ git+https://github.com/JamePeng/llama-cpp-python.git",
 ]
 video-open-models-torch = ["torch>=2.6", "torchvision>=0.21,<1"]
 video-open-models-cuda = ["bitsandbytes>=0.45,<1"]
