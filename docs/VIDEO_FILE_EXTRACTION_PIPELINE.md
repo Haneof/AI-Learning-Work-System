@@ -84,6 +84,45 @@ The output directory contains:
 - \`transcript.json\`, \`ocr.json\`, \`cursor-and-click-inferences.json\`, \`ui-grounding.json\`, \`narration-alignment.json\`.
 - \`decision-episode.json\` and \`validation.json\`.
 
+## Local DecisionEpisode verification gate
+
+After episode synthesis and contract validation, a separate local open-weight model performs the first-pass verification before the proposed episode is written to the output artifact. The three verdicts are reported independently:
+
+1. **Extraction fidelity:** do the claims in the episode match the timestamped transcript, OCR, frame-change, cursor and GUI-grounding source records?
+2. **Decision validity:** was the selected decision reasonable using only the state, information and constraints available at that decision point? An action can be extracted faithfully and still FAIL this level when it violates a constraint or is otherwise unsound.
+3. **Outcome validity:** is there evidence that the operation achieved its intended result, rather than merely being followed by a positive-looking screen? The local gate requires direct operation evidence, direct business-result evidence tied to a passed postcondition, and a controlled comparison or system audit trail addressing confounders. A video-only temporal sequence is UNKNOWN, not causal proof.
+
+Each level reports pass, fail or unknown, with reasons, evidence IDs and explicit unknowns. Invalid or unresolved evidence references fail that level. Missing source/model evidence or malformed model output is held as unknown. All three levels must pass; no majority vote is permitted.
+
+### Local model configuration
+
+The verifier uses only a local GGUF/open-weight model through llama-server's OpenAI-compatible chat-completions protocol. The default model path is the primary 4B episode model. Select another local file or an already-running loopback endpoint with:
+
+    --decision-verifier-model-path artifacts/models/your-local-4b-heretic.gguf
+    --decision-verifier-server-binary llama-server
+    --decision-verifier-port 8089
+    --decision-verifier-gpu-layers -1
+
+Or point at a local server:
+
+    --decision-verifier-endpoint http://127.0.0.1:8089/v1/chat/completions
+    --decision-verifier-model-name local-open-model
+
+The path option starts a local llama-server for the verification request and shuts it down afterward. The endpoint option connects only to localhost or an IP loopback address. Remote hosts, HTTP redirects and environment-configured proxies are blocked by the verifier. It uses Python standard-library HTTP/process support and makes no GPT, Gemini, moderation API or hosted inference calls. Model weights are not downloaded by the verifier; make the selected local model file available first.
+
+### Dual gate and artifacts
+
+The first local pass never substitutes for PM verification. Even when all three local levels pass, admission remains held pending the PM's independent inspection of the source material and proposed DecisionEpisode. The PM gate must explicitly return PASS before a record can be marked eligible for the training dataset. Failing or unknown verdicts remain held.
+
+The run writes:
+
+- decision-source-evidence.json: timestamped extraction inputs supplied to the verifier.
+- decision-verification.json: three local verdicts, reasons, evidence references, unknowns and model/backend metadata.
+- training-admission.json: fail-closed admission state; local PASS alone is still pending PM.
+- decision-episode.json: proposed record for audit/review, not an automatically approved training example.
+
+The verifier currently receives structured timestamped extraction evidence rather than raw image pixels. Therefore its extraction-fidelity check audits the episode against those extracted observations; it is not a substitute for the PM's independent inspection of the original video. The current video-file pipeline has no automatic training-dataset writer, and this stage does not create or approve a dataset entry.
+
 ## Real tutorial source used by the CI demo
 
 The downloader tries the three user-supplied YouTube IDs first. If YouTube denies runner access, it records each failure and downloads the real Wikipedia Content Translation Tool Tutorial (2 min 8 s) from Wikimedia Commons with its published English SRT captions. The video is by AlexandraShagzhina and is licensed CC BY-SA 4.0. The fallback attribution and licence are written to \`source-manifest.json\`. This is a real browser-tool tutorial file, not a synthetic fixture.
