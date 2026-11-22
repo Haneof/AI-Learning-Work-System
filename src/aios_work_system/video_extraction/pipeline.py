@@ -26,6 +26,10 @@ from aios_work_system.video_extraction.model_router import (
     synthesize_episode_decision,
 )
 from aios_work_system.video_extraction.transcript import load_transcript
+from aios_work_system.video_extraction.verification import (
+    LocalDecisionEpisodeVerifier,
+    training_dataset_admission_status,
+)
 
 
 def _write_json(path: Path, payload: Any) -> None:
@@ -106,6 +110,13 @@ class VideoExtractionPipeline:
         minimum_grounding_accuracy: float = 0.75,
         llama_gpu_layers: int = -1,
         vlm_model: str | None = None,
+        decision_verifier_model_path: str | Path | None = None,
+        decision_verifier_endpoint: str | None = None,
+        decision_verifier_model_name: str = "local-open-model",
+        decision_verifier_server_binary: str = "llama-server",
+        decision_verifier_port: int = 8089,
+        decision_verifier_gpu_layers: int | None = None,
+        decision_verifier: Any | None = None,
     ) -> None:
         if maximum_vlm_frames < 1:
             raise ValueError("maximum_vlm_frames must be at least 1")
@@ -143,6 +154,20 @@ class VideoExtractionPipeline:
         # Kept only for backwards compatibility. Hosted and legacy Qwen VLM inference
         # is not used by this pipeline; local ShowUI/UI-TARS weights are the default.
         self.legacy_vlm_model = vlm_model
+        self.decision_verifier_model_path = decision_verifier_model_path or os.getenv(
+            "AIOS_DECISION_VERIFIER_MODEL_PATH",
+            str(self.episode_model_path),
+        )
+        self.decision_verifier_endpoint = decision_verifier_endpoint or os.getenv(
+            "AIOS_DECISION_VERIFIER_ENDPOINT"
+        )
+        self.decision_verifier_model_name = decision_verifier_model_name
+        self.decision_verifier_server_binary = decision_verifier_server_binary
+        self.decision_verifier_port = decision_verifier_port
+        self.decision_verifier_gpu_layers = (
+            llama_gpu_layers if decision_verifier_gpu_layers is None else decision_verifier_gpu_layers
+        )
+        self.decision_verifier = decision_verifier
 
     def run(
         self,
@@ -387,6 +412,39 @@ class VideoExtractionPipeline:
             "errors": validation_errors,
             "validator": "contracts.validate.validate_episode",
         }
+        # Keep the time-aligned source packet beside the proposal so the local gate
+        # checks the actual extraction inputs and PM can independently inspect them.
+        source_evidence = {
+            "source_metadata": video_metadata,
+            "transcript": transcript,
+            "frames": analyzed_frames,
+            "ocr_records": ocr_records,
+            "cursor_events": cursor_events,
+            "grounding_results": grounding_results,
+            "alignment": alignment,
+        }
+        _write_json(output / "decision-source-evidence.json", source_evidence)
+
+        stage_started = time.perf_counter()
+        verifier = self.decision_verifier or LocalDecisionEpisodeVerifier(
+            model_path=self.decision_verifier_model_path,
+            endpoint=self.decision_verifier_endpoint,
+            model_name=self.decision_verifier_model_name,
+            server_binary=self.decision_verifier_server_binary,
+            port=self.decision_verifier_port,
+            n_gpu_layers=self.decision_verifier_gpu_layers,
+        )
+        local_verification = verifier.verify(episode, source_evidence)
+        training_admission = training_dataset_admission_status(local_verification, None)
+        stages["local_decision_verification"] = {
+            "status": "passed" if local_verification["overall_status"] == "pass" else "held",
+            "overall_status": local_verification["overall_status"],
+            "model_provider": local_verification["verifier"]["provider"],
+            "latency_ms": round((time.perf_counter() - stage_started) * 1000, 2),
+        }
+        _write_json(output / "decision-verification.json", local_verification)
+        _write_json(output / "training-admission.json", training_admission)
+        # A locally passing episode is still only a proposal until the PM gate is complete.
         _write_json(output / "decision-episode.json", episode)
         _write_json(output / "validation.json", validation)
 
@@ -438,6 +496,14 @@ class VideoExtractionPipeline:
             },
             "episode_id": episode["episode_id"],
             "validation": validation,
+            "local_decision_verification": local_verification,
+            "training_admission": training_admission,
         }
         _write_json(output / "part-breakdown.json", summary)
-        return {"summary": summary, "episode": episode, "validation": validation}
+        return {
+            "summary": summary,
+            "episode": episode,
+            "validation": validation,
+            "local_verification": local_verification,
+            "training_admission": training_admission,
+        }
