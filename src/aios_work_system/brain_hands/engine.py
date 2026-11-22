@@ -501,7 +501,10 @@ class BrainHandsLoop:
             raise ProtocolError(
                 "delegation risk_level does not match the workflow capability"
             )
-        if declared_risk in {"high", "critical", "unknown"} and not delegation.requires_human_approval:
+        if (
+            declared_risk in {"high", "critical", "unknown"}
+            and not delegation.requires_human_approval
+        ):
             raise ProtocolError("high/critical/unknown risk capabilities require human approval")
         if delegation.node_id != delegation.task_id:
             raise ProtocolError("delegation workflow_ref.node_id must identify its task")
