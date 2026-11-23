@@ -89,7 +89,7 @@
       {
         "fact_id": "state-before-ocr-availability",
         "path": "state_before.ocr_availability",
-        "value": "missing（Tesseract 未安装，未获得 OCR 结果；这不代表画面中没有文字。）",
+        "value": "OCR 结果现已存在：2026-11-22 重跑，69/69 帧读取成功，共获得 8,524 个文字区域。",
         "evidence_refs": [
           "ev-observed-video"
         ]
@@ -1253,7 +1253,7 @@
     },
     "alternatives_considered": [],
     "uncertainties": [
-      "OCR 全部失败（本机无 tesseract）：69 帧 0 个文字区域，帧内文字均来自人工 grounding 标注，非 OCR 记录。",
+      "OCR 已可用：2026-11-22 重跑，69/69 帧读取成功，共 8,524 个文字区域；帧内文字以 OCR 结果为准，10 个人工 grounding 标注目标为补充确认。",
       "所有点击动作均为推断：下载视频无原生点击/DOM 事件遥测；全视频共 28 个推断点击，cursor-settle 启发式置信度 0.361。本 Episode 仅保留 195s 前的 23 个（inferred-click-0001 至 inferred-click-0023）；0024–0028 不纳入本集。",
       "Grounding 为人工标注 benchmark（10 个目标），未运行 grounding 模型，模型确认未完成；t09 与 t10 的时间戳是帧时间，不是动作时间。",
       "regular_price: missing：字幕只说 add a price，从未给出数字；sale_price: missing。",
@@ -1313,7 +1313,7 @@
         {
           "fact_id": "state-after-product-name",
           "path": "product.name",
-          "value": "Backpack（frame-000057.jpg，28.0s；帧中文字由人工 grounding 标注，非 OCR。）",
+          "value": "Backpack（frame-000057.jpg，28.0s；帧中文字由人工 grounding 标注确认。）",
           "evidence_refs": [
             "ev-grounding-product-fields"
           ]
@@ -1338,7 +1338,7 @@
         {
           "fact_id": "state-after-pricing-values",
           "path": "product.pricing",
-          "value": "regular_price: missing；sale_price: missing。Regular price ($) 字段在 frame-000149.jpg，74.0s 可见并聚焦；字幕提及可添加价格，但没有给出数字，也未观察到价格已填写。",
+          "value": "regular_price: missing；sale_price: missing。OCR 结果中字符串 \"Regular price\" 出现于 0 帧；\"$30.00\" 虽出现于 9 帧，但这 9 帧全部是已发布产品的 storefront 帧，并非演示中输入的价格值。因此，演示价格仍为 missing。",
           "evidence_refs": [
             "ev-grounding-product-fields",
             "ev-instructor-words"
@@ -1407,7 +1407,7 @@
       "labels": [
         "observed_from_video"
       ],
-      "capture_method": "FFmpeg decoded frames + pixel-difference detector; OCR unavailable (Tesseract not installed; 69 frames produced zero OCR results)",
+      "capture_method": "FFmpeg decoded frames + pixel-difference detector; OCR via Tesseract (2026-11-22 re-run: 69/69 frames read, 8,524 text regions)",
       "source_locator": {
         "start_ms": 0,
         "end_ms": 235775,
@@ -1483,7 +1483,7 @@
         ]
       },
       "raw_record_ref": "video-extraction/frames-and-ocr.json",
-      "claim": "Frame changes were read from the downloaded video file. OCR was unavailable, so no screen text was read by OCR; the absence of OCR output does not mean the screen had no text. This is observation of video pixels, not live browser telemetry.",
+      "claim": "Frame changes were read from the downloaded video file. Screen text was read by OCR in the 2026-11-22 re-run (69/69 frames, 8,524 text regions). This is observation of video pixels, not live browser telemetry.",
       "evidence_id": "ev-observed-video"
     },
     {
@@ -1698,7 +1698,7 @@
   "review": {
     "status": "needs_review",
     "approved_for_training": false,
-    "review_notes": "DRAFT v3，仅整理稿：未批准用于训练；本地验证 held（无模型，全部 unknown）；OCR: missing（Tesseract 未安装，69 帧 0 个 OCR 结果；无 OCR 结果不代表画面无文字）；grounding 为人工标注，未运行 grounding 模型，模型确认未完成；regular_price、sale_price、长/短描述全文、产品图片文件名、SKU、库存数量/重量/尺寸等值: missing；Save Draft 证明为 43s 单次演示，之后步骤无再次保存证据；预览相关讲述延续到约 61.16 秒，但 Preview 无专门结果帧，预览页面状态未独立确认。"
+    "review_notes": "DRAFT v4，仅整理稿：未批准用于训练；本地验证 held（无模型，全部 unknown）；OCR 已有结果（2026-11-22 重跑：69/69 帧，8,524 个文字区域）；grounding 为人工标注，未运行 grounding 模型，模型确认未完成；regular_price、sale_price、长/短描述全文、产品图片文件名、SKU、库存数量/重量/尺寸等值: missing；Save Draft 证明为 43s 单次演示，之后步骤无再次保存证据；预览相关讲述延续到约 61.16 秒，但 Preview 无专门结果帧，预览页面状态未独立确认。"
   },
   "quality": {
     "annotation_status": "auto_extracted",
@@ -1706,7 +1706,7 @@
     "exclusion_reasons": [
       "Video-derived operations and cursor clicks are inferences, not direct event telemetry.",
       "Automatically extracted episode has not been independently reviewed for training.",
-      "DRAFT v3：OCR: missing、grounding 未运行模型、模型确认未完成、本地验证 held。",
+      "DRAFT v4：OCR 已有结果、grounding 未运行模型、模型确认未完成、本地验证 held。",
       "价格、描述全文、图片名等关键值: missing。"
     ]
   }
